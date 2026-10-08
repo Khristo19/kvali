@@ -113,6 +113,13 @@ async function send(ixs: TransactionInstruction[], payer: Keypair, cosigners: Ke
 
 // ---- reads ----------------------------------------------------------------
 export interface ChainJob {
+  chainJobId: number;
+  farmer: string;
+  operator: string;
+  targetRateMlPerHa: number;
+  toleranceBps: number;
+  areaCoveredCha: number;
+  createdAt: number;
   pda: string;
   vault: string;
   state: string;
@@ -147,12 +154,16 @@ async function tokenBalance(a: PublicKey): Promise<bigint> {
   }
 }
 
-export async function readJob(chainJobId: number | bigint): Promise<ChainJob | null> {
-  const key = pdas.job(keys.farmer.publicKey, chainJobId);
-  const j = await accountNs.job.fetchNullable(key);
-  if (!j) return null;
+async function decodeJob(key: PublicKey, j: any): Promise<ChainJob> {
   const vault = pdas.vault(key);
   return {
+    chainJobId: Number(j.jobId.toString()),
+    farmer: j.farmer.toBase58(),
+    operator: j.operator.toBase58(),
+    targetRateMlPerHa: j.targetRateMlPerHa,
+    toleranceBps: j.toleranceBps,
+    areaCoveredCha: j.areaCoveredCha,
+    createdAt: Number(j.createdAt.toString()),
     pda: key.toBase58(),
     vault: vault.toBase58(),
     state: stateName(j.state),
@@ -167,6 +178,29 @@ export async function readJob(chainJobId: number | bigint): Promise<ChainJob | n
     challengeDeadline: Number(j.challengeDeadline.toString()),
     vaultBalance: await tokenBalance(vault),
   };
+}
+
+export async function readJob(chainJobId: number | bigint): Promise<ChainJob | null> {
+  const key = pdas.job(keys.farmer.publicKey, chainJobId);
+  const j = await accountNs.job.fetchNullable(key);
+  return j ? decodeJob(key, j) : null;
+}
+
+/** Every job account of the program that the demo farmer posted and nobody accepted yet (state Posted), newest first. */
+export async function listOpenJobs(): Promise<ChainJob[]> {
+  const all: { publicKey: PublicKey; account: any }[] = await (program.account as any).job.all();
+  const open = all.filter((a) => stateName(a.account.state) === "Posted" && a.account.farmer.equals(keys.farmer.publicKey));
+  const jobs = await Promise.all(open.map((a) => decodeJob(a.publicKey, a.account)));
+  return jobs.sort((a, b) => b.createdAt - a.createdAt);
+}
+
+/** The job the demo operator currently holds on chain (accepted, not finished), if any. */
+export async function readOperatorActiveJob(): Promise<ChainJob | null> {
+  const op = await accountNs.operator.fetchNullable(pdas.operator(keys.operator.publicKey));
+  if (!op?.activeJob) return null;
+  const key: PublicKey = op.activeJob;
+  const j = await accountNs.job.fetchNullable(key);
+  return j ? decodeJob(key, j) : null;
 }
 
 export async function readSnapshot(chainJobId: number | bigint | null): Promise<ChainSnapshot> {

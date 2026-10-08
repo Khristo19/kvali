@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from "react";
 import { Platform } from "react-native";
 
-import type { ChainSnapshot } from "./client";
+import type { ChainJob, ChainSnapshot } from "./client";
 
 export type Mode = "devnet" | "sim";
 export type Status = "idle" | "connecting" | "ready" | "unreachable";
@@ -26,6 +26,12 @@ export interface DevnetState {
   /** On-chain id of the job posted from this session (local job id 17 maps to it). */
   chainJobId: number | null;
   snapshot: ChainSnapshot | null;
+  /** Open (Posted) jobs read from the chain, newest first. null = not read yet. */
+  openJobs: ChainJob[] | null;
+  /** A job the demo operator still holds on chain that is not this session's job (for example from an earlier visit). */
+  heldJob: ChainJob | null;
+  /** Last message from a restore / adopt step, shown on the pages. */
+  restoreNote: string | null;
 }
 
 let state: DevnetState = {
@@ -37,6 +43,9 @@ let state: DevnetState = {
   last: null,
   chainJobId: null,
   snapshot: null,
+  openJobs: null,
+  heldJob: null,
+  restoreNote: null,
 };
 const listeners = new Set<() => void>();
 

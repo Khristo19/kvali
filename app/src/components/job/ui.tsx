@@ -1,4 +1,6 @@
-import { Linking, Pressable, StyleSheet, Text } from "react-native";
+import { StyleSheet, Text } from "react-native";
+
+import { ExtLink } from "@/components/ui/ext-link";
 
 import { Row as UiRow, StatusChip, type ChipTone } from "@/components/ui";
 import { colors, type } from "@/theme";
@@ -21,9 +23,9 @@ export function TxId({ tx }: { tx: string }) {
     );
   }
   return (
-    <Pressable accessibilityRole="link" accessibilityLabel="Open transaction in Solana Explorer" onPress={() => Linking.openURL(explorerUrl(tx))}>
-      <Text style={[styles.tx, styles.link]}>{shortTx(tx)} (Explorer)</Text>
-    </Pressable>
+    <ExtLink url={explorerUrl(tx)} label="Open transaction in Solana Explorer" style={[styles.tx, styles.link]}>
+      {shortTx(tx)} (Explorer)
+    </ExtLink>
   );
 }
 

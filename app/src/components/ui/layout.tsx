@@ -1,13 +1,19 @@
-import type { ReactNode } from "react";
-import { Children } from "react";
+import { Children, useSyncExternalStore, type ReactNode } from "react";
 import { StyleSheet, View, useWindowDimensions } from "react-native";
 
 import { DESKTOP_MIN_WIDTH, space } from "@/theme";
 
-/** True at desktop widths (side nav, centred column, cards two-up). */
+const noop = () => () => undefined;
+/** False while the static page is rendered / hydrated, true afterwards (avoids React #418 hydration mismatches). */
+export function useMounted(): boolean {
+  return useSyncExternalStore(noop, () => true, () => false);
+}
+
+/** True at desktop widths (side nav, centred column, cards two-up). Always false until mounted so server and client markup match. */
 export function useWide(): boolean {
   const { width } = useWindowDimensions();
-  return width >= DESKTOP_MIN_WIDTH;
+  const mounted = useMounted();
+  return mounted && width >= DESKTOP_MIN_WIDTH;
 }
 
 /** Stacks children on a phone; puts them side by side on desktop. */

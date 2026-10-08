@@ -1,4 +1,7 @@
 import { useLocalSearchParams } from "expo-router";
+
+import { useAccount } from "@/account/store";
+import { SettleNow } from "@/components/settle-now";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
@@ -11,7 +14,7 @@ import { Chip, Row, useTick } from "@/components/job/ui";
 import { ModeBanner } from "@/components/devnet/mode-banner";
 import { ChainCard } from "@/components/devnet/chain-card";
 import { useActions } from "@/engine/actions";
-import { SAMPLE_JOB_ID, WALLETS } from "@/engine/scenario";
+import { SAMPLE_JOB_ID } from "@/engine/scenario";
 import { windowLeft } from "@/engine/engine";
 import { useEngine } from "@/engine/useEngine";
 import type { JobState } from "@/engine/types";
@@ -34,6 +37,8 @@ export default function JobStory() {
   const actions = useActions();
   const [error, setError] = useState<string | null>(null);
   const now = useTick();
+  const account = useAccount();
+  const role = account?.role ?? "farmer";
 
   const job = state.jobs[jobId];
 
@@ -56,10 +61,11 @@ export default function JobStory() {
 
   if (!job) {
     return (
-      <RoleShell role="farmer" active={2} title="Job story" subtitle="Every step, in plain words">
+      <RoleShell role={role} active={-1} title="Job story" subtitle="Every step, in plain words">
         <Card>
-          <Text style={[type.body, { color: colors.ink }]}>No job yet — post one from the Farmer screen</Text>
-          <Button label="Run the full demo" onPress={runDemo} />
+          <Text style={[type.body, { color: colors.ink }]}>No job yet. Post one from the Farmer page.</Text>
+          <Text style={type.body}>Presenter shortcut: posts, accepts and submits a record for you, with real transactions in Devnet mode.</Text>
+          <Button label="Presenter: run the whole job automatically" onPress={runDemo} />
           {error && <Text style={styles.error}>{error}</Text>}
         </Card>
       </RoleShell>
@@ -72,7 +78,7 @@ export default function JobStory() {
   const ended = job.payout !== null;
 
   return (
-    <RoleShell role="farmer" active={2} title="Job story" subtitle={`Job #${job.id}`}>
+    <RoleShell role={role} active={-1} title="Job story" subtitle={`Job #${job.id}`}>
       <ModeBanner />
 
       <Card>
@@ -88,11 +94,9 @@ export default function JobStory() {
       {job.state === "ProofSubmitted" && (
         <Countdown secs={remaining} total={state.config.challengeWindowSecs} />
       )}
-      {job.state === "ProofSubmitted" && remaining === 0 && (
-        <Button label="Settle" onPress={() => run(() => actions.settle(WALLETS.farmer, jobId))} />
-      )}
+      <SettleNow job={job} />
       {!ended && (job.state === "Posted" || job.state === "Accepted") && (
-        <Button label="Continue the demo" onPress={runDemo} />
+        <Button label="Presenter: run the rest of the job automatically" onPress={runDemo} />
       )}
       {error && <Text style={styles.error}>{error}</Text>}
 

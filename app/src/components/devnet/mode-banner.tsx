@@ -1,10 +1,12 @@
-import { Linking, Pressable, StyleSheet, Text, View } from "react-native";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+
+import { ExtLink } from "@/components/ui/ext-link";
 
 import { explorerAddr, explorerTx, addresses } from "@/devnet/client";
+import { setPending } from "@/session/store";
 import { setDevnetState, useDevnetState, type Mode } from "@/devnet/mode";
 import { colors, radius, type } from "@/theme";
 
-const open = (url: string) => void Linking.openURL(url);
 
 function Seg({ label, on, onPress }: { label: string; on: boolean; onPress: () => void }) {
   return (
@@ -17,7 +19,10 @@ function Seg({ label, on, onPress }: { label: string; on: boolean; onPress: () =
 /** Mode switch plus the accurate banner for the current mode. Shown on every role screen. */
 export function ModeBanner() {
   const s = useDevnetState();
-  const pick = (m: Mode) => setDevnetState({ mode: m, fellBack: false });
+  const pick = (m: Mode) => {
+    if (m !== s.mode) setPending(null); // a staged record belongs to one mode
+    setDevnetState({ mode: m, fellBack: false });
+  };
 
   let text: string;
   let tone: "info" | "ok" | "error" = "info";
@@ -43,9 +48,9 @@ export function ModeBanner() {
       {s.mode === "devnet" && s.status === "ready" ? (
         <Text style={type.small}>
           Signing with devnet demo keys — anyone can use them. They hold only test funds.{" "}
-          <Text style={styles.link} accessibilityRole="link" onPress={() => open(explorerAddr(addresses.programId.toBase58()))}>
+          <ExtLink url={explorerAddr(addresses.programId.toBase58())} style={styles.link}>
             Program on Explorer
-          </Text>
+          </ExtLink>
         </Text>
       ) : null}
       {s.busy ? (
@@ -58,9 +63,9 @@ export function ModeBanner() {
           {s.last.ok ? "Confirmed" : "Refused"}: {s.last.label}
           {s.last.error ? ` (${s.last.error})` : ""}{" "}
           {s.last.sig ? (
-            <Text style={styles.link} accessibilityRole="link" onPress={() => open(explorerTx(s.last!.sig!))}>
+            <ExtLink url={explorerTx(s.last.sig)} style={styles.link}>
               Open in Explorer
-            </Text>
+            </ExtLink>
           ) : null}
         </Text>
       ) : null}

@@ -2,7 +2,11 @@ import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { hectares, litersPerHa } from "@/components/money";
-import { Banner, Card, CardTitle, Fact, FactGrid, RoleShell, TwoUp } from "@/components/ui";
+import { Banner, Card, CardTitle, Fact, FactGrid, RoleShell, TwoUp, useTab } from "@/components/ui";
+import { SettleNow } from "@/components/settle-now";
+import { ValidatorEarnings, ValidatorProfile, ValidatorReviewed } from "@/components/tab-views";
+import { notify } from "@/components/ui/notice";
+import { setPending, usePending } from "@/session/store";
 import { ChallengeCard } from "@/components/validator/challenge-card";
 import { ProofCard, fullVerdict, type SampleKey } from "@/components/validator/proof-card";
 import { ModeBanner } from "@/components/devnet/mode-banner";
@@ -17,6 +21,8 @@ const KEYS = Object.keys(sampleRecords) as SampleKey[];
 export default function ValidatorScreen() {
   const { state } = useEngine();
   const actions = useActions();
+  const tab = useTab("validator");
+  const pending = usePending();
   const [seatId, setSeatId] = useState(VALIDATORS[0].id);
   const [sigs, setSigs] = useState<Record<string, string[]>>({});
   const [refusals, setRefusals] = useState<Record<string, string>>({});
@@ -40,23 +46,30 @@ export default function ValidatorScreen() {
     const job = state.jobs[jobId];
     // Validators run the FULL verdict before signing.
     if (!fullVerdict(job, key).pass) return fail(new Error("Full verdict fails; this record must be refused."));
-    const list = Array.from(new Set([...(sigs[k] ?? []), seat.id]));
-    setSigs({ ...sigs, [k]: list });
+    const isPending = pending?.key === key;
+    const list = Array.from(new Set([...(isPending ? pending.approvals : (sigs[k] ?? [])), seat.id]));
+    if (isPending) setPending({ ...pending, approvals: list, refusal: undefined });
+    else setSigs({ ...sigs, [k]: list });
     if (list.length >= state.config.proofThreshold) {
       try {
         await actions.submitRecord(key, jobId, list);
-        setNotice(`Job ${jobId}: ${list.length} seats signed, proof submitted. The challenge window is open.`);
+        setNotice(`Job ${jobId}: ${list.length} seats approved, proof submitted on chain. The challenge window is open.`);
       } catch (e) {
         fail(e);
       }
     } else {
-      setNotice("Signature collected. 1 more needed.");
+      setNotice(`Approval recorded for the ${seat.seat} seat. 1 more seat is needed: pick another seat and approve.`);
+      notify("ok", "Approval recorded. 1 more seat is needed: pick another seat above and approve again.");
     }
   };
 
   const refuse = (jobId: number, key: SampleKey, reason: string) => {
     setError(null);
     setNotice(`Refusal recorded for ${key}.`);
+    if (pending?.key === key) {
+      setPending({ ...pending, refusal: `${reason} (${seat.seat} seat)` });
+      notify("info", "Refusal recorded. Nothing is sent to the chain; the operator is told to submit a different record.");
+    }
     setRefusals({ ...refusals, [`${jobId}:${key}`]: reason });
   };
 
@@ -82,11 +95,15 @@ export default function ValidatorScreen() {
   return (
     <RoleShell
       role="validator"
-      active={0}
-      title="Proof review"
-      subtitle={first ? `Job #${first.id} · ${state.config.proofThreshold} of ${state.config.validators.length} checks needed` : "Nothing to check right now"}
+      title={tab === "" ? "Proof review" : tab === "reviewed" ? "Reviewed" : tab === "earnings" ? "Earnings" : "Profile"}
+      subtitle={tab === "" ? (first ? `Job ${first.id > 100000 ? `…${String(first.id).slice(-5)}` : `#${first.id}`} · ${state.config.proofThreshold} of ${state.config.validators.length} checks needed` : "Nothing to check right now") : undefined}
     >
       <ModeBanner />
+      {tab === "reviewed" && <ValidatorReviewed />}
+      {tab === "earnings" && <ValidatorEarnings />}
+      {tab === "profile" && <ValidatorProfile />}
+      {tab === "" && (
+        <>
 
       <TwoUp>
         <Card>
@@ -117,7 +134,7 @@ export default function ValidatorScreen() {
           {notice && !error && <Banner tone="ok" text={notice} />}
           {accepted.length === 0 && challenged.length === 0 && (
             <Card>
-              <Text style={type.body}>No job to check yet — post one from the Farmer screen and accept it from the Operator screen.</Text>
+              <Text style={type.body}>No job to check yet: post one from the Farmer page and accept it from the Operator page.</Text>
             </Card>
           )}
           {accepted.map((job) => (
@@ -134,26 +151,40 @@ export default function ValidatorScreen() {
         </View>
       </TwoUp>
 
-      {accepted.map((job) => (
-        <View key={job.id} style={styles.group}>
-          <Text style={type.heading}>Proofs to check, job {job.id}</Text>
-          <Text style={type.small}>Demo queue: 4 sample spray records checked against this job. Each runs the full verdict first.</Text>
-          <View style={styles.proofs}>
-            {KEYS.map((key) => (
-              <View key={key} style={styles.proofCell}>
-                <ProofCard
-                  job={job}
-                  sampleKey={key}
-                  seat={seat}
-                  validators={VALIDATORS}
-                  signed={sigs[`${job.id}:${key}`] ?? []}
-                  refusal={refusals[`${job.id}:${key}`]}
-                  onSign={() => sign(job.id, key)}
-                  onRefuse={(reason) => refuse(job.id, key, reason)}
-                />
-              </View>
-            ))}
+      {accepted.map((job) => {
+        const queue = pending ? ([pending.key] as SampleKey[]) : KEYS;
+        return (
+          <View key={job.id} style={styles.group}>
+            <Text style={type.heading}>Proofs to check, job {job.id > 100000 ? `…${String(job.id).slice(-5)}` : job.id}</Text>
+            <Text style={type.small}>
+              {pending
+                ? `The operator sent the record "${pending.key}" (Demo: simulated drone flight). Approve it with 2 of the 3 seats; the 2nd approval submits the proof on chain, co-signed by both validators.`
+                : "The operator has not sent a record yet. Demo queue: 4 sample spray records checked against this job. Each runs the full verdict first."}
+            </Text>
+            <View style={styles.proofs}>
+              {queue.map((key) => (
+                <View key={key} style={styles.proofCell}>
+                  <ProofCard
+                    job={job}
+                    sampleKey={key}
+                    seat={seat}
+                    validators={VALIDATORS}
+                    signed={pending?.key === key ? pending.approvals : (sigs[`${job.id}:${key}`] ?? [])}
+                    refusal={pending?.key === key ? pending.refusal : refusals[`${job.id}:${key}`]}
+                    onSign={() => sign(job.id, key)}
+                    onRefuse={(reason) => refuse(job.id, key, reason)}
+                  />
+                </View>
+              ))}
+            </View>
           </View>
+        );
+      })}
+
+      {jobs.filter((j) => j.state === "ProofSubmitted").map((j) => (
+        <View key={`done-${j.id}`} style={{ gap: 16 }}>
+          <Banner tone="ok" text={`Job ${j.id > 100000 ? `…${String(j.id).slice(-5)}` : j.id}: the proof is on chain with ${j.proof?.signers.length ?? 0} validator co-signatures.`} />
+          <SettleNow job={j} />
         </View>
       ))}
 
@@ -161,6 +192,8 @@ export default function ValidatorScreen() {
       {challenged.map((job) => (
         <ChallengeCard key={job.id} job={job} config={state.config} votes={votes[job.id] ?? {}} onVote={(v, u) => vote(job.id, v, u)} />
       ))}
+        </>
+      )}
     </RoleShell>
   );
 }

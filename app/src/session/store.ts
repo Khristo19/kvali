@@ -1,0 +1,134 @@
+// The current demo job, persisted in localStorage so every role page and every reload sees the SAME job.
+// In devnet mode the app re-reads the job from the chain on load (src/devnet/bridge.ts restoreSession) and rebuilds the
+// local mirror from it; this store only keeps what the chain does not hold: which job, the signatures to link to
+// Explorer, which sample record was used and which validator seats approved it.
+import { useSyncExternalStore } from "react";
+
+export interface SessionTx {
+  action: string;
+  sig: string;
+  time?: number;
+}
+export interface PendingRecord {
+  /** Key of engine/samples sampleRecords. */
+  key: string;
+  /** Validator seat ids that approved so far (2 are needed). */
+  approvals: string[];
+  /** Set when a validator seat refused the record. */
+  refusal?: string;
+}
+export interface Session {
+  chainJobId: number;
+  fieldHash: string;
+  areaCha: number;
+  sprayDeadline: number;
+  txs: SessionTx[];
+  /** Record that was actually submitted on chain. */
+  recordKey: string | null;
+  signers: string[];
+  /** Panel used to resolve a challenge: [upheld?, ids]. */
+  resolution: { upheld: boolean; ids: string[] } | null;
+}
+
+const KEY = "kvali.session.v1";
+let state: Session | null = null;
+let loaded = false;
+const listeners = new Set<() => void>();
+const emit = () => listeners.forEach((l) => l());
+
+function persist() {
+  try {
+    if (state) globalThis.localStorage?.setItem(KEY, JSON.stringify(state));
+    else globalThis.localStorage?.removeItem(KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function loadSession(): Session | null {
+  if (!loaded) {
+    loaded = true;
+    try {
+      const raw = globalThis.localStorage?.getItem(KEY);
+      const s = raw ? (JSON.parse(raw) as Session) : null;
+      if (s && typeof s.chainJobId === "number" && Array.isArray(s.txs)) state = s;
+    } catch {
+      /* ignore */
+    }
+    emit();
+  }
+  return state;
+}
+
+export const getSession = () => state;
+export function setSession(s: Session | null) {
+  state = s;
+  loaded = true;
+  persist();
+  emit();
+}
+export function patchSession(patch: Partial<Session>) {
+  if (!state) return;
+  setSession({ ...state, ...patch });
+}
+export function addSessionTx(tx: SessionTx) {
+  if (!state) return;
+  setSession({ ...state, txs: [...state.txs, tx] });
+}
+export function newSession(p: { chainJobId: number; fieldHash: string; areaCha: number; sprayDeadline: number }) {
+  setSession({ ...p, txs: [], recordKey: null, signers: [], resolution: null });
+}
+
+export function useSession(): Session | null {
+  return useSyncExternalStore(
+    (cb) => {
+      listeners.add(cb);
+      return () => listeners.delete(cb);
+    },
+    () => state,
+    () => null,
+  );
+}
+
+// ---- the record waiting for validators (works in both modes, so it has its own store) ----
+const PKEY = "kvali.pending.v1";
+let pending: PendingRecord | null = null;
+let pendingLoaded = false;
+const pListeners = new Set<() => void>();
+
+export function loadPending(): PendingRecord | null {
+  if (!pendingLoaded) {
+    pendingLoaded = true;
+    try {
+      const raw = globalThis.localStorage?.getItem(PKEY);
+      const p = raw ? (JSON.parse(raw) as PendingRecord) : null;
+      if (p && typeof p.key === "string" && Array.isArray(p.approvals)) pending = p;
+    } catch {
+      /* ignore */
+    }
+    pListeners.forEach((l) => l());
+  }
+  return pending;
+}
+export const getPending = () => pending;
+export function setPending(p: PendingRecord | null) {
+  pending = p;
+  pendingLoaded = true;
+  try {
+    if (p) globalThis.localStorage?.setItem(PKEY, JSON.stringify(p));
+    else globalThis.localStorage?.removeItem(PKEY);
+  } catch {
+    /* ignore */
+  }
+  pListeners.forEach((l) => l());
+}
+export function usePending(): PendingRecord | null {
+  return useSyncExternalStore(
+    (cb) => {
+      pListeners.add(cb);
+      return () => pListeners.delete(cb);
+    },
+    () => pending,
+    () => null,
+  );
+}

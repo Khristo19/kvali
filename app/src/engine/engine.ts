@@ -122,6 +122,18 @@ export class Engine {
     this.listeners.forEach((l) => l());
   }
 
+  /** Forget a job and its log entries (a new job starts, or a saved session is re-read from the chain). */
+  chainResetJob(jobId: number) {
+    const j = this.state.jobs[jobId];
+    if (!j) return;
+    const jobs = { ...this.state.jobs };
+    delete jobs[jobId];
+    const operators = { ...this.state.operators };
+    for (const [k, o] of Object.entries(operators)) if (o.activeJob === jobId) operators[k] = { ...o, activeJob: null };
+    this.state = { ...this.state, jobs, operators, log: this.state.log.filter((l) => l.jobId !== jobId) };
+    this.listeners.forEach((l) => l());
+  }
+
   /** Give the newest matching log entries their real transaction signature. */
   chainRetag(match: (e: EventLogEntry) => boolean, tx: string) {
     const log = [...this.state.log];

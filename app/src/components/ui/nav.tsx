@@ -1,4 +1,4 @@
-import { router, usePathname, type Href } from "expo-router";
+import { router, useLocalSearchParams, usePathname, type Href } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -8,54 +8,63 @@ import { Icon, type IconName } from "./icons";
 export type Role = "farmer" | "operator" | "validator";
 
 export interface Tab {
+  /** Value of the ?tab= parameter ("" for the first tab, which is the plain page). */
+  key: string;
   label: string;
   icon: IconName;
-  href: Href;
 }
 
-/** Tabs per role, as in the approved mockups. Tabs without a screen yet go to the role's screen. */
+/** Tabs per role. Every tab is a real view of the same page, chosen with ?tab= (see useTab). */
 export const ROLE_TABS: Record<Role, { title: string; tabs: Tab[] }> = {
   farmer: {
     title: "Farmer",
     tabs: [
-      { label: "My jobs", icon: "jobs", href: "/farmer" },
-      { label: "Post a job", icon: "plus", href: "/farmer" },
-      { label: "Payments", icon: "wallet", href: "/job" },
-      { label: "Help", icon: "help", href: "/how-it-works" },
+      { key: "", label: "My jobs", icon: "jobs" },
+      { key: "post", label: "Post a job", icon: "plus" },
+      { key: "payments", label: "Payments", icon: "wallet" },
+      { key: "help", label: "Help", icon: "help" },
     ],
   },
   operator: {
     title: "Drone operator",
     tabs: [
-      { label: "Jobs", icon: "pin", href: "/operator" },
-      { label: "My jobs", icon: "jobs", href: "/operator" },
-      { label: "Earnings", icon: "wallet", href: "/job" },
-      { label: "Drones", icon: "drone", href: "/operator" },
+      { key: "", label: "Jobs", icon: "pin" },
+      { key: "mine", label: "My jobs", icon: "jobs" },
+      { key: "earnings", label: "Earnings", icon: "wallet" },
+      { key: "drones", label: "Drones", icon: "drone" },
     ],
   },
   validator: {
     title: "Validator",
     tabs: [
-      { label: "Queue", icon: "list", href: "/validator" },
-      { label: "Reviewed", icon: "check", href: "/validator" },
-      { label: "Earnings", icon: "wallet", href: "/validator" },
-      { label: "Profile", icon: "person", href: "/validator" },
+      { key: "", label: "Queue", icon: "list" },
+      { key: "reviewed", label: "Reviewed", icon: "check" },
+      { key: "earnings", label: "Earnings", icon: "wallet" },
+      { key: "profile", label: "Profile", icon: "person" },
     ],
   },
 };
 
-/** Go to a tab. Never pushes a duplicate of the screen you are already on. */
-function useGo() {
+/** The current tab key of a role page ("" = first tab). */
+export function useTab(role: Role): string {
+  const { tab } = useLocalSearchParams<{ tab?: string }>();
+  const t = Array.isArray(tab) ? tab[0] : tab;
+  return ROLE_TABS[role].tabs.some((x) => x.key === t) ? (t as string) : "";
+}
+
+/** Go to a tab of a role page. Replaces the current entry, so tabs never pile up in the history. */
+function useGo(role: Role) {
+  const current = useTab(role);
   const pathname = usePathname();
-  return (href: Href) => {
-    if (typeof href === "string" && href === pathname) return;
-    router.replace(href);
+  return (key: string) => {
+    if (pathname === `/${role}` && key === current) return;
+    router.replace((key ? { pathname: `/${role}`, params: { tab: key } } : `/${role}`) as Href);
   };
 }
 
 export function TabBar({ role, active }: { role: Role; active: number }) {
   const insets = useSafeAreaInsets();
-  const go = useGo();
+  const go = useGo(role);
   return (
     <View accessibilityRole="tablist" style={[styles.bar, { paddingBottom: Math.max(insets.bottom, 8) + 6 }]}>
       {ROLE_TABS[role].tabs.map((t, i) => {
@@ -67,7 +76,7 @@ export function TabBar({ role, active }: { role: Role; active: number }) {
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
             accessibilityLabel={t.label}
-            onPress={() => go(t.href)}
+            onPress={() => go(t.key)}
             style={styles.tab}
           >
             <Icon name={t.icon} color={c} size={24} />
@@ -83,7 +92,7 @@ export function TabBar({ role, active }: { role: Role; active: number }) {
 
 /** Desktop left navigation. */
 export function SideNav({ role, active }: { role: Role; active: number }) {
-  const go = useGo();
+  const go = useGo(role);
   const cfg = ROLE_TABS[role];
   return (
     <View style={styles.side} accessibilityRole="tablist">
@@ -104,7 +113,7 @@ export function SideNav({ role, active }: { role: Role; active: number }) {
             key={t.label}
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
-            onPress={() => go(t.href)}
+            onPress={() => go(t.key)}
             style={[styles.sideItem, on && styles.sideItemOn]}
           >
             <Icon name={t.icon} color={c} size={22} />

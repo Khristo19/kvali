@@ -1,0 +1,49 @@
+import { router } from "expo-router";
+import { Pressable, StyleSheet, Text, View } from "react-native";
+
+import { addressFor, roleLabel, shortAddr, signOut, useAccount } from "@/account/store";
+import { colors, fonts, radius } from "@/theme";
+
+/** Signed-in demo account (name, role, public devnet address) with "Sign out"; "Sign in" when there is none. */
+export function AccountChip() {
+  const a = useAccount();
+  if (!a) {
+    return (
+      <Pressable accessibilityRole="link" onPress={() => router.replace("/")} style={styles.btn}>
+        <Text style={styles.btnText}>Sign in</Text>
+      </Pressable>
+    );
+  }
+  return (
+    <View style={styles.box}>
+      <View style={styles.who}>
+        <Text style={styles.name} numberOfLines={1} accessibilityLabel={`Signed in as ${a.name}`}>
+          {a.name}
+        </Text>
+        <Text style={styles.sub} numberOfLines={1}>
+          {roleLabel(a.role)} · {shortAddr(addressFor(a.role))}
+        </Text>
+      </View>
+      <Pressable
+        accessibilityRole="button"
+        accessibilityLabel="Sign out"
+        onPress={() => {
+          signOut();
+          router.replace("/");
+        }}
+        style={styles.btn}
+      >
+        <Text style={styles.btnText}>Sign out</Text>
+      </Pressable>
+    </View>
+  );
+}
+
+const styles = StyleSheet.create({
+  box: { flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 1, maxWidth: 220 },
+  who: { flexShrink: 1, minWidth: 0, alignItems: "flex-end" },
+  name: { fontFamily: fonts.sans, fontSize: 15, fontWeight: "600", color: colors.ink },
+  sub: { fontFamily: fonts.sans, fontSize: 12, color: colors.muted },
+  btn: { minHeight: 44, paddingHorizontal: 10, justifyContent: "center", borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card },
+  btnText: { fontFamily: fonts.sans, fontSize: 14, fontWeight: "600", color: colors.green },
+});

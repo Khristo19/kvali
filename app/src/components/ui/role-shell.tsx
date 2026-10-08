@@ -1,11 +1,13 @@
-import type { ReactNode } from "react";
+import { useEffect, type ReactNode } from "react";
 import { ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { DESKTOP_MAX_WIDTH, colors } from "@/theme";
 import { ScreenHeader } from "./header";
 import { useWide } from "./layout";
-import { SideNav, TabBar, type Role } from "./nav";
+import { AccountChip } from "./account-chip";
+import { ROLE_TABS, SideNav, TabBar, useTab, type Role } from "./nav";
+import { NoticeBar, clearNotice } from "./notice";
 
 /**
  * Page frame for every role screen.
@@ -15,7 +17,7 @@ import { SideNav, TabBar, type Role } from "./nav";
  */
 export function RoleShell({
   role,
-  active = 0,
+  active,
   title,
   subtitle,
   onBack,
@@ -29,10 +31,15 @@ export function RoleShell({
   children: ReactNode;
 }) {
   const wide = useWide();
+  const tab = useTab(role ?? "farmer");
+  const idx = active ?? (role ? ROLE_TABS[role].tabs.findIndex((t) => t.key === tab) : -1);
+  // A result line belongs to the page it was shown on.
+  useEffect(() => clearNotice, []);
   const body = (
     <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, wide && styles.contentWide]} keyboardShouldPersistTaps="handled">
       <View style={[styles.column, wide && styles.columnWide]}>
-        <ScreenHeader title={title} subtitle={subtitle} onBack={onBack} />
+        <ScreenHeader title={title} subtitle={subtitle} onBack={onBack} right={<AccountChip />} />
+        <NoticeBar />
         {children}
       </View>
     </ScrollView>
@@ -42,7 +49,7 @@ export function RoleShell({
     return (
       <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
         <View style={styles.page}>
-          {role ? <SideNav role={role} active={active} /> : null}
+          {role ? <SideNav role={role} active={idx} /> : null}
           {body}
         </View>
       </SafeAreaView>
@@ -51,7 +58,7 @@ export function RoleShell({
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
       {body}
-      {role ? <TabBar role={role} active={active} /> : null}
+      {role ? <TabBar role={role} active={idx} /> : null}
     </SafeAreaView>
   );
 }

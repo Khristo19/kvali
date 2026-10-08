@@ -1,11 +1,11 @@
 import { router, type Href } from "expo-router";
 import { useState } from "react";
-import { Pressable, ScrollView, StyleSheet, Text, View } from "react-native";
+import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { SettlementDemo } from "@/components/settlement-demo";
 import { Button, Icon, useWide } from "@/components/ui";
-import { privyConfigured } from "@/config";
+import { addressFor, roleHome, roleLabel, saveAccount, shortAddr, signOut, useAccount } from "@/account/store";
 import { useMode } from "@/devnet/mode";
 import { colors, fonts, radius, space, type } from "@/theme";
 
@@ -19,9 +19,33 @@ const roles: { id: RoleId; title: string; desc: string; href: Href; glyph: strin
 
 export default function Home() {
   const mode = useMode();
+  const account = useAccount();
   const [picked, setPicked] = useState<RoleId>("farmer");
+  const [form, setForm] = useState(false);
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [err, setErr] = useState<string | null>(null);
+  const [phantom, setPhantom] = useState(false);
   const wide = useWide();
-  const go = () => router.push(roles.find((r) => r.id === picked)!.href);
+  const role = roles.find((r) => r.id === picked)!;
+
+  const openForm = () => {
+    setErr(null);
+    setPhantom(false);
+    if (account) {
+      setName((n) => n || account.name);
+      setEmail((m) => m || account.email);
+    }
+    setForm(true);
+  };
+  const create = () => {
+    const n = name.trim();
+    const m = email.trim();
+    if (n.length < 2) return setErr("Please enter your name.");
+    if (!/^\S+@\S+\.\S+$/.test(m)) return setErr("Please enter a valid email address, like name@example.com.");
+    saveAccount({ name: n, email: m, role: picked });
+    router.replace(role.href);
+  };
 
   return (
     <SafeAreaView style={styles.top} edges={["top", "bottom"]}>
@@ -50,9 +74,12 @@ export default function Home() {
                 <Pressable
                   key={r.id}
                   accessibilityRole="radio"
-                  accessibilityState={{ selected: on }}
+                  accessibilityState={{ selected: on, checked: on }}
                   accessibilityLabel={`${r.title}. ${r.desc}`}
-                  onPress={() => setPicked(r.id)}
+                  onPress={() => {
+                    setPicked(r.id);
+                    setErr(null);
+                  }}
                   style={[styles.role, on && styles.roleOn]}
                 >
                   <View style={styles.tile}>
@@ -68,12 +95,70 @@ export default function Home() {
             })}
           </View>
 
-          <View style={styles.actions}>
-            {/* Sign-in is not wired up yet (wallet tasks later): both buttons open the picked role. */}
-            <Button label="Continue with email" onPress={go} />
-            <Button label="Connect Phantom" kind="secondary" onPress={go} />
-            <Text style={styles.footnote}>A secure account is created for you. No crypto knowledge needed.</Text>
-          </View>
+          {account ? (
+            <View style={styles.signedIn}>
+              <Text style={type.body}>
+                Signed in as <Text style={{ fontWeight: "700", color: colors.ink }}>{account.name}</Text> ({roleLabel(account.role)}) · devnet address{" "}
+                {shortAddr(addressFor(account.role))}
+              </Text>
+              <Button label={`Open my ${roleLabel(account.role).toLowerCase()} page`} kind="secondary" small onPress={() => router.replace(roleHome(account.role) as Href)} />
+              <Button label="Sign out" kind="secondary" small onPress={() => signOut()} />
+            </View>
+          ) : null}
+
+          {form ? (
+            <View style={styles.form} accessibilityLabel="Create demo account">
+              <Text style={styles.who}>Create your demo account</Text>
+              <Text style={type.small}>
+                Role: {role.title}. Saved only in this browser, no password. Your account uses the public devnet demo key for this role.
+              </Text>
+              <Text style={type.label}>Your name</Text>
+              <TextInput
+                value={name}
+                onChangeText={setName}
+                placeholder="e.g. Nino"
+                autoComplete="name"
+                accessibilityLabel="Your name"
+                style={styles.input}
+              />
+              <Text style={type.label}>Email</Text>
+              <TextInput
+                value={email}
+                onChangeText={setEmail}
+                placeholder="name@example.com"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoComplete="email"
+                accessibilityLabel="Email"
+                onSubmitEditing={create}
+                style={styles.input}
+              />
+              {err ? (
+                <Text style={[type.body, { color: colors.error }]} accessibilityRole="alert">
+                  {err}
+                </Text>
+              ) : null}
+              <Button label={`Create account and open ${role.title.toLowerCase()} page`} onPress={create} />
+              <Button label="Cancel" kind="secondary" small onPress={() => setForm(false)} />
+            </View>
+          ) : (
+            <View style={styles.actions}>
+              <Button label="Continue with email" onPress={openForm} />
+              <Button
+                label="Connect Phantom"
+                kind="secondary"
+                onPress={() => {
+                  setPhantom(true);
+                }}
+              />
+              {phantom ? (
+                <Text style={[type.body, styles.soon]} accessibilityRole="alert">
+                  Phantom wallet sign-in is coming soon. For now, continue with email: it uses a public devnet demo key.
+                </Text>
+              ) : null}
+              <Text style={styles.footnote}>A demo account is created for you in this browser. No crypto knowledge needed.</Text>
+            </View>
+          )}
 
           <View style={styles.links}>
             <Pressable accessibilityRole="link" onPress={() => router.push("/how-it-works")} style={styles.link}>
@@ -86,7 +171,7 @@ export default function Home() {
 
           <SettlementDemo />
 
-          <Text style={[type.small, { textAlign: "center" }]}>{mode === "devnet" ? "Devnet mode" : "Simulated mode"} · Privy config {privyConfigured ? "loaded" : "missing"}</Text>
+          <Text style={[type.small, { textAlign: "center" }]}>{mode === "devnet" ? "Running on Solana devnet (test money)" : "Simulated mode (no chain)"}</Text>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -125,6 +210,10 @@ const styles = StyleSheet.create({
   dot: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: colors.border, backgroundColor: colors.card, flexShrink: 0 },
   dotOn: { borderWidth: 8, borderColor: colors.green },
   actions: { gap: space.md },
+  signedIn: { gap: space.sm, padding: 14, borderRadius: radius.lg, backgroundColor: colors.softGreen },
+  form: { gap: space.sm, padding: 16, borderRadius: radius.lg, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
+  input: { minHeight: 52, borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 14, fontSize: 17, fontFamily: fonts.sans, color: colors.ink, backgroundColor: colors.background },
+  soon: { textAlign: "center", color: colors.accent, fontWeight: "600" },
   footnote: { ...type.small, fontSize: 16, textAlign: "center", marginTop: 6 },
   links: { flexDirection: "row", justifyContent: "center", gap: space.lg },
   link: { minHeight: 44, justifyContent: "center", paddingHorizontal: 14 },

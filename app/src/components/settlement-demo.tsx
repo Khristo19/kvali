@@ -18,25 +18,36 @@ export function SettlementDemo() {
   const amount = 300n * USDC;
   const bond = 300n * USDC;
   const p = computeSettlement(amount, bond, "settled");
+  // computeSettlement pays the operator the job payment minus fees PLUS the returned bond.
+  const bondBack = bond;
+  const pay = p.operator - bondBack;
+  const total = p.operator + p.kvali + p.validators + p.farmer;
 
   const rows: [string, bigint, string][] = [
-    ["Operator payout", p.operator, colors.green],
-    ["Kvali fee (3%)", p.kvali, colors.ink],
-    ["Validators (2%)", p.validators, colors.ink],
+    ["Operator earns (payment minus fees)", pay, colors.green],
+    ["Operator bond returned", bondBack, colors.green],
+    ["Kvali fee (3% of the job)", p.kvali, colors.ink],
+    ["Validators (2% of the job)", p.validators, colors.ink],
   ];
 
   return (
     <Card>
-      <CardTitle>Demo settlement</CardTitle>
+      <CardTitle>Example: where the money goes</CardTitle>
       <Text style={type.body}>
-        {usd(amount)} job, {usd(bond)} operator bond, proof passed:
+        A {usd(amount)} job plus the operator bond of {usd(bond)} = {usd(amount + bond)} held in escrow. Proof passed, nobody challenged:
       </Text>
       {rows.map(([label, value, color]) => (
         <View key={label} style={styles.row}>
-          <Text style={type.body}>{label}</Text>
+          <Text style={[type.body, { flexShrink: 1 }]}>{label}</Text>
           <Text style={[type.body, styles.value, { color }]}>{usd(value)}</Text>
         </View>
       ))}
+      <View style={styles.row}>
+        <Text style={[type.body, styles.value, { flexShrink: 1 }]}>Total paid out</Text>
+        <Text style={[type.body, styles.value]}>
+          {usd(total)} {total === amount + bond ? "✓ adds up" : ""}
+        </Text>
+      </View>
       <Text style={[type.small, styles.note]}>Computed by services/proof settlement.ts</Text>
     </Card>
   );
@@ -49,6 +60,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: colors.border,
     paddingTop: space.sm,
+    gap: space.md,
   },
   value: { fontWeight: "700" },
   note: { fontWeight: "400", marginTop: space.xs },

@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { Linking, Pressable, StyleSheet, Text } from "react-native";
+import { StyleSheet, Text } from "react-native";
+
+import { ExtLink } from "@/components/ui/ext-link";
 
 import { usdc } from "@/components/money";
 import { Button, Card, CardTitle, Row } from "@/components/ui";
@@ -7,16 +9,13 @@ import { explorerAddr, addresses, readSnapshot } from "@/devnet/client";
 import { getDevnetState, setDevnetState, useDevnetState } from "@/devnet/mode";
 import { colors, type } from "@/theme";
 
-const open = (url: string) => void Linking.openURL(url);
 const short = (a: string) => `${a.slice(0, 6)}...${a.slice(-6)}`;
 
 function Addr({ label, addr }: { label: string; addr: string }) {
   return (
-    <Pressable accessibilityRole="link" accessibilityLabel={`${label} on Explorer`} onPress={() => open(explorerAddr(addr))}>
-      <Text style={styles.link}>
-        {label}: {short(addr)}
-      </Text>
-    </Pressable>
+    <ExtLink url={explorerAddr(addr)} label={`${label} on Explorer`} style={styles.link}>
+      {label}: {short(addr)}
+    </ExtLink>
   );
 }
 

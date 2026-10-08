@@ -47,7 +47,7 @@ export function PostJobCard() {
   const field = selectedField(useFields());
   const [err, setErr] = useState<string | null>(null);
   const deadline = new Date(sampleJob.sprayDeadline);
-  const deadlineText = isNaN(deadline.getTime()) ? sampleJob.sprayDeadline : deadline.toDateString();
+  const deadlineText = isNaN(deadline.getTime()) ? sampleJob.sprayDeadline : deadline.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
 
   const post = async () => {
     try {
@@ -68,9 +68,16 @@ export function PostJobCard() {
       <Row label="Spray by" value={deadlineText} />
       <Text style={type.body}>Your {usdc(SAMPLE_AMOUNT)} is held safely until the spraying is checked.</Text>
       {job ? (
-        <Text style={[type.body, { color: colors.green, fontWeight: "600" }]}>
-          Job posted. {usdc(job.amount)} is held safely.
-        </Text>
+        <>
+          <Text style={[type.body, { color: colors.green, fontWeight: "600" }]}>
+            {job.payout ? `This job is finished (${job.state}).` : `Job posted. ${usdc(job.amount)} is held safely.`}
+          </Text>
+          {job.payout ? (
+            <Button label="Start a new job" onPress={() => void actions.newJob(JOB_ID).catch(() => undefined)} />
+          ) : job.state === "Posted" ? (
+            <Button label="Cancel this job and take the money back" kind="secondary" onPress={() => void actions.cancelJob(JOB_ID).catch(() => undefined)} />
+          ) : null}
+        </>
       ) : (
         <Button label={`Post job and hold ${usdc(SAMPLE_AMOUNT)}`} onPress={post} />
       )}
@@ -384,13 +391,15 @@ export function DemoControls() {
       {open ? (
         <>
           <Text style={type.small}>
-            Demo only. These play the operator and validator roles so the farmer screen can be shown alone. Not part of the real app.
+            Demo only. These play the operator and validator roles so the farmer screen can be shown alone. The proper flow is on the Operator page
+            (&ldquo;Demo: simulate the drone flight&rdquo;) and the Validator page. Not part of the real app.
           </Text>
-          <Button small label="Operator accepts the job" kind="secondary" disabled={!job} onPress={() => run(() => actions.acceptJob(JOB_ID))} />
+          {!job ? <Text style={type.body}>Post a job first: these buttons need a job.</Text> : null}
+          <Button small label="Operator accepts the job" kind="secondary" disabled={!job || job.state !== "Posted"} onPress={() => run(() => actions.acceptJob(JOB_ID))} />
           {records.map((k) => (
-            <Button small key={k} label={`Operator submits record: ${k}`} kind="secondary" disabled={!job} onPress={() => run(() => actions.submitRecord(k, JOB_ID))} />
+            <Button small key={k} label={`Operator submits record: ${k} (validators co-sign automatically)`} kind="secondary" disabled={!job || job.state !== "Accepted"} onPress={() => run(() => actions.submitRecord(k, JOB_ID))} />
           ))}
-          <Button small label="Settle after window" kind="secondary" disabled={!job} onPress={() => run(() => actions.settle(WALLETS.farmer, JOB_ID))} />
+          <Button small label="Settle after window" kind="secondary" disabled={!job || job.state !== "ProofSubmitted"} onPress={() => run(() => actions.settle(WALLETS.farmer, JOB_ID))} />
           <ErrorText message={err} />
         </>
       ) : null}

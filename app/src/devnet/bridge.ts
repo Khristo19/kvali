@@ -7,6 +7,7 @@ import { sha256Hex } from "@/geo/sha256";
 import deploy from "./deploy.json";
 import * as chain from "./client";
 import { getDevnetState, setDevnetState } from "./mode";
+import { addSessionTx, getSession, loadPending, loadSession, newSession, patchSession, setPending, setSession, type Session } from "@/session/store";
 
 const nowSecs = () => Math.floor(Date.now() / 1000);
 
@@ -52,6 +53,95 @@ export async function syncChain(engine: Engine) {
 }
 
 const localJobId = () => 17; // SAMPLE_JOB_ID: one session job
+const ENDED = ["Released", "Refunded", "Cancelled"];
+
+/**
+ * Rebuild the local mirror of the session job from what the CHAIN says (state, amounts, proof, deadlines),
+ * using the saved signatures only for Explorer links. The mirror's own rules re-run on the same values the chain accepted.
+ */
+function replay(engine: Engine, cj: chain.ChainJob, s: Session) {
+  const jobId = localJobId();
+  const farmer = WALLETS.farmer;
+  const op = WALLETS.operator;
+  const tag = (action: string) => {
+    const t = [...s.txs].reverse().find((x) => x.action === action);
+    if (!t) return;
+    engine.chainRetag((e) => e.action === action && e.jobId === jobId, t.sig);
+    if (t.time) engine.chainSetLogTime((e) => e.action === action && e.jobId === jobId, t.time);
+  };
+  const t0 = nowSecs();
+  engine.chainResetJob(jobId);
+  engine.postJob(farmer, { jobId, amount: cj.amount, fieldHash: cj.fieldHash, areaCha: cj.areaCha, targetRateMlPerHa: cj.targetRateMlPerHa, toleranceBps: cj.toleranceBps, sprayDeadline: cj.sprayDeadline });
+  tag("postJob");
+  if (cj.state === "Cancelled") {
+    engine.cancelJob(farmer, jobId);
+    return tag("cancelJob");
+  }
+  if (cj.state === "Posted") return;
+  engine.acceptJob(op, jobId, DRONE.hash, cj.bond);
+  tag("acceptJob");
+  if (cj.state === "Accepted") return;
+  if (cj.state === "Refunded" && cj.litersMl === 0) {
+    engine.reclaimExpired(farmer, jobId);
+    return tag("reclaimExpired");
+  }
+  engine.submitProof(op, jobId, { proofHash: cj.proofHash, litersMl: cj.litersMl, areaCoveredCha: cj.areaCoveredCha, validatorSigners: s.signers.length >= 2 ? s.signers : PROOF_SIGNERS });
+  tag("submitProof");
+  const window = (patch: number) => engine.chainPatchJob(jobId, { proof: { windowEndsAt: patch } });
+  window(cj.challengeDeadline > 0 ? cj.challengeDeadline : t0 + 60);
+  if (cj.state === "ProofSubmitted") return;
+  const challenged = cj.state === "Challenged" || cj.state === "Refunded" || (cj.state === "Released" && cj.challengeBond > 0n);
+  if (challenged) {
+    window(t0 + 3600);
+    engine.challenge(farmer, jobId, sha256Hex(`farmer-evidence-${cj.fieldHash}`));
+    tag("challenge");
+    if (cj.state === "Challenged") return;
+    const ids = s.resolution?.ids?.length ? s.resolution.ids : PANEL_SIGNERS;
+    engine.resolveChallenge(ids, jobId, cj.state === "Refunded", "restored");
+    return tag("resolveChallenge");
+  }
+  window(t0 - 1);
+  engine.settle(farmer, jobId);
+  tag("settle");
+}
+
+/** Read the open jobs on chain and the job the operator still holds. */
+export async function refreshOpenJobs() {
+  try {
+    const [openJobs, held] = await Promise.all([chain.listOpenJobs(), chain.readOperatorActiveJob()]);
+    const mine = getSession()?.chainJobId;
+    setDevnetState({ openJobs, heldJob: held && held.chainJobId !== mine ? held : null });
+  } catch {
+    /* keep what we had */
+  }
+}
+
+/** Put a job that exists on chain (posted by another visit) into this browser's session and mirror it. */
+export function adoptChainJob(engine: Engine, cj: chain.ChainJob) {
+  const local = engine.getState().jobs[localJobId()];
+  if (local && !ENDED.includes(local.state)) throw new Error(`This browser already has a current job (${local.state}). Finish it or cancel it first.`);
+  newSession({ chainJobId: cj.chainJobId, fieldHash: cj.fieldHash, areaCha: cj.areaCha, sprayDeadline: cj.sprayDeadline });
+  setPending(null);
+  setDevnetState({ chainJobId: cj.chainJobId });
+  replay(engine, cj, getSession()!);
+}
+
+async function restoreSession(engine: Engine) {
+  loadPending();
+  const s = loadSession();
+  if (!s) return;
+  try {
+    const cj = await chain.readJob(s.chainJobId);
+    if (!cj) {
+      setSession(null);
+      return;
+    }
+    setDevnetState({ chainJobId: s.chainJobId, restoreNote: null });
+    replay(engine, cj, s);
+  } catch (e) {
+    setDevnetState({ restoreNote: `Could not restore your saved job from the chain: ${(e as Error).message}` });
+  }
+}
 
 let booted = false;
 /** Probe devnet, then replace the seeded balances with real ones and tag the setup log entries with their real signatures. */
@@ -75,6 +165,7 @@ export async function bootDevnet(engine: Engine): Promise<boolean> {
       if (cert) engine.chainRetag((e) => e.action === "issueCertificate", cert);
       booted = true;
     }
+    await restoreSession(engine);
     await syncChain(engine);
     setDevnetState({ status: "ready", fellBack: false });
     return true;
@@ -91,6 +182,13 @@ export interface DevActions {
   settle(caller: string, jobId: number): Promise<void>;
   challenge(farmer: string, jobId: number): Promise<void>;
   resolveChallenge(signers: string[], jobId: number, upheld: boolean): Promise<void>;
+  cancelJob(jobId: number): Promise<void>;
+  /** Accept a job that exists on chain but is not this browser's current job (adopts it first). */
+  acceptOpenJob(chainJobId: number): Promise<void>;
+  /** Continue a job the operator still holds on chain. */
+  continueHeldJob(chainJobId: number): Promise<void>;
+  /** Forget the finished job so a new one can be posted. */
+  newJob(jobId: number): Promise<void>;
 }
 
 export function devnetActions(engine: Engine): DevActions {
@@ -101,6 +199,7 @@ export function devnetActions(engine: Engine): DevActions {
   };
   const retag = (action: string, jobId: number, sig: string, time?: number) => {
     engine.chainRetag((e) => e.action === action && e.jobId === jobId, sig);
+    addSessionTx({ action, sig, time });
     if (time) engine.chainSetLogTime((e) => e.action === action && e.jobId === jobId, time);
   };
   const blockTime = async (sig: string) => {
@@ -118,8 +217,9 @@ export function devnetActions(engine: Engine): DevActions {
     }
   };
 
-  return {
+  const api: DevActions = {
     async postJob(jobId, field) {
+      if (engine.getState().jobs[jobId]) throw new Error("This browser already has a current job. Finish it (or cancel it) and press Start a new job first.");
       await track("Post job", async () => {
         const p = {
           amount: SAMPLE_AMOUNT,
@@ -130,6 +230,8 @@ export function devnetActions(engine: Engine): DevActions {
           sprayDeadline: nowSecs() + DEMO_DEADLINE_SECS,
         };
         const r = await chain.postJob(p);
+        newSession({ chainJobId: r.chainJobId, fieldHash: p.fieldHashHex, areaCha: p.areaCha, sprayDeadline: p.sprayDeadline });
+        setPending(null);
         setDevnetState({ chainJobId: r.chainJobId });
         engine.postJob(WALLETS.farmer, { jobId, amount: p.amount, fieldHash: p.fieldHashHex, areaCha: p.areaCha, targetRateMlPerHa: p.targetRateMlPerHa, toleranceBps: p.toleranceBps, sprayDeadline: p.sprayDeadline });
         retag("postJob", jobId, r.sig, await blockTime(r.sig));
@@ -155,6 +257,8 @@ export function devnetActions(engine: Engine): DevActions {
         const proofHashHex = sha256Hex(JSON.stringify({ job: jobId, field_hash: j.fieldHash, record: r.raw }));
         const sig = await chain.submitProof(chainId(), { proofHashHex, litersMl: r.litersMl, areaCoveredCha: r.areaCoveredCha, validatorIds: signers });
         engine.submitProof(WALLETS.operator, jobId, { proofHash: proofHashHex, litersMl: r.litersMl, areaCoveredCha: r.areaCoveredCha, validatorSigners: signers });
+        patchSession({ recordKey: which, signers });
+        setPending(null);
         retag("submitProof", jobId, sig, await blockTime(sig));
         await refresh();
         return { sig, value: undefined };
@@ -187,10 +291,42 @@ export function devnetActions(engine: Engine): DevActions {
         const ids = signers.filter((s) => VALIDATORS.some((v) => v.id === s));
         const sig = await chain.resolveChallenge(chainId(), { validatorIds: ids.length ? ids : PANEL_SIGNERS, upheld, reportText: `panel-report-${jobId}-${upheld}` });
         engine.resolveChallenge(ids, jobId, upheld, sha256Hex(`panel-report-${jobId}-${upheld}`));
+        patchSession({ resolution: { upheld, ids } });
         retag("resolveChallenge", jobId, sig, await blockTime(sig));
         await refresh();
         return { sig, value: undefined };
       });
     },
+    async cancelJob(jobId) {
+      await track("Cancel job", async () => {
+        const sig = await chain.cancelJob(chainId());
+        engine.cancelJob(WALLETS.farmer, jobId);
+        retag("cancelJob", jobId, sig, await blockTime(sig));
+        await refresh();
+        return { sig, value: undefined };
+      });
+    },
+    async acceptOpenJob(chainJobId) {
+      const cj = (getDevnetState().openJobs ?? []).find((j) => j.chainJobId === chainJobId) ?? (await chain.readJob(chainJobId));
+      if (!cj || cj.state !== "Posted") throw new Error("That job is no longer open.");
+      adoptChainJob(engine, cj);
+      await api.acceptJob(localJobId());
+      await refreshOpenJobs();
+    },
+    async continueHeldJob(chainJobId) {
+      const cj = await chain.readJob(chainJobId);
+      if (!cj) throw new Error("That job could not be found on chain.");
+      adoptChainJob(engine, cj);
+      await refresh();
+      await refreshOpenJobs();
+    },
+    async newJob(jobId) {
+      setSession(null);
+      setPending(null);
+      engine.chainResetJob(jobId);
+      setDevnetState({ chainJobId: null });
+      await refresh();
+    },
   };
+  return api;
 }
