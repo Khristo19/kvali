@@ -1,9 +1,9 @@
 // Real Kvali program on Solana DEVNET. Signs with the public demo keys. Mirrors scripts/devnet-demo.ts.
 // Every function returns real transaction signatures; nothing here is simulated.
 import "./polyfill";
-import { BN, Program } from "@coral-xyz/anchor";
+import { BN, Program, utils } from "@coral-xyz/anchor";
 import { Connection, PublicKey, SystemProgram, Transaction, type Keypair, type TransactionInstruction } from "@solana/web3.js";
-import { TOKEN_PROGRAM_ID, getAssociatedTokenAddressSync } from "@solana/spl-token";
+import { TOKEN_PROGRAM_ID, createAssociatedTokenAccountIdempotentInstruction, createTransferInstruction, getAssociatedTokenAddressSync } from "@solana/spl-token";
 
 import { sha256Hex } from "@/geo/sha256";
 import deploy from "./deploy.json";
@@ -27,6 +27,7 @@ const program = new Program(idl as never, { connection } as never);
 const M = program.methods as never as Record<string, (...a: unknown[]) => { accountsStrict: (a: object) => { remainingAccounts: (m: object[]) => { instruction: () => Promise<TransactionInstruction> }; instruction: () => Promise<TransactionInstruction> } }>;
 const accountNs = program.account as never as Record<string, { fetch: (k: PublicKey) => Promise<any>; fetchNullable: (k: PublicKey) => Promise<any> }>;
 
+const anchorBs58 = utils.bytes.bs58;
 const pda = (seeds: Uint8Array[]) => PublicKey.findProgramAddressSync(seeds, PROGRAM_ID)[0];
 const te = new TextEncoder();
 const u64le = (n: number | bigint) => {
@@ -180,18 +181,36 @@ async function decodeJob(key: PublicKey, j: any): Promise<ChainJob> {
   };
 }
 
-export async function readJob(chainJobId: number | bigint): Promise<ChainJob | null> {
-  const key = pdas.job(keys.farmer.publicKey, chainJobId);
+export async function readJob(chainJobId: number | bigint, farmer?: string | PublicKey): Promise<ChainJob | null> {
+  const key = pdas.job(farmer ? new PublicKey(farmer) : farmerOf(), chainJobId);
   const j = await accountNs.job.fetchNullable(key);
   return j ? decodeJob(key, j) : null;
 }
 
-/** Every job account of the program that the demo farmer posted and nobody accepted yet (state Posted), newest first. */
+// Job account layout (after the 8-byte discriminator): farmer @8, operator @40, ... state byte @288 (0 = Posted).
+const OFF_FARMER = 8, OFF_OPERATOR = 40, OFF_STATE = 288;
+const b58 = (bytes: number[]) => anchorBs58.encode(Uint8Array.from(bytes));
+const jobsWhere = async (offset: number, bytesB58: string): Promise<ChainJob[]> => {
+  const rows: { publicKey: PublicKey; account: any }[] = await (program.account as any).job.all([{ memcmp: { offset, bytes: bytesB58 } }]);
+  return Promise.all(rows.map((r) => decodeJob(r.publicKey, r.account)));
+};
+
+/** Open (Posted, not yet past their spray-by time) job accounts of every visitor, newest first. Filtered on the node by state. */
 export async function listOpenJobs(): Promise<ChainJob[]> {
-  const all: { publicKey: PublicKey; account: any }[] = await (program.account as any).job.all();
-  const open = all.filter((a) => stateName(a.account.state) === "Posted" && a.account.farmer.equals(keys.farmer.publicKey));
-  const jobs = await Promise.all(open.map((a) => decodeJob(a.publicKey, a.account)));
-  return jobs.sort((a, b) => b.createdAt - a.createdAt);
+  const jobs = await jobsWhere(OFF_STATE, b58([0]));
+  const now = Math.floor(Date.now() / 1000);
+  return jobs.filter((j) => j.sprayDeadline > now).sort((a, b) => b.createdAt - a.createdAt);
+}
+
+/** Every job that involves THIS browser's wallets (as farmer or as operator), newest first. Used to restore state from the chain alone. */
+export async function findMyJobs(): Promise<ChainJob[]> {
+  const [asFarmer, asOperator] = await Promise.all([
+    jobsWhere(OFF_FARMER, keys.farmer.publicKey.toBase58()),
+    jobsWhere(OFF_OPERATOR, keys.operator.publicKey.toBase58()),
+  ]);
+  const all = new Map<string, ChainJob>();
+  [...asFarmer, ...asOperator].forEach((j) => all.set(j.pda, j));
+  return [...all.values()].sort((a, b) => b.createdAt - a.createdAt);
 }
 
 /** The job the demo operator currently holds on chain (accepted, not finished), if any. */
@@ -228,11 +247,30 @@ export async function probe(timeoutMs = 6000): Promise<boolean> {
 }
 
 // ---- actions --------------------------------------------------------------
-const settleAccounts = (job: PublicKey, caller: PublicKey) => ({
-  caller, config: CONFIG, job, vault: pdas.vault(job), usdcMint: MINT, farmerToken: ata(keys.farmer.publicKey),
-  farmerProfile: pdas.farmer(keys.farmer.publicKey), operator: pdas.operator(keys.operator.publicKey),
-  operatorToken: ata(keys.operator.publicKey), treasuryToken: TREASURY, validatorPoolToken: POOL, tokenProgram: TOKEN_PROGRAM_ID,
-});
+// The job's farmer is whoever posted it: this browser's burner for its own jobs, another visitor's for jobs adopted from the chain.
+let jobFarmer: PublicKey | null = null;
+export function setJobFarmer(farmer: string | PublicKey | null) {
+  jobFarmer = farmer ? new PublicKey(farmer) : null;
+}
+const farmerOf = () => jobFarmer ?? keys.farmer.publicKey;
+
+/** The accounts a settle-like instruction needs, taken from the job account itself (farmer and operator may be other visitors). */
+async function jobCtx(chainJobId: number) {
+  const key = pdas.job(farmerOf(), chainJobId);
+  const j = await accountNs.job.fetch(key);
+  const farmer: PublicKey = j.farmer;
+  const operator: PublicKey = j.operator;
+  const hasOperator = !operator.equals(PublicKey.default);
+  return { key, farmer, operator, hasOperator };
+}
+async function settleAccounts(chainJobId: number, caller: PublicKey) {
+  const c = await jobCtx(chainJobId);
+  return {
+    caller, config: CONFIG, job: c.key, vault: pdas.vault(c.key), usdcMint: MINT, farmerToken: ata(c.farmer),
+    farmerProfile: pdas.farmer(c.farmer), operator: c.hasOperator ? pdas.operator(c.operator) : null,
+    operatorToken: c.hasOperator ? ata(c.operator) : null, treasuryToken: TREASURY, validatorPoolToken: POOL, tokenProgram: TOKEN_PROGRAM_ID,
+  };
+}
 const signerMetas = (ks: Keypair[]) => ks.map((s) => ({ pubkey: s.publicKey, isSigner: true, isWritable: false }));
 
 /** Farmer posts a job and locks `amount` (USDC base units) in the vault. Returns the on-chain job id. */
@@ -245,24 +283,32 @@ export async function postJob(p: { amount: bigint; fieldHashHex: string; areaCha
       farmer: farmer.publicKey, config: CONFIG, usdcMint: MINT, farmerToken: ata(farmer.publicKey), farmerProfile: pdas.farmer(farmer.publicKey),
       job, vault: pdas.vault(job), tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
     }).instruction();
-  return { chainJobId: id, sig: await send([ix], farmer) };
+  const sig = await send([ix], farmer);
+  jobFarmer = farmer.publicKey;
+  return { chainJobId: id, sig };
 }
 
-/** Frees the operator if an earlier job (for example a refused pump-off job) is stuck past its spray deadline. Returns the reclaim signature or null. */
+/** Frees this browser's operator if an earlier job of its own is stuck past its spray deadline. Returns the reclaim signature or null. */
 async function clearStuckJob(): Promise<string | null> {
   const op = await accountNs.operator.fetchNullable(pdas.operator(keys.operator.publicKey));
   if (!op?.activeJob) return null;
   const stuck: PublicKey = op.activeJob;
   const sj = await accountNs.job.fetch(stuck);
   if (Number(sj.sprayDeadline.toString()) >= Math.floor(Date.now() / 1000) - 5) return null;
-  const ix = await M.reclaimExpired().accountsStrict(settleAccounts(stuck, keys.operator.publicKey)).instruction();
-  return send([ix], keys.operator);
+  const prev = jobFarmer;
+  jobFarmer = sj.farmer;
+  try {
+    const ix = await M.reclaimExpired().accountsStrict(await settleAccounts(Number(sj.jobId.toString()), keys.bank.publicKey)).instruction();
+    return await send([ix], keys.bank);
+  } finally {
+    jobFarmer = prev;
+  }
 }
 
 export async function acceptJob(chainJobId: number, bond: bigint) {
   const operator = keys.operator;
   await clearStuckJob();
-  const job = pdas.job(keys.farmer.publicKey, chainJobId);
+  const job = pdas.job(farmerOf(), chainJobId);
   const ix = await M.acceptJob(new BN(bond.toString())).accountsStrict({
     authority: operator.publicKey, certificate: pdas.cert(operator.publicKey, DRONE_HASH), operator: pdas.operator(operator.publicKey), config: CONFIG,
     job, vault: pdas.vault(job), usdcMint: MINT, operatorToken: ata(operator.publicKey), tokenProgram: TOKEN_PROGRAM_ID,
@@ -272,20 +318,19 @@ export async function acceptJob(chainJobId: number, bond: bigint) {
 
 /** The operator submits the proof hash; the listed validators co-sign in the same transaction (2 of 3 needed). */
 export async function submitProof(chainJobId: number, p: { proofHashHex: string; litersMl: number; areaCoveredCha: number; validatorIds: string[] }) {
-  const job = pdas.job(keys.farmer.publicKey, chainJobId);
+  const job = pdas.job(farmerOf(), chainJobId);
   const cos = p.validatorIds.map(keyFor);
   const ix = await M.submitProof(hexToBytes(p.proofHashHex), new BN(p.litersMl), p.areaCoveredCha)
     .accountsStrict({ authority: keys.operator.publicKey, config: CONFIG, job }).remainingAccounts(signerMetas(cos)).instruction();
   return send([ix], keys.operator, cos, true);
 }
 
-/** Anyone may settle after the window. Retries a few seconds if the cluster clock is a hair behind. */
+/** Anyone may settle after the window (the public bank pays the fee). Retries a few seconds if the cluster clock is a hair behind. */
 export async function settle(chainJobId: number) {
-  const job = pdas.job(keys.farmer.publicKey, chainJobId);
-  const payer = keys.farmer;
+  const payer = keys.bank;
   let last: unknown;
   for (let i = 0; i < 8; i++) {
-    const ix = await M.settle().accountsStrict(settleAccounts(job, payer.publicKey)).instruction();
+    const ix = await M.settle().accountsStrict(await settleAccounts(chainJobId, payer.publicKey)).instruction();
     try {
       return await send([ix], payer);
     } catch (e) {
@@ -298,7 +343,7 @@ export async function settle(chainJobId: number) {
 }
 
 export async function challenge(chainJobId: number, evidenceText: string) {
-  const job = pdas.job(keys.farmer.publicKey, chainJobId);
+  const job = pdas.job(farmerOf(), chainJobId);
   const ix = await M.challenge(hash32(evidenceText)).accountsStrict({
     farmer: keys.farmer.publicKey, config: CONFIG, job, vault: pdas.vault(job), usdcMint: MINT, farmerToken: ata(keys.farmer.publicKey), tokenProgram: TOKEN_PROGRAM_ID,
   }).instruction();
@@ -306,21 +351,19 @@ export async function challenge(chainJobId: number, evidenceText: string) {
 }
 
 export async function resolveChallenge(chainJobId: number, p: { validatorIds: string[]; upheld: boolean; reportText: string }) {
-  const job = pdas.job(keys.farmer.publicKey, chainJobId);
   const panel = p.validatorIds.map(keyFor);
-  const ix = await M.resolveChallenge(p.upheld, hash32(p.reportText)).accountsStrict(settleAccounts(job, panel[0].publicKey)).remainingAccounts(signerMetas(panel)).instruction();
+  const ix = await M.resolveChallenge(p.upheld, hash32(p.reportText)).accountsStrict(await settleAccounts(chainJobId, panel[0].publicKey)).remainingAccounts(signerMetas(panel)).instruction();
   return send([ix], panel[0], panel);
 }
 
+/** After the spray-by deadline anyone may return payment and bond. The public bank pays the fee. */
 export async function reclaimExpired(chainJobId: number) {
-  const job = pdas.job(keys.farmer.publicKey, chainJobId);
-  const ix = await M.reclaimExpired().accountsStrict(settleAccounts(job, keys.farmer.publicKey)).instruction();
-  return send([ix], keys.farmer);
+  const ix = await M.reclaimExpired().accountsStrict(await settleAccounts(chainJobId, keys.bank.publicKey)).instruction();
+  return send([ix], keys.bank);
 }
 
 export async function cancelJob(chainJobId: number) {
-  const job = pdas.job(keys.farmer.publicKey, chainJobId);
-  const ix = await M.cancelJob().accountsStrict(settleAccounts(job, keys.farmer.publicKey)).instruction();
+  const ix = await M.cancelJob().accountsStrict(await settleAccounts(chainJobId, keys.farmer.publicKey)).instruction();
   return send([ix], keys.farmer);
 }
 
@@ -362,6 +405,67 @@ export async function jobTxs(jobPda: string): Promise<{ action: string; sig: str
   return out.sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
 }
 
-export async function reclaimExpiredAsFarmer(chainJobId: number) {
-  return reclaimExpired(chainJobId);
+// ---- wallet provisioning (burner wallets funded by the public bank) ---------
+const sizeOf = (name: string) => ((program.account as any)[name]?.size as number | undefined) ?? 200;
+const rent = (bytes: number) => connection.getMinimumBalanceForRentExemption(bytes);
+export const TOKEN_ACCOUNT_BYTES = 165;
+
+export async function walletState(owner: PublicKey) {
+  const [sol, usdc, opAcct] = await Promise.all([connection.getBalance(owner), tokenBalance(ata(owner)), accountNs.operator.fetchNullable(pdas.operator(owner))]);
+  return { sol, usdc, registered: !!opAcct };
+}
+
+/** Lamports one farmer / operator needs. Farmer: token account + profile + (job + vault) per job. Operator: token account + operator account. */
+export async function lamportsNeeded() {
+  const [tok, job, profile, operator] = await Promise.all([rent(TOKEN_ACCOUNT_BYTES), rent(8 + sizeOf("job")), rent(8 + sizeOf("farmerProfile")), rent(8 + sizeOf("operator"))]);
+  const fees = 50_000;
+  return {
+    farmerOneJob: tok + profile + job + tok + fees,
+    farmerTarget: tok + profile + 3 * (job + tok) + 10 * fees,
+    operatorMin: tok + operator + 5 * fees,
+    operatorTarget: tok + operator + 20 * fees,
+    validatorMin: Math.round((await rent(8 + sizeOf("certificate"))) * 2),
+  };
+}
+
+export async function sendSol(from: Keypair, to: PublicKey, lamports: number) {
+  return send([SystemProgram.transfer({ fromPubkey: from.publicKey, toPubkey: to, lamports })], from);
+}
+
+/** Bank signs as token owner, the new wallet pays the fee and its own token account. Works even if the bank has no SOL. */
+export async function sendUsdcFromBank(to: Keypair, amount: bigint) {
+  const ixs = [
+    createAssociatedTokenAccountIdempotentInstruction(to.publicKey, ata(to.publicKey), to.publicKey, MINT),
+    createTransferInstruction(ata(keys.bank.publicKey), ata(to.publicKey), keys.bank.publicKey, amount),
+  ];
+  return send(ixs, to, [keys.bank]);
+}
+
+/** register_operator (signed by the new operator) + issue_certificate (signed by the public demo validator who pays the certificate rent). */
+export async function registerAndCertify() {
+  const operator = keys.operator;
+  const v = keys.vOperatorSide;
+  const drone = DRONE_HASH;
+  const ixs: TransactionInstruction[] = [];
+  const opKey = pdas.operator(operator.publicKey);
+  if (!(await accountNs.operator.fetchNullable(opKey))) {
+    ixs.push(await M.registerOperator().accountsStrict({ authority: operator.publicKey, operator: opKey, systemProgram: SystemProgram.programId }).instruction());
+  }
+  ixs.push(
+    await M.issueCertificate(Array.from(drone), 200, true, hash32("calibration-report-demo-drone-001"), new BN(Math.floor(Date.now() / 1000) + 365 * 86400))
+      .accountsStrict({ validator: v.publicKey, config: CONFIG, operatorAuthority: operator.publicKey, certificate: pdas.cert(operator.publicKey, drone), systemProgram: SystemProgram.programId }).instruction(),
+  );
+  return send(ixs, operator, [v]);
+}
+
+export async function certificateValid(): Promise<boolean> {
+  const c = await accountNs.certificate.fetchNullable(pdas.cert(keys.operator.publicKey, DRONE_HASH));
+  return !!c && !c.revoked && Number(c.validUntil.toString()) > Date.now() / 1000 + 86400;
+}
+
+export async function airdrop(to: PublicKey, sol: number) {
+  const sig = await connection.requestAirdrop(to, Math.round(sol * 1e9));
+  const bh = await connection.getLatestBlockhash("confirmed");
+  await connection.confirmTransaction({ signature: sig, ...bh }, "confirmed");
+  return sig;
 }

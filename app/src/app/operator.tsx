@@ -2,7 +2,7 @@ import { useState } from "react";
 import { View } from "react-native";
 
 import { CertificateCard, CertificateStrip, OpenJobs, UploadRecord, Verdict, Wallet, useOpenJobsText } from "@/components/operator/sections";
-import { OperatorEarnings, OperatorMine } from "@/components/tab-views";
+import { OperatorEarnings, OperatorMine, ResetDemo } from "@/components/tab-views";
 import { ModeBanner } from "@/components/devnet/mode-banner";
 import { Banner, RoleShell, TwoUp, useTab } from "@/components/ui";
 import { useEngineState } from "@/engine/useEngine";
@@ -53,7 +53,12 @@ export default function Operator() {
           <OperatorEarnings />
         </TwoUp>
       )}
-      {tab === "drones" && <CertificateCard />}
+      {tab === "drones" && (
+        <>
+          <CertificateCard />
+          <ResetDemo />
+        </>
+      )}
     </RoleShell>
   );
 }

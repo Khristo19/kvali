@@ -19,6 +19,8 @@ export interface PendingRecord {
 }
 export interface Session {
   chainJobId: number;
+  /** Wallet that posted the job (base58). Jobs from other visitors have another farmer than this browser's. */
+  farmer: string;
   fieldHash: string;
   areaCha: number;
   sprayDeadline: number;
@@ -56,7 +58,7 @@ export function loadSession(): Session | null {
     try {
       const raw = globalThis.localStorage?.getItem(KEY);
       const s = raw ? (JSON.parse(raw) as Session) : null;
-      if (s && typeof s.chainJobId === "number" && Array.isArray(s.txs)) state = s;
+      if (s && typeof s.chainJobId === "number" && typeof s.farmer === "string" && Array.isArray(s.txs)) state = s;
     } catch {
       /* ignore */
     }
@@ -80,7 +82,7 @@ export function addSessionTx(tx: SessionTx) {
   if (!state) return;
   setSession({ ...state, txs: [...state.txs, tx] });
 }
-export function newSession(p: { chainJobId: number; fieldHash: string; areaCha: number; sprayDeadline: number; fieldName?: string; crop?: string; product?: string; farmerName?: string }) {
+export function newSession(p: { farmer: string; chainJobId: number; fieldHash: string; areaCha: number; sprayDeadline: number; fieldName?: string; crop?: string; product?: string; farmerName?: string }) {
   setSession({ ...p, txs: [], recordKey: null, signers: [], resolution: null });
 }
 
@@ -136,4 +138,35 @@ export function usePending(): PendingRecord | null {
     () => pending,
     () => null,
   );
+}
+
+// ---- finished jobs the user moved on from ("Start a new job"): not restored from the chain again ----
+const DKEY = "kvali.dismissed.v1";
+export function isDismissed(id: number): boolean {
+  try {
+    return (JSON.parse(globalThis.localStorage?.getItem(DKEY) ?? "[]") as number[]).includes(id);
+  } catch {
+    return false;
+  }
+}
+export function dismissJob(id: number) {
+  try {
+    const list = JSON.parse(globalThis.localStorage?.getItem(DKEY) ?? "[]") as number[];
+    globalThis.localStorage?.setItem(DKEY, JSON.stringify([...list.slice(-50), id]));
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Forget the job, the staged record, and every local marker (Reset demo). */
+export function resetSessionStorage() {
+  state = null;
+  pending = null;
+  try {
+    ["kvali.session.v1", "kvali.pending.v1", DKEY, "kvali.certsig.v1"].forEach((k) => globalThis.localStorage?.removeItem(k));
+  } catch {
+    /* ignore */
+  }
+  emit();
+  pListeners.forEach((l) => l());
 }

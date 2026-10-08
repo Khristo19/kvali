@@ -6,7 +6,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { SettlementDemo } from "@/components/settlement-demo";
 import { Button, Icon, useWide } from "@/components/ui";
 import { addressFor, roleHome, roleLabel, saveAccount, shortAddr, signOut, useAccount } from "@/account/store";
-import { useMode } from "@/devnet/mode";
+import { notify } from "@/components/ui/notice";
+import { ensureWallet } from "@/devnet/provision";
+import { getDevnetState, useMode } from "@/devnet/mode";
 import { colors, fonts, radius, space, type } from "@/theme";
 
 type RoleId = "farmer" | "operator" | "validator";
@@ -47,6 +49,10 @@ export default function Home() {
     if (n.length < 2) return setErr("Please enter your name.");
     if (!/^\S+@\S+\.\S+$/.test(m)) return setErr("Please enter a valid email address, like name@example.com.");
     saveAccount({ name: n, email: m, role: picked });
+    // The browser makes its own devnet wallet for this role and the public demo bank funds it (farmer, operator).
+    if ((picked === "farmer" || picked === "operator") && getDevnetState().mode === "devnet") {
+      void ensureWallet(picked).catch((e: Error) => notify("error", e.message));
+    }
     router.replace(role.href);
   };
 
@@ -148,16 +154,17 @@ export default function Home() {
             <View style={styles.actions}>
               <Button label="Continue with email" onPress={openForm} />
               <Button
-                label="Connect Phantom"
+                label={phantom ? "Phantom: coming soon" : "Connect Phantom"}
                 kind="secondary"
-                onPress={() => {
-                  setPhantom(true);
-                }}
+                disabled={phantom}
+                onPress={() => setPhantom(true)}
               />
               {phantom ? (
-                <Text style={[type.body, styles.soon]} accessibilityRole="alert">
-                  Phantom wallet sign-in is coming soon. For now, continue with email: it uses a public devnet demo key.
-                </Text>
+                <View style={styles.soonBox} accessibilityRole="alert">
+                  <Text style={[type.body, styles.soon]}>
+                    Coming soon: Phantom wallet sign-in is not available yet. Please use &ldquo;Continue with email&rdquo;; it creates a demo wallet on Solana devnet for you.
+                  </Text>
+                </View>
               ) : null}
               <Text style={styles.footnote}>A demo account is created for you in this browser. No crypto knowledge needed.</Text>
             </View>
@@ -216,6 +223,7 @@ const styles = StyleSheet.create({
   signedIn: { gap: space.sm, padding: 14, borderRadius: radius.lg, backgroundColor: colors.softGreen },
   form: { gap: space.sm, padding: 16, borderRadius: radius.lg, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
   input: { minHeight: 52, borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 14, fontSize: 17, fontFamily: fonts.sans, color: colors.ink, backgroundColor: colors.background },
+  soonBox: { padding: 14, borderRadius: radius.lg, backgroundColor: colors.card, borderWidth: 1.5, borderColor: colors.accent },
   soon: { textAlign: "center", color: colors.accent, fontWeight: "600" },
   footnote: { ...type.small, fontSize: 16, textAlign: "center", marginTop: 6 },
   links: { flexDirection: "row", justifyContent: "center", gap: space.lg },

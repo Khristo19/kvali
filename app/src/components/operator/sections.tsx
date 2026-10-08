@@ -173,6 +173,7 @@ export function OpenJobs({ onError, onDone }: { onError: (m: string | null) => v
   const actions = useActions();
   const { dev, extra, held } = useChainJobs();
   const session = useSession();
+  const [showOthers, setShowOthers] = useState(false);
   const jobs = Object.values(state.jobs).filter((j) => j.state === "Posted");
   const feeBps = state.config.kvaliFeeBps + state.config.validatorFeeBps;
   const run = async (fn: () => Promise<void>) => {
@@ -200,8 +201,15 @@ export function OpenJobs({ onError, onDone }: { onError: (m: string | null) => v
         </Card>
       ) : null}
       {jobs.map((j) => jobCard(j, feeBps, () => void run(() => actions.acceptJob(j.id)), { session, mine: true }))}
-      {extra.length > 0 && jobs.length > 0 ? <Text style={type.label}>Other open jobs on Solana devnet</Text> : null}
-      {extra.map((c) =>
+      {extra.length > 0 ? (
+        <Button
+          small
+          kind="secondary"
+          label={`${showOthers || jobs.length === 0 ? "Hide" : "Show"} other open jobs on devnet from other visitors (${extra.length})`}
+          onPress={() => setShowOthers(!(showOthers || jobs.length === 0))}
+        />
+      ) : null}
+      {(showOthers || jobs.length === 0) && extra.map((c) =>
         jobCard(chainAsJob(c), feeBps, () => void run(() => actions.acceptOpenJob(c.chainJobId)), {
           onChain: true,
           session,

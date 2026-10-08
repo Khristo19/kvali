@@ -48,7 +48,6 @@ export function SettlementDemo() {
           {usd(total)} {total === amount + bond ? "✓ adds up" : ""}
         </Text>
       </View>
-      <Text style={[type.small, styles.note]}>Computed by services/proof settlement.ts</Text>
     </Card>
   );
 }

@@ -1,13 +1,16 @@
 // Content of the secondary tabs (Payments, My jobs, Earnings, Drones, Reviewed, Profile ...). Small read-only views of the shared job.
 import { router } from "expo-router";
+import { useState } from "react";
 import { Text, View } from "react-native";
 
-import { addressFor, roleLabel, shortAddr, useAccount } from "@/account/store";
+import { resetBurners } from "@/devnet/keys";
+import { resetSessionStorage , useSession } from "@/session/store";
+import { signOut , addressFor, roleLabel, shortAddr, useAccount } from "@/account/store";
+
 import { lari, litersPerHa, usdc } from "@/components/money";
 import { actorName, jobLog, moneyLine } from "@/components/job/helpers";
 import { TxId } from "@/components/job/ui";
 import { jobRef } from "@/session/info";
-import { useSession } from "@/session/store";
 import { Banner, Button, Card, CardTitle, Row, StatusChip } from "@/components/ui";
 import { SAMPLE_JOB_ID, VALIDATORS, WALLETS } from "@/engine/scenario";
 import { useEngine } from "@/engine/useEngine";
@@ -164,6 +167,33 @@ export function ValidatorProfile() {
         <Row key={v.id} label={v.label} value={`${v.seat} seat`} />
       ))}
       <Text style={type.small}>A proof needs 2 of the 3 seats to approve. In this demo one person can act as each seat.</Text>
+    </Card>
+  );
+}
+
+/** Clears this browser's demo wallets, accounts and current job. Confirms inline (no browser dialog). */
+export function ResetDemo() {
+  const [ask, setAsk] = useState(false);
+  const doReset = () => {
+    resetBurners();
+    resetSessionStorage();
+    signOut();
+    router.replace("/");
+    setTimeout(() => globalThis.location?.reload(), 60);
+  };
+  return (
+    <Card>
+      <CardTitle>Reset demo in this browser</CardTitle>
+      <Text style={type.body}>Starts from zero: forgets the demo accounts, the wallets generated in this browser and the current job.</Text>
+      {ask ? (
+        <>
+          <Banner tone="error" text="This cannot be undone. Test money left in the old wallets is not recoverable from this page." />
+          <Button label="Yes, reset everything" kind="danger" onPress={doReset} />
+          <Button label="Cancel" kind="secondary" small onPress={() => setAsk(false)} />
+        </>
+      ) : (
+        <Button label="Reset demo in this browser" kind="secondary" small onPress={() => setAsk(true)} />
+      )}
     </Card>
   );
 }

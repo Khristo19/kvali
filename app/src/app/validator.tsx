@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 import { hectares, litersPerHa } from "@/components/money";
 import { Banner, Card, CardTitle, Fact, FactGrid, RoleShell, TwoUp, useTab } from "@/components/ui";
 import { SettleNow } from "@/components/settle-now";
-import { ValidatorEarnings, ValidatorProfile, ValidatorReviewed } from "@/components/tab-views";
+import { ResetDemo, ValidatorEarnings, ValidatorProfile, ValidatorReviewed } from "@/components/tab-views";
 import { notify } from "@/components/ui/notice";
 import { describeJob, jobRef } from "@/session/info";
 import { recordTitle } from "@/components/records";
@@ -103,7 +103,12 @@ export default function ValidatorScreen() {
       <ModeBanner />
       {tab === "reviewed" && <ValidatorReviewed />}
       {tab === "earnings" && <ValidatorEarnings />}
-      {tab === "profile" && <ValidatorProfile />}
+      {tab === "profile" && (
+        <>
+          <ValidatorProfile />
+          <ResetDemo />
+        </>
+      )}
       {tab === "" && (
         <>
 

@@ -50,10 +50,15 @@ export function ModeBanner() {
       <Text style={[type.body, { color: tone === "error" ? colors.error : colors.body }]}>{text}</Text>
       {s.mode === "devnet" && s.status === "ready" ? (
         <Text style={type.small}>
-          Signing with devnet demo keys — anyone can use them. They hold only test funds.{" "}
+          Your wallet is a devnet burner key kept in this browser (test funds only); validators use public demo keys.{" "}
           <ExtLink url={explorerAddr(addresses.programId.toBase58())} style={styles.link}>
             Program on Explorer
           </ExtLink>
+        </Text>
+      ) : null}
+      {s.walletNote ? (
+        <Text style={[type.body, { color: colors.accent, fontWeight: "600" }]} accessibilityLiveRegion="polite">
+          {s.walletNote}
         </Text>
       ) : null}
       {s.busy ? (

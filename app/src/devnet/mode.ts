@@ -34,6 +34,9 @@ export interface DevnetState {
   heldJob: ChainJob | null;
   /** Last message from a restore / adopt step, shown on the pages. */
   restoreNote: string | null;
+  /** Progress of the burner-wallet setup (null when idle). */
+  walletNote: string | null;
+  walletReadyAt: number;
 }
 
 let state: DevnetState = {
@@ -48,6 +51,8 @@ let state: DevnetState = {
   openJobs: null,
   heldJob: null,
   restoreNote: null,
+  walletNote: null,
+  walletReadyAt: 0,
 };
 const listeners = new Set<() => void>();
 

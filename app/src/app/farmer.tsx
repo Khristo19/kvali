@@ -1,6 +1,8 @@
-import { View } from "react-native";
+import { Text, View } from "react-native";
 
-import { RoleShell, TwoUp, useTab } from "@/components/ui";
+import { Card, CardTitle , RoleShell, TwoUp, useTab } from "@/components/ui";
+import { type } from "@/theme";
+
 import {
   ActionsCard,
   DemoControls,
@@ -14,14 +16,14 @@ import {
 import { CropHealthCard, MyFields, haText } from "@/components/farmer/fields";
 import { HowSteps } from "@/components/how-steps";
 import { SettleNow } from "@/components/settle-now";
-import { FarmerPayments } from "@/components/tab-views";
+import { FarmerPayments, ResetDemo } from "@/components/tab-views";
 import { fieldHa } from "@/data/fields";
 import { selectedField, useFields } from "@/data/fields-store";
 import { ChainCard } from "@/components/devnet/chain-card";
 import { SAMPLE_JOB_ID } from "@/engine/scenario";
 import { useEngine } from "@/engine/useEngine";
 
-const TITLES: Record<string, string> = { "": "My fields", post: "Post a job", payments: "Payments", help: "Help" };
+const TITLES: Record<string, string> = { "": "My jobs", post: "Post a job", payments: "Payments", help: "Help" };
 
 export default function Farmer() {
   const job = useEngine().state.jobs[SAMPLE_JOB_ID];
@@ -64,13 +66,19 @@ export default function Farmer() {
             </TwoUp>
           </>
         ) : (
-          <TwoUp>
-            <View style={{ gap: 16 }}>
-              <MyFields />
-              <CropHealthCard fieldId={sel.id} />
-            </View>
-            <PostJobCard />
-          </TwoUp>
+          <>
+            <Card>
+              <CardTitle>No job yet</CardTitle>
+              <Text style={type.body}>You have not posted a job. Pick a field below and post one; it will then be listed here with its status.</Text>
+            </Card>
+            <TwoUp>
+              <View style={{ gap: 16 }}>
+                <MyFields />
+                <CropHealthCard fieldId={sel.id} />
+              </View>
+              <PostJobCard />
+            </TwoUp>
+          </>
         ))}
       {tab === "post" && (
         <TwoUp>
@@ -82,7 +90,12 @@ export default function Farmer() {
         </TwoUp>
       )}
       {tab === "payments" && <FarmerPayments />}
-      {tab === "help" && <HowSteps />}
+      {tab === "help" && (
+        <>
+          <HowSteps />
+          <ResetDemo />
+        </>
+      )}
       {(tab === "" || tab === "post") && <DemoControls />}
     </RoleShell>
   );
