@@ -1,5 +1,7 @@
 import { router, useLocalSearchParams, usePathname, type Href } from "expo-router";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+
+import { Pressable } from "@/components/ui/pressable";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 import { colors, fonts, radius } from "@/theme";

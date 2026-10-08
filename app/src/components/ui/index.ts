@@ -7,4 +7,4 @@ export { ROLE_TABS, SideNav, TabBar, useTab, type Role } from "./nav";
 export { NoticeBar, notify } from "./notice";
 export { RoleShell } from "./role-shell";
 export { TimelineStep, type StepState } from "./timeline";
-export { useTick } from "./use-tick";
+export { useReached, useTick } from "./use-tick";

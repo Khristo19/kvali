@@ -25,9 +25,12 @@ async function provision(role: Role) {
     return;
   }
 
-  say(`Setting up your own devnet ${role} wallet (${kp.publicKey.toBase58().slice(0, 4)}…). This takes a few seconds.`);
+  const steps = [lowSol && "funding with test SOL", lowUsdc && "adding test USDC", role === "operator" && !certOk && "registering you and issuing the drone certificate"].filter(Boolean) as string[];
+  let n = 0;
+  const step = () => say(`Setting up your devnet wallet… ${++n}/${steps.length}: ${steps[n - 1]}`);
   // 1. SOL from the bank (the demo validator that pays the certificate rent is topped up too)
   if (lowSol) {
+    step();
     const target = role === "farmer" ? need.farmerTarget : need.operatorTarget;
     const amount = Math.max(target - w.sol, 0);
     try {
@@ -52,9 +55,13 @@ async function provision(role: Role) {
     }
   }
   // 2. test USDC
+  if (lowUsdc) {
+    step();
+  }
   if (lowUsdc) await chain.sendUsdcFromBank(kp, USDC_TARGET - w.usdc);
   // 3. operator account + certificate
   if (role === "operator" && !certOk) {
+    step();
     const sig = await chain.registerAndCertify();
     try {
       globalThis.localStorage?.setItem("kvali.certsig.v1", sig);

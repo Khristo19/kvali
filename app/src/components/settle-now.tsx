@@ -1,10 +1,10 @@
 import { Text } from "react-native";
 
 import { clock } from "@/components/money";
-import { Button, Card, CardTitle, Row, useTick } from "@/components/ui";
+import { LiveLeft } from "@/components/live-clock";
+import { Button, Card, CardTitle, Row, useReached } from "@/components/ui";
 import { useDevnetState } from "@/devnet/mode";
 import { useActions } from "@/engine/actions";
-import { windowLeft } from "@/engine/engine";
 import { WALLETS } from "@/engine/scenario";
 import type { Job } from "@/engine/types";
 import { type } from "@/theme";
@@ -13,13 +13,13 @@ import { type } from "@/theme";
 export function SettleNow({ job }: { job: Job | undefined }) {
   const actions = useActions();
   const dev = useDevnetState();
-  const now = useTick();
+  const closed = useReached(job?.proof?.windowEndsAt);
   if (!job || job.state !== "ProofSubmitted") return null;
-  const left = windowLeft(job, now);
+  const left = closed ? 0 : 1;
   return (
     <Card>
       <CardTitle>Settlement</CardTitle>
-      <Row label="Challenge window" value={left > 0 ? `${clock(left)} left` : "closed"} />
+      <LiveLeft endsAt={job.proof?.windowEndsAt ?? 0} render={(secs) => <Row label="Challenge window" value={secs > 0 ? `${clock(secs)} left` : "closed"} />} />
       <Text style={type.body}>
         {left > 0
           ? "The farmer can challenge until the window closes. After that anyone can settle the job, and the operator is paid."

@@ -1,5 +1,7 @@
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+
+import { Pressable } from "@/components/ui/pressable";
 
 import { ExtLink } from "@/components/ui/ext-link";
 

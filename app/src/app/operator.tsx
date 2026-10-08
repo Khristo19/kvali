@@ -8,7 +8,7 @@ import { ModeBanner } from "@/components/devnet/mode-banner";
 import { router, type Href } from "expo-router";
 
 import { useAccount } from "@/account/store";
-import { useDevnetState } from "@/devnet/mode";
+import { setDevnetState, useDevnetState } from "@/devnet/mode";
 import { ensureWallet } from "@/devnet/provision";
 import { Banner, Button, Card, CardTitle, RoleShell, TwoUp, notify, useTab } from "@/components/ui";
 import { type } from "@/theme";
@@ -49,7 +49,10 @@ export default function Operator() {
             <Button
               label="Set up my operator wallet"
               disabled={!!dev.walletNote}
-              onPress={() => void ensureWallet("operator").catch((e: Error) => notify("error", e.message))}
+              onPress={() => {
+                setDevnetState({ walletNote: "Setting up your devnet wallet…", walletOk: false });
+                void ensureWallet("operator").catch((e: Error) => notify("error", e.message));
+              }}
             />
           ) : (
             <Button label="Sign up as a drone operator" onPress={() => router.replace("/?role=operator" as Href)} />

@@ -1,9 +1,11 @@
 import { router, type Href } from "expo-router";
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+
+import { Pressable } from "@/components/ui/pressable";
 
 import { clock, lari, lariAmount, litersPerHa, usdc, whenText } from "@/components/money";
-import { Banner, BigNumber, Button, Card, CardTitle, ErrorText, Icon, Row, TimelineStep, useTick, type StepState } from "@/components/ui";
+import { Banner, BigNumber, Button, Card, CardTitle, ErrorText, Icon, Row, TimelineStep, useReached, type StepState } from "@/components/ui";
 import {
   WALLETS,
   sampleJob,
@@ -12,7 +14,7 @@ import {
   SAMPLE_JOB_ID,
   DEMO_DEADLINE_SECS,
 } from "@/engine/scenario";
-import { windowLeft } from "@/engine/engine";
+import { LiveLeft } from "@/components/live-clock";
 import { ModeBanner } from "@/components/devnet/mode-banner";
 import { TxId } from "@/components/job/ui";
 import { useActions } from "@/engine/actions";
@@ -52,7 +54,7 @@ export function PostJobCard() {
   const field = selectedField(useFields());
   const farmer = useAccount("farmer");
   const [err, setErr] = useState<string | null>(null);
-  const now = useTick();
+  const expired = useReached(job?.sprayDeadline);
 
   const post = async () => {
     try {
@@ -65,7 +67,6 @@ export function PostJobCard() {
 
   if (job) {
     const d = describeJob(job, session);
-    const left = job.sprayDeadline - now;
     return (
       <Card>
         <CardTitle>Your current job</CardTitle>
@@ -83,12 +84,17 @@ export function PostJobCard() {
           <Button label="Cancel this job and take the money back" kind="secondary" onPress={() => void actions.cancelJob(JOB_ID).catch(() => undefined)} />
         ) : job.state === "Accepted" ? (
           <>
-            <Text style={type.small}>
-              {left > 0
-                ? `If the operator cannot deliver an accepted record, you can release the job after the spray-by deadline (${whenText(job.sprayDeadline)}, ${Math.ceil(left / 60)} min left): the payment and the operator's bond are returned.`
-                : "The spray-by deadline has passed. Release the job to get your payment back (the operator's bond is returned too)."}
-            </Text>
-            <Button label="Release this job (after the deadline)" kind="secondary" disabled={left > 0} hint="Available once the spray-by deadline has passed" onPress={() => void actions.reclaimExpired(JOB_ID).catch(() => undefined)} />
+            <LiveLeft
+              endsAt={job.sprayDeadline}
+              render={(left) => (
+                <Text style={type.small}>
+                  {left > 0
+                    ? `If the operator cannot deliver an accepted record, you can release the job after the spray-by deadline (${whenText(job.sprayDeadline)}, ${Math.ceil(left / 60)} min left): the payment and the operator's bond are returned.`
+                    : "The spray-by deadline has passed. Release the job to get your payment back (the operator's bond is returned too)."}
+                </Text>
+              )}
+            />
+            <Button label="Release this job (after the deadline)" kind="secondary" disabled={!expired} hint="Available once the spray-by deadline has passed" onPress={() => void actions.reclaimExpired(JOB_ID).catch(() => undefined)} />
           </>
         ) : null}
         <ErrorText message={err} />
@@ -164,7 +170,7 @@ export function StatusCard() {
   const { state } = useEngine();
   const pending = usePending();
   const job = state.jobs[JOB_ID];
-  const now = useTick();
+  const ended = useReached(job?.proof?.windowEndsAt);
   if (!job) {
     return (
       <Card>
@@ -173,9 +179,8 @@ export function StatusCard() {
       </Card>
     );
   }
-  const left = windowLeft(job, now);
-  const h = headline(job, left);
-  const counting = job.state === "ProofSubmitted" && left > 0;
+  const h = headline(job, ended ? 0 : 1);
+  const counting = job.state === "ProofSubmitted" && !ended;
   return (
     <Card>
       <View style={styles.titleRow}>
@@ -193,7 +198,7 @@ export function StatusCard() {
       ) : null}
       {counting ? (
         <View style={styles.countdown}>
-          <BigNumber caption="Window closes in" value={clock(left)} size={40} live />
+          <LiveLeft endsAt={job.proof?.windowEndsAt ?? 0} render={(left) => <BigNumber caption="Window closes in" value={clock(left)} size={40} live />} />
         </View>
       ) : null}
     </Card>
@@ -209,7 +214,7 @@ export function MoneyCard() {
     const pay = p.operator - bondBack;
     return (
       <Card style={styles.moneyCard}>
-        <BigNumber caption="Paid to the operator" value={usdc(pay)} sub={`about ${lari(pay)} · plus the operator's own ${usdc(bondBack)} bond returned`} />
+        <BigNumber caption="Paid to the operator" value={usdc(pay)} sub={`≈ ${lari(pay)} · plus the operator's own ${usdc(bondBack)} bond returned`} />
         <View style={styles.lockTile}>
           <Icon name="lock" color={colors.green} size={26} />
         </View>
@@ -236,11 +241,11 @@ export function TimelineCard() {
   const job = useJob();
   const win = useEngine().state.config.challengeWindowSecs;
   const at = useLogTime();
-  const now = useTick();
+  const ended = useReached(job?.proof?.windowEndsAt);
   if (!job) return null;
   const cur = currentStep(job.state);
   const p = job.proof;
-  const left = windowLeft(job, now);
+  const left = ended ? 0 : 1;
   const when = (a: string) => {
     const t = at(a);
     return t ? whenText(t) : "";
@@ -251,7 +256,7 @@ export function TimelineCard() {
   const pay = job.payout ? job.payout.operator - bondBack : 0n;
   const lastDetail =
     job.payout && job.state === "Released"
-      ? `Payment ${usdc(pay)} (about ${lari(pay)}) released; the operator's ${usdc(bondBack)} bond was returned separately`
+      ? `Payment ${usdc(pay)} (≈ ${lari(pay)}) released; the operator's ${usdc(bondBack)} bond was returned separately`
       : job.state === "Refunded" || job.state === "Cancelled"
         ? "Your payment came back to you"
         : `${lariAmount(job.amount)} is released automatically`;
@@ -297,11 +302,11 @@ export function ActionsCard() {
   const job = state.jobs[JOB_ID];
   const [confirm, setConfirm] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  const now = useTick();
+  const closed = useReached(job?.proof?.windowEndsAt);
   if (!job) return null;
   const bond = (job.amount * state.config.challengeBondBps) / 10_000n;
   const pct = Number(state.config.challengeBondBps) / 100;
-  const open = !!job.proof && job.state === "ProofSubmitted" && windowLeft(job, now) > 0;
+  const open = !!job.proof && job.state === "ProofSubmitted" && !closed;
 
   const go = async () => {
     try {
@@ -419,7 +424,6 @@ export function DemoControls() {
   const job = state.jobs[JOB_ID];
   const [open, setOpen] = useState(false);
   const [err, setErr] = useState<string | null>(null);
-  useTick();
 
   const run = async (fn: () => Promise<void>) => {
     try {

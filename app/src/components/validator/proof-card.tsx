@@ -2,7 +2,7 @@ import { StyleSheet, Text, View , TextInput } from "react-native";
 
 import { computeVerdict } from "@kvali/proof/verdict";
 
-import { Button, Card, CardTitle, StatusChip } from "@/components/ui";
+import { Button, Card, CardTitle } from "@/components/ui";
 import { hectares } from "@/components/money";
 import { recordFor } from "@/engine/scenario";
 import type { sampleRecords } from "@/engine/samples";
@@ -75,7 +75,7 @@ export function ProofCard({
             {(r.litersMl / 1000).toFixed(1)} L sprayed over {hectares(r.areaCoveredCha)} (job {hectares(job.areaCha)})
           </Text>
         </View>
-        <StatusChip label={v.pass ? "Sign" : "Refuse"} tone={v.pass ? "green" : "red"} />
+        <Text style={[type.small, { color: v.pass ? colors.green : colors.error, fontWeight: "700", flexShrink: 0 }]}>{v.pass ? "Checks pass" : "Checks fail"}</Text>
       </View>
       <View style={styles.checkHead}>
         <Text style={type.subheading}>Checklist</Text>

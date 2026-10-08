@@ -1,6 +1,8 @@
 import { router } from "expo-router";
 import { useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { StyleSheet, Text, TextInput, View } from "react-native";
+
+import { Pressable } from "@/components/ui/pressable";
 
 import { BigNumber, Button, Card, RoleShell, TwoUp } from "@/components/ui";
 import { DrawMap } from "@/components/map/draw-map";

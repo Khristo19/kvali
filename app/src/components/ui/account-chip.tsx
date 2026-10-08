@@ -1,5 +1,7 @@
 import { router, type Href } from "expo-router";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+
+import { Pressable } from "@/components/ui/pressable";
 
 import { addressFor, roleLabel, shortAddr, signOut, useAccount, type Role } from "@/account/store";
 import { colors, fonts, radius } from "@/theme";

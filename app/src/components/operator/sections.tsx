@@ -18,10 +18,10 @@ import {
   FactGrid,
   Row,
   StatusChip,
-  useTick,
+  useReached,
 } from "@/components/ui";
 import { SettleNow } from "@/components/settle-now";
-import { windowLeft } from "@/engine/engine";
+import { LiveLeft } from "@/components/live-clock";
 import { refreshOpenJobs } from "@/devnet/bridge";
 import type { ChainJob } from "@/devnet/client";
 import { useDevnetState } from "@/devnet/mode";
@@ -308,19 +308,23 @@ export function UploadRecord({ job, onError }: { job: Job; onError: (m: string |
 /** Way out of a stuck accepted job: after the spray-by deadline the program returns payment and bond (reclaim_expired). */
 export function ReleaseJob({ job }: { job: Job }) {
   const actions = useActions();
-  const now = useTick();
+  const expired = useReached(job.sprayDeadline);
   if (job.state !== "Accepted") return null;
-  const left = job.sprayDeadline - now;
   return (
     <>
       <Divider />
       <Text style={type.label}>Stuck? Release this job</Text>
-      <Text style={type.small}>
-        {left > 0
-          ? `Demo jobs must be sprayed within 30 minutes (until ${when(job.sprayDeadline)}). If no good record is accepted by then, the program returns the farmer's payment and your bond: press the button after the deadline (${Math.ceil(left / 60)} min left).`
-          : "The spray-by deadline has passed with no accepted proof. Release the job to return the payment and the bond."}
-      </Text>
-      <Button small kind="warn" label="Release this job (after the deadline)" disabled={left > 0} hint="Available once the spray-by deadline has passed" onPress={() => void actions.reclaimExpired(job.id).catch(() => undefined)} />
+      <LiveLeft
+        endsAt={job.sprayDeadline}
+        render={(left) => (
+          <Text style={type.small}>
+            {left > 0
+              ? `Demo jobs must be sprayed within 30 minutes (until ${when(job.sprayDeadline)}). If no good record is accepted by then, the program returns the farmer's payment and your bond: press the button after the deadline (${Math.ceil(left / 60)} min left).`
+              : "The spray-by deadline has passed with no accepted proof. Release the job to return the payment and the bond."}
+          </Text>
+        )}
+      />
+      <Button small kind="warn" label="Release this job (after the deadline)" disabled={!expired} hint="Available once the spray-by deadline has passed" onPress={() => void actions.reclaimExpired(job.id).catch(() => undefined)} />
     </>
   );
 }
@@ -331,13 +335,11 @@ function fmtSecs(s: number) {
 
 export function Verdict({ job }: { job: Job }) {
   const { state } = useEngine();
-  const now = useTick();
   const op = state.operators[WALLETS.operator];
   const p = job.proof;
   const received = state.log
     .filter((l) => l.jobId === job.id && (l.action === "settle" || l.action === "resolveChallenge" || l.action === "reclaimExpired"))
     .reduce((sum, l) => sum + (l.amounts[WALLETS.operator] ?? 0n), 0n);
-  const remaining = windowLeft(job, now);
   return (
     <>
     <Card>
@@ -352,7 +354,7 @@ export function Verdict({ job }: { job: Job }) {
       )}
       {job.state === "ProofSubmitted" && (
         <>
-          <Row label="Challenge window" value={remaining > 0 ? `${fmtSecs(remaining)} left` : "closed"} />
+          <LiveLeft endsAt={p?.windowEndsAt ?? 0} render={(remaining) => <Row label="Challenge window" value={remaining > 0 ? `${fmtSecs(remaining)} left` : "closed"} />} />
           <Text style={type.body}>
             The farmer can challenge during the window. When it closes without a challenge, the money is released to you.
           </Text>

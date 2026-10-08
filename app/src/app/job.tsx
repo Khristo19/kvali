@@ -1,5 +1,6 @@
 import { router, useLocalSearchParams } from "expo-router";
 
+import { LiveLeft } from "@/components/live-clock";
 import { ChainGate } from "@/components/chain-gate";
 
 import { describeJob, jobRef } from "@/session/info";
@@ -13,12 +14,11 @@ import { BigNumber, Button, Card, RoleShell, TwoUp } from "@/components/ui";
 import type { ChipTone } from "@/components/ui";
 import { jobLog } from "@/components/job/helpers";
 import { Countdown, MoneyWent, SprayCheck, Timeline } from "@/components/job/sections";
-import { Chip, Row, TxId, useTick } from "@/components/job/ui";
+import { Chip, Row, TxId } from "@/components/job/ui";
 import { ModeBanner } from "@/components/devnet/mode-banner";
 import { ChainCard } from "@/components/devnet/chain-card";
 import { useActions } from "@/engine/actions";
 import { SAMPLE_JOB_ID } from "@/engine/scenario";
-import { windowLeft } from "@/engine/engine";
 import { useEngine } from "@/engine/useEngine";
 import type { JobState } from "@/engine/types";
 import { colors, space, type } from "@/theme";
@@ -52,7 +52,6 @@ export default function JobStory() {
   const { engine, state } = useEngine();
   const actions = useActions();
   const [error, setError] = useState<string | null>(null);
-  const now = useTick();
   const session = useSession();
   // Neutral page: the job is shared by all roles. Only show a role's nav if the page was opened from that role.
   const role = from === "farmer" || from === "operator" || from === "validator" ? from : undefined;
@@ -92,7 +91,6 @@ export default function JobStory() {
     );
   }
 
-  const remaining = windowLeft(job, now);
   const entries = jobLog(state.log, job);
   const base = job.postedAt;
   const cert = job.operator !== null ? state.log.find((l) => l.action === "issueCertificate") : undefined;
@@ -114,7 +112,7 @@ export default function JobStory() {
       </Card>
 
       {job.state === "ProofSubmitted" && (
-        <Countdown secs={remaining} total={state.config.challengeWindowSecs} />
+        <LiveLeft endsAt={job.proof?.windowEndsAt ?? 0} render={(remaining) => <Countdown secs={remaining} total={state.config.challengeWindowSecs} />} />
       )}
       <SettleNow job={job} />
       {!ended && (job.state === "Posted" || job.state === "Accepted") && (

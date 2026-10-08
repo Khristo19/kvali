@@ -1,6 +1,8 @@
 import { router } from "expo-router";
 import type { ReactNode } from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View } from "react-native";
+
+import { Pressable } from "@/components/ui/pressable";
 
 import { colors, fonts, radius } from "@/theme";
 import { Icon } from "./icons";
