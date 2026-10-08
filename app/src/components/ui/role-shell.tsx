@@ -1,5 +1,5 @@
 import { useEffect, type ReactNode } from "react";
-import { ScrollView, StyleSheet, View } from "react-native";
+import { Platform, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { DESKTOP_MAX_WIDTH, colors } from "@/theme";
@@ -31,36 +31,28 @@ export function RoleShell({
   onBack?: (() => void) | null;
   children: ReactNode;
 }) {
-  const wide = useWide();
   const tab = useTab(role ?? "farmer");
   const idx = active ?? (role ? ROLE_TABS[role].tabs.findIndex((t) => t.key === tab) : -1);
   // A result line belongs to the page it was shown on.
   useEffect(() => clearNotice, []);
-  const body = (
-    <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, wide && styles.contentWide]} keyboardShouldPersistTaps="handled">
-      <View style={[styles.column, wide && styles.columnWide]}>
-        <ScreenHeader title={title} subtitle={subtitle} onBack={onBack} right={<AccountChip role={role} />} />
-        <WalletBar />
-        <NoticeBar />
-        {children}
-      </View>
-    </ScrollView>
-  );
-
-  if (wide) {
-    return (
-      <SafeAreaView style={styles.safe} edges={["top", "bottom"]}>
-        <View style={styles.page}>
-          {role ? <SideNav role={role} active={idx} /> : null}
-          {body}
-        </View>
-      </SafeAreaView>
-    );
-  }
+  // Web: both navs are in the page and CSS (+html.tsx) shows the right one, so nothing moves after load.
+  // Native: the real window width is known at the first render.
+  const wide = useWide();
+  const web = Platform.OS === "web";
   return (
     <SafeAreaView style={styles.safe} edges={["top", "left", "right"]}>
-      {body}
-      {role ? <TabBar role={role} active={idx} /> : null}
+      <View style={styles.page}>
+        {role && (web || wide) ? <SideNav role={role} active={idx} /> : null}
+        <ScrollView style={styles.scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
+          <View style={styles.column}>
+            <ScreenHeader title={title} subtitle={subtitle} onBack={onBack} right={<AccountChip role={role} />} />
+            <WalletBar />
+            <NoticeBar />
+            {children}
+          </View>
+        </ScrollView>
+      </View>
+      {role && (web || !wide) ? <TabBar role={role} active={idx} /> : null}
     </SafeAreaView>
   );
 }
@@ -69,8 +61,6 @@ const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: colors.background },
   page: { flex: 1, flexDirection: "row", width: "100%", maxWidth: DESKTOP_MAX_WIDTH, alignSelf: "center" },
   scroll: { flex: 1 },
-  content: { padding: 20, paddingTop: 16, paddingBottom: 28 },
-  contentWide: { paddingHorizontal: 24, paddingTop: 32, paddingBottom: 48 },
-  column: { width: "100%", gap: 16 },
-  columnWide: { maxWidth: 860, alignSelf: "flex-start" },
+  content: { padding: 20, paddingTop: 20, paddingBottom: 36 },
+  column: { width: "100%", maxWidth: 860, alignSelf: "flex-start", gap: 16 },
 });

@@ -16,7 +16,17 @@ export default function Root({ children }: PropsWithChildren) {
           href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap"
         />
         <ScrollViewStyleReset />
-        <style dangerouslySetInnerHTML={{ __html: "body{background-color:#F4F1E8;}" }} />
+        <style
+          dangerouslySetInnerHTML={{
+            // Responsive switches done in CSS so the layout never changes after the page loads (no moving click targets):
+            // desktop (>= 900 px) shows the side nav, phones show the bottom tab bar; the account chip is compact on phones.
+            __html:
+              "body{background-color:#F4F1E8;}" +
+              "@media (min-width:900px){[data-kv=tabbar]{display:none !important}}" +
+              "@media (max-width:899px){[data-kv=side]{display:none !important}[data-kv=chip]{max-width:150px !important}[data-kv=chipsub]{display:none !important}[data-kv=chipwide]{display:none !important}}" +
+              "@media (min-width:900px){[data-kv=chipnarrow]{display:none !important}}",
+          }}
+        />
       </head>
       <body>{children}</body>
     </html>

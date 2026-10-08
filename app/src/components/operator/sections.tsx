@@ -1,4 +1,5 @@
 import { router } from "expo-router";
+import { useAccount } from "@/account/store";
 import { describeJob, jobRef } from "@/session/info";
 import { recordTitle } from "@/components/records";
 import { useSession, type Session } from "@/session/store";
@@ -116,6 +117,8 @@ function plainError(e: unknown): string {
 
 const when = (secs: number) => new Date(secs * 1000).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
+const SIGN_UP_FIRST = "Sign up as a drone operator first: you need your own demo wallet to accept a job.";
+
 function jobCard(j: Job, feeBps: bigint, onAccept: () => void, o: { onChain?: boolean; session: Session | null; disabledReason?: string; mine?: boolean }) {
   const d = describeJob(j, o.session);
   const title = `${d.field} · ${hectares(j.areaCha)}`;
@@ -173,6 +176,7 @@ export function OpenJobs({ onError, onDone }: { onError: (m: string | null) => v
   const actions = useActions();
   const { dev, extra, held } = useChainJobs();
   const session = useSession();
+  const operatorAcct = useAccount("operator");
   const [showOthers, setShowOthers] = useState(false);
   const jobs = Object.values(state.jobs).filter((j) => j.state === "Posted");
   const feeBps = state.config.kvaliFeeBps + state.config.validatorFeeBps;
@@ -200,7 +204,7 @@ export function OpenJobs({ onError, onDone }: { onError: (m: string | null) => v
           <Button label={`Continue job …${String(held.chainJobId).slice(-5)}`} onPress={() => void run(() => actions.continueHeldJob(held.chainJobId))} />
         </Card>
       ) : null}
-      {jobs.map((j) => jobCard(j, feeBps, () => void run(() => actions.acceptJob(j.id)), { session, mine: true }))}
+      {jobs.map((j) => jobCard(j, feeBps, () => void run(() => actions.acceptJob(j.id)), { session, mine: true, disabledReason: operatorAcct ? undefined : SIGN_UP_FIRST }))}
       {extra.length > 0 ? (
         <Button
           small
@@ -213,7 +217,7 @@ export function OpenJobs({ onError, onDone }: { onError: (m: string | null) => v
         jobCard(chainAsJob(c), feeBps, () => void run(() => actions.acceptOpenJob(c.chainJobId)), {
           onChain: true,
           session,
-          disabledReason: busyReason,
+          disabledReason: operatorAcct ? busyReason : SIGN_UP_FIRST,
         }),
       )}
       {none ? (

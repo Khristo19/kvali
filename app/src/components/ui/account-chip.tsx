@@ -3,30 +3,33 @@ import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { addressFor, roleLabel, shortAddr, signOut, useAccount, type Role } from "@/account/store";
 import { colors, fonts, radius } from "@/theme";
-import { useWide } from "./layout";
 
 /** Signed-in demo account (name, role, public devnet address) with "Sign out"; "Sign in" when there is none. */
 export function AccountChip({ role }: { role?: Role }) {
   const a = useAccount(role);
-  const wide = useWide();
   if (!a) {
     return (
       <Pressable accessibilityRole="link" onPress={() => router.replace((role ? `/?role=${role}` : "/") as Href)} style={styles.btn}>
-        <Text style={styles.btnText}>{role ? (wide ? `Sign up as ${roleLabel(role).toLowerCase()}` : "Sign up") : "Sign in"}</Text>
+        <Text style={styles.btnText}>{role ? (
+          <>
+            <Text {...({ dataSet: { kv: "chipwide" } } as object)}>Sign up as {roleLabel(role).toLowerCase()}</Text>
+            <Text {...({ dataSet: { kv: "chipnarrow" } } as object)}>Sign up</Text>
+          </>
+        ) : (
+          "Sign in"
+        )}</Text>
       </Pressable>
     );
   }
   return (
-    <View style={[styles.box, !wide && { maxWidth: 150 }]}>
+    <View style={styles.box} {...({ dataSet: { kv: "chip" } } as object)}>
       <View style={styles.who}>
         <Text style={styles.name} numberOfLines={1} accessibilityLabel={`Signed in as ${a.name}`}>
           {a.name}
         </Text>
-        {wide ? (
-          <Text style={styles.sub} numberOfLines={1}>
-            {roleLabel(a.role)} · {shortAddr(addressFor(a.role))}
-          </Text>
-        ) : null}
+        <Text style={styles.sub} numberOfLines={1} {...({ dataSet: { kv: "chipsub" } } as object)}>
+          {roleLabel(a.role)} · {shortAddr(addressFor(a.role))}
+        </Text>
       </View>
       <Pressable
         accessibilityRole="button"

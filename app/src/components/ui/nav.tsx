@@ -66,7 +66,7 @@ export function TabBar({ role, active }: { role: Role; active: number }) {
   const insets = useSafeAreaInsets();
   const go = useGo(role);
   return (
-    <View accessibilityRole="tablist" style={[styles.bar, { paddingBottom: Math.max(insets.bottom, 8) + 6 }]}>
+    <View accessibilityRole="tablist" {...({ dataSet: { kv: "tabbar" } } as object)} style={[styles.bar, { paddingBottom: Math.max(insets.bottom, 8) + 6 }]}>
       {ROLE_TABS[role].tabs.map((t, i) => {
         const on = i === active;
         const c = on ? colors.green : colors.muted;
@@ -95,7 +95,7 @@ export function SideNav({ role, active }: { role: Role; active: number }) {
   const go = useGo(role);
   const cfg = ROLE_TABS[role];
   return (
-    <View style={styles.side} accessibilityRole="tablist">
+    <View style={styles.side} accessibilityRole="tablist" {...({ dataSet: { kv: "side" } } as object)}>
       <Pressable accessibilityRole="link" accessibilityLabel="Kvali home" onPress={() => router.replace("/")} style={styles.brand}>
         <View style={styles.logo}>
           <View style={styles.logoDrop} />

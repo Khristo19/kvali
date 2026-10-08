@@ -14,6 +14,7 @@ import {
   TimelineCard,
 } from "@/components/farmer/sections";
 import { CropHealthCard, MyFields, haText } from "@/components/farmer/fields";
+import { ChainGate } from "@/components/chain-gate";
 import { HowSteps } from "@/components/how-steps";
 import { SettleNow } from "@/components/settle-now";
 import { FarmerPayments, ResetDemo } from "@/components/tab-views";
@@ -39,6 +40,7 @@ export default function Farmer() {
       subtitle={tab === "" ? `${fieldsText}${job ? ` · Job: ${job.state}` : " · no job yet"}` : tab === "post" ? fieldsText : undefined}
     >
       <SimBanner />
+      <ChainGate>
       {tab === "" &&
         (job ? (
           <>
@@ -97,6 +99,7 @@ export default function Farmer() {
         </>
       )}
       {(tab === "" || tab === "post") && <DemoControls />}
+      </ChainGate>
     </RoleShell>
   );
 }

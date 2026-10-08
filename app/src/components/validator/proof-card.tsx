@@ -41,6 +41,7 @@ export function ProofCard({
   refusal,
   onSign,
   onRefuse,
+  locked,
 }: {
   job: Job;
   sampleKey: SampleKey;
@@ -50,6 +51,8 @@ export function ProofCard({
   refusal: string | undefined;
   onSign: () => void;
   onRefuse: (reason: string) => void;
+  /** Why the buttons are disabled (signed out). */
+  locked?: string;
 }) {
   const r = recordFor(sampleKey, job.areaCha);
   const v = fullVerdict(job, sampleKey);
@@ -89,11 +92,12 @@ export function ProofCard({
       {!v.pass && <Text style={type.body}>Do not sign: {failing.map((c) => c.name).join(", ")} failed.</Text>}
       <Text style={type.small}>2 of 3 signatures needed. Signed: {signed.length} of 3{names.length ? ` (${names.join(", ")})` : ""}</Text>
       {refusal && <Text style={[type.body, { color: colors.error }]}>Refusal recorded ({seat.seat} seat): {refusal}</Text>}
+      {locked ? <Text style={[type.body, { color: colors.accent, fontWeight: "600" }]}>{locked}</Text> : null}
       <View style={styles.actions}>
         <Button
           label={mine ? "Signed by this seat" : "Approve — proof is good"}
-          disabled={mine || !v.pass}
-          hint={!v.pass ? "Disabled because the full verdict fails" : undefined}
+          disabled={mine || !v.pass || !!locked}
+          hint={locked ?? (!v.pass ? "Disabled because the full verdict fails" : undefined)}
           onPress={onSign}
         />
         {asking ? (
@@ -128,6 +132,7 @@ export function ProofCard({
           <Button
             label="Refuse and give a reason"
             kind="danger"
+            disabled={!!locked}
             onPress={() => {
               setText(v.pass ? "" : failing.map((c) => c.name).join(", ") + " failed");
               setAsking(true);

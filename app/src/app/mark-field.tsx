@@ -21,9 +21,9 @@ export default function MarkField() {
   const save = () => {
     addField({
       id: `drawn-${Date.now()}`,
-      name: `My field ${count + 1}`,
-      crop: "Crop not set",
-      product: "Spray product",
+      name: `Field ${count + 1} (drawn by me)`,
+      crop: "Grapes",
+      product: "Copper fungicide",
       outline: points,
       source: "drawn",
     });

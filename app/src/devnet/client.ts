@@ -393,17 +393,20 @@ const IX_ACTION: Record<string, string> = {
 /** The successful Kvali transactions that touched a job account, read from the chain (signature, kind, block time). Oldest first. */
 export async function jobTxs(jobPda: string): Promise<{ action: string; sig: string; time?: number }[]> {
   const sigs = await connection.getSignaturesForAddress(new PublicKey(jobPda), { limit: 25 }, "confirmed");
-  const out: { action: string; sig: string; time?: number }[] = [];
-  for (const s of sigs) {
-    if (s.err) continue;
-    try {
-      const t = await connection.getTransaction(s.signature, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
-      const log = (t?.meta?.logMessages ?? []).map((l) => l.match(/Instruction: (\w+)/)?.[1]).find((n) => n && IX_ACTION[n]);
-      if (log) out.push({ action: IX_ACTION[log], sig: s.signature, time: t?.blockTime ?? s.blockTime ?? undefined });
-    } catch {
-      /* skip this one */
-    }
-  }
+  const rows = await Promise.all(
+    sigs
+      .filter((s) => !s.err)
+      .map(async (s) => {
+        try {
+          const t = await connection.getTransaction(s.signature, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
+          const log = (t?.meta?.logMessages ?? []).map((l) => l.match(/Instruction: (\w+)/)?.[1]).find((n) => n && IX_ACTION[n]);
+          return log ? { action: IX_ACTION[log], sig: s.signature, time: t?.blockTime ?? s.blockTime ?? undefined } : null;
+        } catch {
+          return null;
+        }
+      }),
+  );
+  const out = rows.filter((r): r is { action: string; sig: string; time: number | undefined } => !!r);
   return out.sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
 }
 

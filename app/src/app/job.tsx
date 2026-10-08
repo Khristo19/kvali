@@ -1,6 +1,7 @@
-import { useLocalSearchParams } from "expo-router";
+import { router, useLocalSearchParams } from "expo-router";
 
-import { useAccount } from "@/account/store";
+import { ChainGate } from "@/components/chain-gate";
+
 import { describeJob, jobRef } from "@/session/info";
 import { useSession } from "@/session/store";
 import { SettleNow } from "@/components/settle-now";
@@ -32,16 +33,29 @@ const STATE_TONE: Record<JobState, ChipTone> = {
   Cancelled: "muted",
 };
 
+/** The job is shared by all roles: links to each role's page. */
+function RoleLinks() {
+  return (
+    <Card>
+      <Text style={type.subheading}>Open this demo as</Text>
+      <Button small kind="secondary" label="Farmer" onPress={() => router.replace("/farmer")} />
+      <Button small kind="secondary" label="Drone operator" onPress={() => router.replace("/operator")} />
+      <Button small kind="secondary" label="Validator" onPress={() => router.replace("/validator")} />
+      <Button small kind="secondary" label="Home" onPress={() => router.replace("/")} />
+    </Card>
+  );
+}
+
 export default function JobStory() {
-  const { id } = useLocalSearchParams<{ id?: string }>();
+  const { id, from } = useLocalSearchParams<{ id?: string; from?: string }>();
   const jobId = id && Number.isFinite(Number(id)) ? Number(id) : SAMPLE_JOB_ID;
   const { engine, state } = useEngine();
   const actions = useActions();
   const [error, setError] = useState<string | null>(null);
   const now = useTick();
-  const account = useAccount();
   const session = useSession();
-  const role = account?.role ?? "farmer";
+  // Neutral page: the job is shared by all roles. Only show a role's nav if the page was opened from that role.
+  const role = from === "farmer" || from === "operator" || from === "validator" ? from : undefined;
 
   const job = state.jobs[jobId];
 
@@ -65,12 +79,15 @@ export default function JobStory() {
   if (!job) {
     return (
       <RoleShell role={role} active={-1} title="Job story" subtitle="Every step, in plain words">
+        <ChainGate>
         <Card>
           <Text style={[type.body, { color: colors.ink }]}>No job yet. Post one from the Farmer page.</Text>
           <Text style={type.body}>Presenter shortcut: posts, accepts and submits a record for you, with real transactions in Devnet mode.</Text>
           <Button label="Presenter: run the whole job automatically" onPress={runDemo} />
           {error && <Text style={styles.error}>{error}</Text>}
         </Card>
+        <RoleLinks />
+        </ChainGate>
       </RoleShell>
     );
   }
@@ -84,7 +101,7 @@ export default function JobStory() {
   return (
     <RoleShell role={role} active={-1} title="Job story" subtitle={`${describeJob(job, session).field} · job ${jobRef(job.id, session)}`}>
       <ModeBanner />
-
+      <ChainGate>
       <Card>
         <View style={styles.head}>
           <Text style={type.heading}>Job {jobRef(job.id, session)}</Text>
@@ -122,6 +139,8 @@ export default function JobStory() {
           <ChainCard />
         </View>
       </TwoUp>
+      <RoleLinks />
+      </ChainGate>
     </RoleShell>
   );
 }

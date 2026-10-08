@@ -11,6 +11,8 @@ import { recordTitle } from "@/components/records";
 import { setPending, usePending, useSession } from "@/session/store";
 import { ChallengeCard } from "@/components/validator/challenge-card";
 import { ProofCard, fullVerdict, type SampleKey } from "@/components/validator/proof-card";
+import { useAccount } from "@/account/store";
+import { ChainGate } from "@/components/chain-gate";
 import { ModeBanner } from "@/components/devnet/mode-banner";
 import { useActions } from "@/engine/actions";
 import { useEngine } from "@/engine/useEngine";
@@ -26,6 +28,8 @@ export default function ValidatorScreen() {
   const tab = useTab("validator");
   const pending = usePending();
   const session = useSession();
+  const validatorAcct = useAccount("validator");
+  const locked = validatorAcct ? undefined : "Sign up as a validator first (home page) to approve or refuse.";
   const [seatId, setSeatId] = useState(VALIDATORS[0].id);
   const [sigs, setSigs] = useState<Record<string, string[]>>({});
   const [refusals, setRefusals] = useState<Record<string, string>>({});
@@ -80,7 +84,7 @@ export default function ValidatorScreen() {
 
   const refuse = (jobId: number, key: SampleKey, reason: string) => {
     setError(null);
-    setNotice(`Refusal recorded for ${key}.`);
+    setNotice(`Refusal recorded: ${reason}.`);
     if (pending?.key === key) {
       setPending({ ...pending, refusal: `${reason} (${seat.seat} seat)` });
       notify("info", "Refusal recorded. Nothing is sent to the chain; the operator is told to submit a different record.");
@@ -113,6 +117,7 @@ export default function ValidatorScreen() {
       subtitle={tab === "" ? (first ? `Job ${jobRef(first.id, session)} · ${state.config.proofThreshold} of ${state.config.validators.length} checks needed` : "Nothing to check right now") : undefined}
     >
       <ModeBanner />
+      <ChainGate>
       {tab === "reviewed" && <ValidatorReviewed />}
       {tab === "earnings" && <ValidatorEarnings />}
       {tab === "profile" && (
@@ -182,6 +187,7 @@ export default function ValidatorScreen() {
               <View style={styles.proofs}>
                 <View style={styles.proofCell}>
                   <ProofCard
+                    locked={locked}
                     job={job}
                     sampleKey={pending.key as SampleKey}
                     seat={seat}
@@ -213,6 +219,7 @@ export default function ValidatorScreen() {
                 {KEYS.map((key) => (
                   <View key={key} style={styles.proofCell}>
                     <ProofCard
+                    locked={locked}
                       job={job}
                       sampleKey={key}
                       seat={seat}
@@ -222,7 +229,7 @@ export default function ValidatorScreen() {
                       onSign={() => practiceSign(job.id, key)}
                       onRefuse={(reason) => {
                         setRefusals({ ...refusals, [`practice:${key}`]: reason });
-                        setNotice(`Practice refusal for ${recordTitle(key)}. Nothing was sent to the chain.`);
+                        setNotice(`Practice refusal (${recordTitle(key)}). Nothing was sent to the chain.`);
                       }}
                     />
                   </View>
@@ -257,6 +264,7 @@ export default function ValidatorScreen() {
       ))}
         </>
       )}
+      </ChainGate>
     </RoleShell>
   );
 }

@@ -16,11 +16,9 @@ export function useWide(): boolean {
   return mounted && width >= DESKTOP_MIN_WIDTH;
 }
 
-/** Stacks children on a phone; puts them side by side on desktop. */
+/** Cards side by side when there is room (two columns of at least 340 px), stacked otherwise. Pure flex-wrap: no JS width check, no layout jump. */
 export function TwoUp({ children }: { children: ReactNode }) {
-  const wide = useWide();
   const items = Children.toArray(children);
-  if (!wide) return <>{items}</>;
   return (
     <View style={styles.row}>
       {items.map((c, i) => (
@@ -33,6 +31,6 @@ export function TwoUp({ children }: { children: ReactNode }) {
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: "row", gap: space.lg, alignItems: "stretch" },
-  cell: { flex: 1, minWidth: 0, gap: space.lg },
+  row: { flexDirection: "row", flexWrap: "wrap", gap: space.lg, alignItems: "stretch" },
+  cell: { flexGrow: 1, flexShrink: 1, flexBasis: 340, minWidth: 0, gap: space.lg },
 });

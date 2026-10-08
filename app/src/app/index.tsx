@@ -4,7 +4,7 @@ import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-
 import { SafeAreaView } from "react-native-safe-area-context";
 
 import { SettlementDemo } from "@/components/settlement-demo";
-import { Button, Icon, useWide } from "@/components/ui";
+import { Button, Icon } from "@/components/ui";
 import { addressFor, roleHome, roleLabel, saveAccount, shortAddr, signOut, useAccount, useAccounts } from "@/account/store";
 import { notify } from "@/components/ui/notice";
 import { ensureWallet } from "@/devnet/provision";
@@ -32,7 +32,6 @@ export default function Home() {
   const [email, setEmail] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [phantom, setPhantom] = useState(false);
-  const wide = useWide();
   const role = roles.find((r) => r.id === picked)!;
 
   const openForm = () => {
@@ -61,7 +60,7 @@ export default function Home() {
 
   return (
     <SafeAreaView style={styles.top} edges={["top", "bottom"]}>
-      <ScrollView contentContainerStyle={[styles.content, wide && { paddingTop: 72 }]}>
+      <ScrollView contentContainerStyle={styles.content}>
         <View style={styles.column}>
           <View style={styles.hero}>
             <View style={styles.logo} accessibilityLabel="Kvali logo">
@@ -107,25 +106,6 @@ export default function Home() {
             })}
           </View>
 
-          {accountList.length > 0 ? (
-            <View style={styles.signedIn}>
-              <Text style={type.body}>
-                Signed in as: {accountList.map((a) => `${roleLabel(a.role)} ${a.name}`).join(" · ")}
-              </Text>
-              {account ? (
-                <>
-                  <Text style={type.small}>
-                    {roleLabel(account.role)}: {account.name}, address {shortAddr(addressFor(account.role))}
-                  </Text>
-                  <Button label={`Open my ${roleLabel(account.role).toLowerCase()} page`} kind="secondary" small onPress={() => router.replace(roleHome(account.role) as Href)} />
-                  <Button label={`Sign out (${roleLabel(account.role).toLowerCase()})`} kind="secondary" small onPress={() => signOut(account.role)} />
-                </>
-              ) : (
-                <Text style={type.small}>Not signed in as {roleLabel(picked)} yet: continue with email below.</Text>
-              )}
-            </View>
-          ) : null}
-
           {form ? (
             <View style={styles.form} accessibilityLabel="Create demo account">
               <Text style={styles.who}>Create your demo account</Text>
@@ -170,14 +150,17 @@ export default function Home() {
                 disabled={phantom}
                 onPress={() => setPhantom(true)}
               />
-              {phantom ? (
-                <View style={styles.soonBox} accessibilityRole="alert">
-                  <Text style={[type.body, styles.soon]}>
-                    Coming soon: Phantom wallet sign-in is not available yet. Please use &ldquo;Continue with email&rdquo;; it creates a demo wallet on Solana devnet for you.
-                  </Text>
-                </View>
-              ) : null}
-              <Text style={styles.footnote}>A demo account is created for you in this browser. No crypto knowledge needed.</Text>
+              <View style={styles.slot}>
+                {phantom ? (
+                  <View style={styles.soonBox} accessibilityRole="alert">
+                    <Text style={[type.body, styles.soon]}>
+                      Coming soon: Phantom wallet sign-in is not available yet. Please use &ldquo;Continue with email&rdquo;; it creates a demo wallet on Solana devnet for you.
+                    </Text>
+                  </View>
+                ) : (
+                  <Text style={styles.footnote}>A demo account is created for you in this browser. No crypto knowledge needed.</Text>
+                )}
+              </View>
             </View>
           )}
 
@@ -190,6 +173,25 @@ export default function Home() {
             </Pressable>
           </View>
 
+          {accountList.length > 0 ? (
+            <View style={styles.signedIn}>
+              <Text style={type.body}>
+                Signed in as: {accountList.map((a) => `${roleLabel(a.role)} ${a.name}`).join(" · ")}
+              </Text>
+              {account ? (
+                <>
+                  <Text style={type.small}>
+                    {roleLabel(account.role)}: {account.name}, address {shortAddr(addressFor(account.role))}
+                  </Text>
+                  <Button label={`Open my ${roleLabel(account.role).toLowerCase()} page`} kind="secondary" small onPress={() => router.replace(roleHome(account.role) as Href)} />
+                  <Button label={`Sign out (${roleLabel(account.role).toLowerCase()})`} kind="secondary" small onPress={() => signOut(account.role)} />
+                </>
+              ) : (
+                <Text style={type.small}>Not signed in as {roleLabel(picked)} yet: continue with email below.</Text>
+              )}
+            </View>
+          ) : null}
+
           <SettlementDemo />
 
           <Text style={[type.small, { textAlign: "center" }]}>{mode === "devnet" ? "Running on Solana devnet (test money)" : "Simulated mode (no chain)"}</Text>
@@ -201,7 +203,7 @@ export default function Home() {
 
 const styles = StyleSheet.create({
   top: { flex: 1, backgroundColor: colors.background },
-  content: { padding: 20, paddingTop: 40, paddingBottom: 28, alignItems: "center" },
+  content: { padding: 20, paddingTop: 48, paddingBottom: 28, alignItems: "center" },
   column: { width: "100%", maxWidth: 480, gap: 28 },
   hero: { alignItems: "center", gap: 14 },
   logo: { width: 72, height: 72, borderRadius: 20, backgroundColor: colors.green, alignItems: "center", justifyContent: "center" },
@@ -234,6 +236,7 @@ const styles = StyleSheet.create({
   signedIn: { gap: space.sm, padding: 14, borderRadius: radius.lg, backgroundColor: colors.softGreen },
   form: { gap: space.sm, padding: 16, borderRadius: radius.lg, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border },
   input: { minHeight: 52, borderWidth: 1.5, borderColor: colors.border, borderRadius: radius.md, paddingHorizontal: 14, fontSize: 17, fontFamily: fonts.sans, color: colors.ink, backgroundColor: colors.background },
+  slot: { minHeight: 110, justifyContent: "center" },
   soonBox: { padding: 14, borderRadius: radius.lg, backgroundColor: colors.card, borderWidth: 1.5, borderColor: colors.accent },
   soon: { textAlign: "center", color: colors.accent, fontWeight: "600" },
   footnote: { ...type.small, fontSize: 16, textAlign: "center", marginTop: 6 },

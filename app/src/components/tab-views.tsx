@@ -1,5 +1,5 @@
 // Content of the secondary tabs (Payments, My jobs, Earnings, Drones, Reviewed, Profile ...). Small read-only views of the shared job.
-import { router } from "expo-router";
+import { router, type Href } from "expo-router";
 import { useState } from "react";
 import { Text, View } from "react-native";
 
@@ -67,7 +67,7 @@ export function FarmerPayments() {
         <Card>
           <CardTitle>Every payment step, with proof</CardTitle>
           <LogList job={job} />
-          <Button label="Open the job story" kind="secondary" onPress={() => router.push("/job")} />
+          <Button label="Open the job story" kind="secondary" onPress={() => router.push("/job?from=farmer" as Href)} />
         </Card>
       ) : null}
     </>
@@ -86,7 +86,7 @@ export function OperatorMine() {
         <View key={j.id} style={{ gap: 6 }}>
           <Row label={`Job ${jobRef(j.id, session)}`} value={j.state} sub={`${usdc(j.amount)} · bond ${usdc(j.bond)}`} />
           <StatusChip label={j.state} tone={tone(j.state)} />
-          <Button small kind="secondary" label="Open the job story" onPress={() => router.push("/job")} />
+          <Button small kind="secondary" label="Open the job story" onPress={() => router.push("/job?from=operator" as Href)} />
         </View>
       ))}
     </Card>
@@ -136,7 +136,7 @@ export function ValidatorReviewed() {
           <Row label="Coverage" value={`${(j.proof!.coverageBps / 100).toFixed(1)}%`} />
         </View>
       ))}
-      {done.length > 0 ? <Button small kind="secondary" label="Open the job story" onPress={() => router.push("/job")} /> : null}
+      {done.length > 0 ? <Button small kind="secondary" label="Open the job story" onPress={() => router.push("/job?from=validator" as Href)} /> : null}
     </Card>
   );
 }

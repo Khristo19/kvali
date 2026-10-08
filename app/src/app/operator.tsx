@@ -3,6 +3,7 @@ import { View , Text } from "react-native";
 
 import { CertificateCard, CertificateStrip, OpenJobs, UploadRecord, Verdict, Wallet, useOpenJobsText } from "@/components/operator/sections";
 import { OperatorEarnings, OperatorMine, ResetDemo } from "@/components/tab-views";
+import { ChainGate } from "@/components/chain-gate";
 import { ModeBanner } from "@/components/devnet/mode-banner";
 import { router, type Href } from "expo-router";
 
@@ -35,6 +36,7 @@ export default function Operator() {
   return (
     <RoleShell role="operator" title={TITLES[tab]} subtitle={tab === "" ? openText : undefined}>
       <ModeBanner />
+      <ChainGate>
       {needsSetup ? (
         <Card>
           <CardTitle>Get your operator wallet</CardTitle>
@@ -88,6 +90,7 @@ export default function Operator() {
           <ResetDemo />
         </>
       )}
+      </ChainGate>
     </RoleShell>
   );
 }

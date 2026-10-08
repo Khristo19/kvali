@@ -208,9 +208,10 @@ export async function bootDevnet(engine: Engine): Promise<boolean> {
   }
   retagCertificate(engine);
   try {
-    await withTimeout(syncChain(engine), 15000);
+    await withTimeout(syncChain(engine), 10000);
   } catch {
-    /* balances refresh every 20 s */
+    // Never leave the seeded (simulated) balances on screen in devnet mode: show zeros until the chain answers (re-read every 20 s).
+    engine.chainSetBalances({});
   }
   setDevnetState({ status: "ready", fellBack: false });
   return true;

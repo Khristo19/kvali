@@ -1,4 +1,4 @@
-import { router } from "expo-router";
+import { router, type Href } from "expo-router";
 import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
@@ -105,7 +105,13 @@ export function PostJobCard() {
       <Row label="Target" value={litersPerHa(sampleJob.targetRateMlPerHa)} />
       <Row label="Spray by" value={`${DEMO_DEADLINE_SECS / 60} minutes after posting (demo)`} />
       <Text style={type.body}>Your {usdc(SAMPLE_AMOUNT)} is held safely until the spraying is checked.</Text>
-      <Button label={`Post job and hold ${usdc(SAMPLE_AMOUNT)}`} onPress={post} />
+      <Button label={`Post job and hold ${usdc(SAMPLE_AMOUNT)}`} onPress={post} disabled={!farmer} hint={farmer ? undefined : "Sign up as a farmer first"} />
+      {farmer ? null : (
+        <>
+          <Text style={[type.body, { color: colors.accent, fontWeight: "600" }]}>Sign up as a farmer first: you need your own demo wallet to post a job.</Text>
+          <Button small kind="secondary" label="Sign up as a farmer" onPress={() => router.replace("/?role=farmer" as Href)} />
+        </>
+      )}
       <ErrorText message={err} />
     </Card>
   );
@@ -197,8 +203,20 @@ export function StatusCard() {
 export function MoneyCard() {
   const job = useJob();
   if (!job) return null;
-  const ended = job.payout !== null;
-  const caption = !ended ? "Payment held safely" : job.state === "Released" ? "Payment released" : "Payment returned to you";
+  const p = job.payout;
+  if (p && job.state === "Released") {
+    const bondBack = p.operator < job.bond ? p.operator : job.bond;
+    const pay = p.operator - bondBack;
+    return (
+      <Card style={styles.moneyCard}>
+        <BigNumber caption="Paid to the operator" value={usdc(pay)} sub={`about ${lari(pay)} · plus the operator's own ${usdc(bondBack)} bond returned`} />
+        <View style={styles.lockTile}>
+          <Icon name="lock" color={colors.green} size={26} />
+        </View>
+      </Card>
+    );
+  }
+  const caption = !p ? "Payment held safely" : "Payment returned to you";
   return (
     <Card style={styles.moneyCard}>
       <BigNumber caption={caption} value={lariAmount(job.amount)} sub={`${usdc(job.amount)} USDC`} />
@@ -297,7 +315,7 @@ export function ActionsCard() {
 
   return (
     <View style={styles.actions}>
-      {job.proof ? <Button label="See the proof" onPress={() => router.push("/job")} /> : null}
+      {job.proof ? <Button label="See the proof" onPress={() => router.push("/job?from=farmer" as Href)} /> : null}
       {job.state === "Challenged" ? (
         <Banner text={`You challenged this job and put up ${usdc(job.challenge?.bond ?? bond)} (${lariAmount(job.challenge?.bond ?? bond)}). A panel will decide.`} />
       ) : open && !confirm ? (
