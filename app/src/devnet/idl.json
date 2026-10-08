@@ -1,0 +1,2045 @@
+{
+  "address": "2TWg6cMa7bxFa8y7HHoDXZecNJxcbYrUAqwfrg5T8FPK",
+  "metadata": {
+    "name": "kvali",
+    "version": "0.1.0",
+    "spec": "0.1.0",
+    "description": "Escrowed, volume-verified agricultural spray jobs on Solana"
+  },
+  "instructions": [
+    {
+      "name": "accept_job",
+      "docs": [
+        "Operator accepts and locks a bond of at least the job amount. The",
+        "drone they will fly must hold a valid calibration certificate."
+      ],
+      "discriminator": [
+        43,
+        201,
+        124,
+        1,
+        19,
+        189,
+        96,
+        10
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true,
+          "relations": [
+            "operator"
+          ]
+        },
+        {
+          "name": "certificate",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  101,
+                  114,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              },
+              {
+                "kind": "account",
+                "path": "certificate.drone_hash",
+                "account": "Certificate"
+              }
+            ]
+          }
+        },
+        {
+          "name": "operator",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  112,
+                  101,
+                  114,
+                  97,
+                  116,
+                  111,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "job",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "job"
+              }
+            ]
+          }
+        },
+        {
+          "name": "usdc_mint"
+        },
+        {
+          "name": "operator_token",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "bond_amount",
+          "type": "u64"
+        }
+      ]
+    },
+    {
+      "name": "cancel_job",
+      "docs": [
+        "Farmer withdraws a job nobody has accepted yet."
+      ],
+      "discriminator": [
+        126,
+        241,
+        155,
+        241,
+        50,
+        236,
+        83,
+        118
+      ],
+      "accounts": [
+        {
+          "name": "caller",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "job",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "job"
+              }
+            ]
+          }
+        },
+        {
+          "name": "usdc_mint"
+        },
+        {
+          "name": "farmer_token",
+          "writable": true
+        },
+        {
+          "name": "farmer_profile",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  97,
+                  114,
+                  109,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "job.farmer",
+                "account": "Job"
+              }
+            ]
+          }
+        },
+        {
+          "name": "operator",
+          "docs": [
+            "Absent for `cancel_job` (no operator yet)."
+          ],
+          "writable": true,
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  112,
+                  101,
+                  114,
+                  97,
+                  116,
+                  111,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "job.operator",
+                "account": "Job"
+              }
+            ]
+          }
+        },
+        {
+          "name": "operator_token",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "treasury_token",
+          "writable": true
+        },
+        {
+          "name": "validator_pool_token",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "challenge",
+      "docs": [
+        "Farmer challenges within the window by locking a challenge bond",
+        "(20% of the job) and committing to their evidence. Funds freeze until",
+        "the field-validator panel rules."
+      ],
+      "discriminator": [
+        16,
+        107,
+        14,
+        39,
+        244,
+        150,
+        81,
+        187
+      ],
+      "accounts": [
+        {
+          "name": "farmer",
+          "signer": true,
+          "relations": [
+            "job"
+          ]
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "job",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "job"
+              }
+            ]
+          }
+        },
+        {
+          "name": "usdc_mint"
+        },
+        {
+          "name": "farmer_token",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "evidence_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "initialize_config",
+      "discriminator": [
+        208,
+        127,
+        21,
+        1,
+        194,
+        190,
+        196,
+        70
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "program",
+          "address": "2TWg6cMa7bxFa8y7HHoDXZecNJxcbYrUAqwfrg5T8FPK"
+        },
+        {
+          "name": "program_data"
+        },
+        {
+          "name": "usdc_mint"
+        },
+        {
+          "name": "treasury"
+        },
+        {
+          "name": "validator_pool"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "validators",
+          "type": {
+            "vec": "pubkey"
+          }
+        },
+        {
+          "name": "proof_threshold",
+          "type": "u8"
+        },
+        {
+          "name": "panel_threshold",
+          "type": "u8"
+        },
+        {
+          "name": "challenge_window_secs",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "issue_certificate",
+      "docs": [
+        "A field validator records a calibration test for one operator + drone",
+        "(docs/CALIBRATION.md). Re-running the test renews the certificate,",
+        "unless a validator panel has revoked it: a revocation is final for",
+        "that operator + drone pair (one validator cannot undo a panel)."
+      ],
+      "discriminator": [
+        61,
+        197,
+        55,
+        28,
+        159,
+        18,
+        132,
+        128
+      ],
+      "accounts": [
+        {
+          "name": "validator",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "operator_authority"
+        },
+        {
+          "name": "certificate",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  101,
+                  114,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "operator_authority"
+              },
+              {
+                "kind": "arg",
+                "path": "drone_hash"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "drone_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "meter_error_bps",
+          "type": "u16"
+        },
+        {
+          "name": "operator_passed",
+          "type": "bool"
+        },
+        {
+          "name": "report_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "valid_until",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "post_job",
+      "docs": [
+        "Farmer posts a job and funds the escrow vault with `amount` USDC."
+      ],
+      "discriminator": [
+        34,
+        208,
+        58,
+        248,
+        129,
+        234,
+        179,
+        211
+      ],
+      "accounts": [
+        {
+          "name": "farmer",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "usdc_mint"
+        },
+        {
+          "name": "farmer_token",
+          "writable": true
+        },
+        {
+          "name": "farmer_profile",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  97,
+                  114,
+                  109,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "farmer"
+              }
+            ]
+          }
+        },
+        {
+          "name": "job",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  106,
+                  111,
+                  98
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "farmer"
+              },
+              {
+                "kind": "arg",
+                "path": "job_id"
+              }
+            ]
+          }
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "job"
+              }
+            ]
+          }
+        },
+        {
+          "name": "token_program"
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": [
+        {
+          "name": "job_id",
+          "type": "u64"
+        },
+        {
+          "name": "amount",
+          "type": "u64"
+        },
+        {
+          "name": "field_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "chemical_code",
+          "type": "u16"
+        },
+        {
+          "name": "target_rate_ml_per_ha",
+          "type": "u32"
+        },
+        {
+          "name": "tolerance_bps",
+          "type": "u16"
+        },
+        {
+          "name": "area_cha",
+          "type": "u32"
+        },
+        {
+          "name": "spray_deadline",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "reclaim_expired",
+      "docs": [
+        "Operator accepted but never proved by the spray deadline:",
+        "farmer gets the payment back plus the bond. Permissionless."
+      ],
+      "discriminator": [
+        125,
+        185,
+        48,
+        75,
+        0,
+        71,
+        93,
+        98
+      ],
+      "accounts": [
+        {
+          "name": "caller",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "job",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "job"
+              }
+            ]
+          }
+        },
+        {
+          "name": "usdc_mint"
+        },
+        {
+          "name": "farmer_token",
+          "writable": true
+        },
+        {
+          "name": "farmer_profile",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  97,
+                  114,
+                  109,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "job.farmer",
+                "account": "Job"
+              }
+            ]
+          }
+        },
+        {
+          "name": "operator",
+          "docs": [
+            "Absent for `cancel_job` (no operator yet)."
+          ],
+          "writable": true,
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  112,
+                  101,
+                  114,
+                  97,
+                  116,
+                  111,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "job.operator",
+                "account": "Job"
+              }
+            ]
+          }
+        },
+        {
+          "name": "operator_token",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "treasury_token",
+          "writable": true
+        },
+        {
+          "name": "validator_pool_token",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "register_operator",
+      "discriminator": [
+        49,
+        242,
+        151,
+        125,
+        212,
+        136,
+        31,
+        89
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "writable": true,
+          "signer": true
+        },
+        {
+          "name": "operator",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  112,
+                  101,
+                  114,
+                  97,
+                  116,
+                  111,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "authority"
+              }
+            ]
+          }
+        },
+        {
+          "name": "system_program",
+          "address": "11111111111111111111111111111111"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "resolve_challenge",
+      "docs": [
+        "The field-validator panel rules on a challenge. At least",
+        "`panel_threshold` validators must sign (signer remaining accounts) and",
+        "commit to their inspection report. The loser's funds go to the winner.",
+        "Validators who are the job's farmer or operator do not count."
+      ],
+      "discriminator": [
+        81,
+        191,
+        124,
+        119,
+        131,
+        248,
+        157,
+        109
+      ],
+      "accounts": [
+        {
+          "name": "caller",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "job",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "job"
+              }
+            ]
+          }
+        },
+        {
+          "name": "usdc_mint"
+        },
+        {
+          "name": "farmer_token",
+          "writable": true
+        },
+        {
+          "name": "farmer_profile",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  97,
+                  114,
+                  109,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "job.farmer",
+                "account": "Job"
+              }
+            ]
+          }
+        },
+        {
+          "name": "operator",
+          "docs": [
+            "Absent for `cancel_job` (no operator yet)."
+          ],
+          "writable": true,
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  112,
+                  101,
+                  114,
+                  97,
+                  116,
+                  111,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "job.operator",
+                "account": "Job"
+              }
+            ]
+          }
+        },
+        {
+          "name": "operator_token",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "treasury_token",
+          "writable": true
+        },
+        {
+          "name": "validator_pool_token",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": [
+        {
+          "name": "upheld",
+          "type": "bool"
+        },
+        {
+          "name": "report_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        }
+      ]
+    },
+    {
+      "name": "revoke_certificate",
+      "docs": [
+        "A validator panel withdraws a certificate, e.g. after a spot check",
+        "shows the drone's meter no longer matches reality.",
+        "The certificate's own operator never counts toward the panel."
+      ],
+      "discriminator": [
+        236,
+        5,
+        130,
+        119,
+        9,
+        164,
+        130,
+        122
+      ],
+      "accounts": [
+        {
+          "name": "caller",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "certificate",
+          "writable": true
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "set_challenge_window",
+      "docs": [
+        "Admin changes the challenge window (60 s ..= 7 days). Applies to",
+        "proofs submitted afterwards; open windows keep their deadline."
+      ],
+      "discriminator": [
+        245,
+        184,
+        111,
+        8,
+        37,
+        209,
+        245,
+        199
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "challenge_window_secs",
+          "type": "i64"
+        }
+      ]
+    },
+    {
+      "name": "set_validators",
+      "docs": [
+        "v1 governance: admin replaces the validator set. Move admin to a",
+        "multisig before mainnet."
+      ],
+      "discriminator": [
+        159,
+        87,
+        25,
+        94,
+        40,
+        172,
+        118,
+        3
+      ],
+      "accounts": [
+        {
+          "name": "admin",
+          "signer": true,
+          "relations": [
+            "config"
+          ]
+        },
+        {
+          "name": "config",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "validators",
+          "type": {
+            "vec": "pubkey"
+          }
+        },
+        {
+          "name": "proof_threshold",
+          "type": "u8"
+        },
+        {
+          "name": "panel_threshold",
+          "type": "u8"
+        }
+      ]
+    },
+    {
+      "name": "settle",
+      "docs": [
+        "Permissionless: once the challenge window closes unchallenged, the",
+        "operator receives payment plus their bond back. No approval needed."
+      ],
+      "discriminator": [
+        175,
+        42,
+        185,
+        87,
+        144,
+        131,
+        102,
+        212
+      ],
+      "accounts": [
+        {
+          "name": "caller",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "job",
+          "writable": true
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "job"
+              }
+            ]
+          }
+        },
+        {
+          "name": "usdc_mint"
+        },
+        {
+          "name": "farmer_token",
+          "writable": true
+        },
+        {
+          "name": "farmer_profile",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  102,
+                  97,
+                  114,
+                  109,
+                  101,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "job.farmer",
+                "account": "Job"
+              }
+            ]
+          }
+        },
+        {
+          "name": "operator",
+          "docs": [
+            "Absent for `cancel_job` (no operator yet)."
+          ],
+          "writable": true,
+          "optional": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  111,
+                  112,
+                  101,
+                  114,
+                  97,
+                  116,
+                  111,
+                  114
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "job.operator",
+                "account": "Job"
+              }
+            ]
+          }
+        },
+        {
+          "name": "operator_token",
+          "writable": true,
+          "optional": true
+        },
+        {
+          "name": "treasury_token",
+          "writable": true
+        },
+        {
+          "name": "validator_pool_token",
+          "writable": true
+        },
+        {
+          "name": "token_program"
+        }
+      ],
+      "args": []
+    },
+    {
+      "name": "submit_proof",
+      "docs": [
+        "Operator submits the proof. At least `proof_threshold` data validators",
+        "must co-sign (passed as signer remaining accounts). The program itself",
+        "re-checks the liters-per-hectare band and coverage. Validators who",
+        "are the job's farmer or operator do not count. Must land no later than",
+        "the spray deadline (after it, only `reclaim_expired` applies)."
+      ],
+      "discriminator": [
+        54,
+        241,
+        46,
+        84,
+        4,
+        212,
+        46,
+        94
+      ],
+      "accounts": [
+        {
+          "name": "authority",
+          "signer": true
+        },
+        {
+          "name": "config",
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  99,
+                  111,
+                  110,
+                  102,
+                  105,
+                  103
+                ]
+              }
+            ]
+          }
+        },
+        {
+          "name": "job",
+          "writable": true
+        }
+      ],
+      "args": [
+        {
+          "name": "proof_hash",
+          "type": {
+            "array": [
+              "u8",
+              32
+            ]
+          }
+        },
+        {
+          "name": "liters_ml",
+          "type": "u64"
+        },
+        {
+          "name": "area_covered_cha",
+          "type": "u32"
+        }
+      ]
+    }
+  ],
+  "accounts": [
+    {
+      "name": "Certificate",
+      "discriminator": [
+        202,
+        229,
+        222,
+        220,
+        116,
+        20,
+        74,
+        67
+      ]
+    },
+    {
+      "name": "Config",
+      "discriminator": [
+        155,
+        12,
+        170,
+        224,
+        30,
+        250,
+        204,
+        130
+      ]
+    },
+    {
+      "name": "FarmerProfile",
+      "discriminator": [
+        167,
+        109,
+        11,
+        146,
+        241,
+        174,
+        172,
+        255
+      ]
+    },
+    {
+      "name": "Job",
+      "discriminator": [
+        75,
+        124,
+        80,
+        203,
+        161,
+        180,
+        202,
+        80
+      ]
+    },
+    {
+      "name": "Operator",
+      "discriminator": [
+        219,
+        31,
+        188,
+        145,
+        69,
+        139,
+        204,
+        117
+      ]
+    }
+  ],
+  "errors": [
+    {
+      "code": 6000,
+      "name": "InvalidAmount",
+      "msg": "Amount must be greater than zero"
+    },
+    {
+      "code": 6001,
+      "name": "InvalidArea",
+      "msg": "Area must be greater than zero"
+    },
+    {
+      "code": 6002,
+      "name": "InvalidRate",
+      "msg": "Invalid target rate or tolerance"
+    },
+    {
+      "code": 6003,
+      "name": "InvalidDeadline",
+      "msg": "Deadline must be in the future"
+    },
+    {
+      "code": 6004,
+      "name": "InvalidState",
+      "msg": "Job is not in the required state"
+    },
+    {
+      "code": 6005,
+      "name": "Unauthorized",
+      "msg": "Signer is not allowed to do this"
+    },
+    {
+      "code": 6006,
+      "name": "BondTooSmall",
+      "msg": "Bond must be at least the job amount"
+    },
+    {
+      "code": 6007,
+      "name": "OperatorBusy",
+      "msg": "Operator already has an active job"
+    },
+    {
+      "code": 6008,
+      "name": "DeadlinePassed",
+      "msg": "Spray deadline has passed"
+    },
+    {
+      "code": 6009,
+      "name": "DeadlineNotReached",
+      "msg": "Spray deadline has not passed yet"
+    },
+    {
+      "code": 6010,
+      "name": "InsufficientCoverage",
+      "msg": "Covered area is below the minimum"
+    },
+    {
+      "code": 6011,
+      "name": "RateOutOfBand",
+      "msg": "Applied liters per hectare is outside the tolerance band"
+    },
+    {
+      "code": 6012,
+      "name": "WindowOpen",
+      "msg": "Challenge window is still open"
+    },
+    {
+      "code": 6013,
+      "name": "WindowClosed",
+      "msg": "Challenge window has closed"
+    },
+    {
+      "code": 6014,
+      "name": "MissingOperatorAccount",
+      "msg": "Operator accounts are required for this instruction"
+    },
+    {
+      "code": 6015,
+      "name": "NotEnoughValidators",
+      "msg": "Not enough validators signed"
+    },
+    {
+      "code": 6016,
+      "name": "InvalidValidatorSet",
+      "msg": "Validator set or thresholds are invalid"
+    },
+    {
+      "code": 6017,
+      "name": "InsufficientFunds",
+      "msg": "Vault balance does not cover the fees"
+    },
+    {
+      "code": 6018,
+      "name": "NotCertified",
+      "msg": "Drone and operator need a valid calibration certificate"
+    },
+    {
+      "code": 6019,
+      "name": "InvalidChallengeWindow",
+      "msg": "Challenge window must be between 60 seconds and 7 days"
+    },
+    {
+      "code": 6020,
+      "name": "CertificateRevoked",
+      "msg": "Certificate was revoked by a validator panel and cannot be re-issued"
+    },
+    {
+      "code": 6021,
+      "name": "ProofAfterDeadline",
+      "msg": "Proof submitted after the spray deadline"
+    },
+    {
+      "code": 6022,
+      "name": "AreaExceedsPosted",
+      "msg": "Covered area exceeds 105% of the posted area"
+    },
+    {
+      "code": 6023,
+      "name": "OperatorIsFarmer",
+      "msg": "The job's farmer cannot accept their own job"
+    },
+    {
+      "code": 6024,
+      "name": "MathOverflow",
+      "msg": "Arithmetic overflow"
+    }
+  ],
+  "types": [
+    {
+      "name": "Certificate",
+      "docs": [
+        "Calibration certificate for one operator flying one drone."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "operator",
+            "type": "pubkey"
+          },
+          {
+            "name": "drone_hash",
+            "docs": [
+              "SHA-256 of the drone serial number."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "meter_error_bps",
+            "docs": [
+              "|reported liters − weighed liters| / weighed liters, in basis points."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "operator_passed",
+            "docs": [
+              "Operator passed the practical part (planning, accuracy, safety)."
+            ],
+            "type": "bool"
+          },
+          {
+            "name": "report_hash",
+            "docs": [
+              "SHA-256 of the full test report (cards, photos, weights) on Arweave."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "issued_by",
+            "type": "pubkey"
+          },
+          {
+            "name": "issued_at",
+            "type": "i64"
+          },
+          {
+            "name": "valid_until",
+            "type": "i64"
+          },
+          {
+            "name": "revoked",
+            "type": "bool"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Config",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "admin",
+            "type": "pubkey"
+          },
+          {
+            "name": "usdc_mint",
+            "type": "pubkey"
+          },
+          {
+            "name": "treasury",
+            "docs": [
+              "USDC token account receiving the 3% Kvali fee."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "validator_pool",
+            "docs": [
+              "USDC token account receiving validator fees (v1: a multisig of the",
+              "validators, who split it off-chain; v2: on-chain claims)."
+            ],
+            "type": "pubkey"
+          },
+          {
+            "name": "validators",
+            "docs": [
+              "v1 permissioned validator set; unused slots are Pubkey::default()."
+            ],
+            "type": {
+              "array": [
+                "pubkey",
+                7
+              ]
+            }
+          },
+          {
+            "name": "validator_count",
+            "type": "u8"
+          },
+          {
+            "name": "proof_threshold",
+            "docs": [
+              "Data validators needed to co-sign a proof."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "panel_threshold",
+            "docs": [
+              "Field validators needed to rule on a challenge."
+            ],
+            "type": "u8"
+          },
+          {
+            "name": "challenge_window_secs",
+            "docs": [
+              "Seconds a passing proof stays open to challenge (D14: 24 h real,",
+              "60 s demo). Bounded by MIN/MAX_CHALLENGE_WINDOW_SECS."
+            ],
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "FarmerProfile",
+      "docs": [
+        "Public record of a farmer's behaviour, so operators can see serial",
+        "challengers before accepting."
+      ],
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "jobs_posted",
+            "type": "u32"
+          },
+          {
+            "name": "challenges_won",
+            "type": "u32"
+          },
+          {
+            "name": "challenges_lost",
+            "type": "u32"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Job",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "farmer",
+            "type": "pubkey"
+          },
+          {
+            "name": "operator",
+            "type": "pubkey"
+          },
+          {
+            "name": "job_id",
+            "type": "u64"
+          },
+          {
+            "name": "amount",
+            "docs": [
+              "USDC base units (6 decimals)."
+            ],
+            "type": "u64"
+          },
+          {
+            "name": "bond_amount",
+            "type": "u64"
+          },
+          {
+            "name": "challenge_bond",
+            "type": "u64"
+          },
+          {
+            "name": "field_hash",
+            "docs": [
+              "SHA-256 of the field polygon GeoJSON."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "chemical_code",
+            "type": "u16"
+          },
+          {
+            "name": "target_rate_ml_per_ha",
+            "type": "u32"
+          },
+          {
+            "name": "tolerance_bps",
+            "type": "u16"
+          },
+          {
+            "name": "area_cha",
+            "docs": [
+              "Area in hundredths of a hectare (1 cha = 100 m²)."
+            ],
+            "type": "u32"
+          },
+          {
+            "name": "drone_hash",
+            "docs": [
+              "SHA-256 of the certified drone's serial number; the proof manifest",
+              "must come from this drone."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "proof_hash",
+            "docs": [
+              "SHA-256 of the Arweave proof manifest."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "evidence_hash",
+            "docs": [
+              "SHA-256 of the farmer's challenge evidence."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "report_hash",
+            "docs": [
+              "SHA-256 of the validator panel's inspection report."
+            ],
+            "type": {
+              "array": [
+                "u8",
+                32
+              ]
+            }
+          },
+          {
+            "name": "liters_ml",
+            "type": "u64"
+          },
+          {
+            "name": "area_covered_cha",
+            "type": "u32"
+          },
+          {
+            "name": "state",
+            "type": {
+              "defined": {
+                "name": "JobState"
+              }
+            }
+          },
+          {
+            "name": "created_at",
+            "type": "i64"
+          },
+          {
+            "name": "spray_deadline",
+            "type": "i64"
+          },
+          {
+            "name": "challenge_deadline",
+            "type": "i64"
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          },
+          {
+            "name": "vault_bump",
+            "type": "u8"
+          }
+        ]
+      }
+    },
+    {
+      "name": "JobState",
+      "type": {
+        "kind": "enum",
+        "variants": [
+          {
+            "name": "Posted"
+          },
+          {
+            "name": "Accepted"
+          },
+          {
+            "name": "ProofSubmitted"
+          },
+          {
+            "name": "Challenged"
+          },
+          {
+            "name": "Released"
+          },
+          {
+            "name": "Refunded"
+          },
+          {
+            "name": "Cancelled"
+          }
+        ]
+      }
+    },
+    {
+      "name": "Operator",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "authority",
+            "type": "pubkey"
+          },
+          {
+            "name": "jobs_completed",
+            "type": "u32"
+          },
+          {
+            "name": "jobs_failed",
+            "type": "u32"
+          },
+          {
+            "name": "active_job",
+            "type": {
+              "option": "pubkey"
+            }
+          },
+          {
+            "name": "bump",
+            "type": "u8"
+          }
+        ]
+      }
+    }
+  ]
+}

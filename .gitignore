@@ -1,0 +1,64 @@
+target/
+node_modules/
+.anchor/
+test-ledger/
+*.env
+.env*
+
+# Expo app (app/)
+app/node_modules/
+app/.expo/
+app/dist/
+app/web-build/
+app/expo-env.d.ts
+app/ios/
+app/android/
+
+# devnet test keys
+keys/
+
+# --- public-repo prep (k11) ---
+# secrets (also matches app/.env, any level)
+.env
+.env.*
+*.env
+**/keys/
+*.key
+*-keypair.json
+
+# deps / build output at any level
+**/node_modules/
+**/target/
+**/dist/
+**/.expo/
+**/.anchor/
+
+# logs / OS / TS caches
+*.log
+.DS_Store
+*.tsbuildinfo
+tsconfig.tsbuildinfo
+__pycache__/
+*.pyc
+
+# large generated PDFs (markdown sources are kept)
+docs/records/pdf/
+
+# brand drafts (final kvali-logo-* files are kept)
+brand/option-*
+brand/round2-*
+brand/preview.*
+app/assets/template-icons-backup/
+
+# Internal project-management files (kept local, not public)
+tracker/
+docs/COMMS.md
+docs/ORCHESTRATION.md
+docs/records/
+docs/PLAN.md
+docs/QA.md
+docs/SUBMISSION.md
+docs/SUBMISSION_FORM.md
+docs/PITCH_SCRIPT.md
+brand/round2_build.py
+deck/

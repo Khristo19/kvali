@@ -1,0 +1,316 @@
+{
+  "generatedAt": "2026-10-08T17:06:02.263Z",
+  "source": "Copernicus Sentinel-2 L2A via Copernicus Data Space Ecosystem",
+  "attribution": "Contains modified Copernicus Sentinel data 2026",
+  "health_thresholds": {
+    "metric": "mean NDVI over field polygon, cloud-masked",
+    "good": ">= 0.55",
+    "medium": "0.35 to < 0.55",
+    "poor": "< 0.35",
+    "note": "Vineyards in early autumn (post-veraison, pre-leaf-fall). Indicates canopy vigour only, not proof of spraying."
+  },
+  "cloud_mask": "SCL classes 3,8,9,10 counted as cloud/shadow; 0,1 also excluded from NDVI. cloud_pct = share of field pixels in 3,8,9,10.",
+  "fields": {
+    "field-1": {
+      "latest": {
+        "date": "2026-09-24",
+        "ndvi": 0.712,
+        "cloud_pct": 0
+      },
+      "series": [
+        {
+          "date": "2026-07-11",
+          "ndvi": 0.778,
+          "valid_pct": 100
+        },
+        {
+          "date": "2026-07-26",
+          "ndvi": 0.614,
+          "valid_pct": 100
+        },
+        {
+          "date": "2026-07-31",
+          "ndvi": 0.595,
+          "valid_pct": 100
+        },
+        {
+          "date": "2026-08-05",
+          "ndvi": 0.584,
+          "valid_pct": 100
+        },
+        {
+          "date": "2026-08-15",
+          "ndvi": 0.696,
+          "valid_pct": 100
+        },
+        {
+          "date": "2026-08-20",
+          "ndvi": 0.65,
+          "valid_pct": 100
+        },
+        {
+          "date": "2026-08-25",
+          "ndvi": 0.661,
+          "valid_pct": 100
+        },
+        {
+          "date": "2026-08-30",
+          "ndvi": 0.716,
+          "valid_pct": 83
+        },
+        {
+          "date": "2026-09-04",
+          "ndvi": 0.748,
+          "valid_pct": 100
+        },
+        {
+          "date": "2026-09-09",
+          "ndvi": 0.745,
+          "valid_pct": 100
+        },
+        {
+          "date": "2026-09-14",
+          "ndvi": 0.742,
+          "valid_pct": 100
+        },
+        {
+          "date": "2026-09-19",
+          "ndvi": 0.694,
+          "valid_pct": 100
+        },
+        {
+          "date": "2026-09-24",
+          "ndvi": 0.712,
+          "valid_pct": 100
+        }
+      ],
+      "health": "good",
+      "images": [
+        {
+          "date": "2026-09-27",
+          "file": "field-1-truecolor-2026-09-27.png",
+          "cloud_pct": 0
+        },
+        {
+          "date": "2026-08-18",
+          "file": "field-1-truecolor-2026-08-18.png",
+          "cloud_pct": 0
+        }
+      ],
+      "image_bbox": [
+        45.574077,
+        41.954745,
+        45.58081,
+        41.95867
+      ],
+      "image_size": [
+        56,
+        44
+      ]
+    },
+    "field-2": {
+      "latest": {
+        "date": "2026-09-24",
+        "ndvi": 0.657,
+        "cloud_pct": 0
+      },
+      "series": [
+        {
+          "date": "2026-07-11",
+          "ndvi": 0.544,
+          "valid_pct": 100
+        },
+        {
+          "date": "2026-07-26",
+          "ndvi": 0.491,
+          "valid_pct": 100
+        },
+        {
+          "date": "2026-07-31",
+          "ndvi": 0.459,
+          "valid_pct": 100
+        },
+        {
+          "date": "2026-08-05",
+          "ndvi": 0.463,
+          "valid_pct": 100
+        },
+        {
+          "date": "2026-08-10",
+          "ndvi": 0.435,
+          "valid_pct": 100
+        },
+        {
+          "date": "2026-08-15",
+          "ndvi": 0.563,
+          "valid_pct": 100
+        },
+        {
+          "date": "2026-08-20",
+          "ndvi": 0.56,
+          "valid_pct": 100
+        },
+        {
+          "date": "2026-08-25",
+          "ndvi": 0.555,
+          "valid_pct": 100
+        },
+        {
+          "date": "2026-08-30",
+          "ndvi": 0.631,
+          "valid_pct": 100
+        },
+        {
+          "date": "2026-09-04",
+          "ndvi": 0.663,
+          "valid_pct": 100
+        },
+        {
+          "date": "2026-09-14",
+          "ndvi": 0.661,
+          "valid_pct": 100
+        },
+        {
+          "date": "2026-09-19",
+          "ndvi": 0.649,
+          "valid_pct": 100
+        },
+        {
+          "date": "2026-09-24",
+          "ndvi": 0.657,
+          "valid_pct": 100
+        }
+      ],
+      "health": "good",
+      "images": [
+        {
+          "date": "2026-09-24",
+          "file": "field-2-truecolor-2026-09-24.png",
+          "cloud_pct": 0
+        },
+        {
+          "date": "2026-08-13",
+          "file": "field-2-truecolor-2026-08-13.png",
+          "cloud_pct": 0
+        }
+      ],
+      "image_bbox": [
+        45.828978,
+        41.950916,
+        45.835867,
+        41.957862
+      ],
+      "image_size": [
+        57,
+        77
+      ]
+    },
+    "field-3": {
+      "latest": {
+        "date": "2026-09-24",
+        "ndvi": 0.663,
+        "cloud_pct": 0
+      },
+      "series": [
+        {
+          "date": "2026-07-11",
+          "ndvi": 0.62,
+          "valid_pct": 100
+        },
+        {
+          "date": "2026-07-21",
+          "ndvi": 0.643,
+          "valid_pct": 100
+        },
+        {
+          "date": "2026-07-26",
+          "ndvi": 0.659,
+          "valid_pct": 100
+        },
+        {
+          "date": "2026-07-31",
+          "ndvi": 0.623,
+          "valid_pct": 100
+        },
+        {
+          "date": "2026-08-05",
+          "ndvi": 0.615,
+          "valid_pct": 100
+        },
+        {
+          "date": "2026-08-10",
+          "ndvi": 0.624,
+          "valid_pct": 100
+        },
+        {
+          "date": "2026-08-15",
+          "ndvi": 0.752,
+          "valid_pct": 100
+        },
+        {
+          "date": "2026-08-20",
+          "ndvi": 0.725,
+          "valid_pct": 100
+        },
+        {
+          "date": "2026-08-25",
+          "ndvi": 0.716,
+          "valid_pct": 100
+        },
+        {
+          "date": "2026-08-30",
+          "ndvi": 0.752,
+          "valid_pct": 100
+        },
+        {
+          "date": "2026-09-04",
+          "ndvi": 0.786,
+          "valid_pct": 100
+        },
+        {
+          "date": "2026-09-09",
+          "ndvi": 0.738,
+          "valid_pct": 100
+        },
+        {
+          "date": "2026-09-14",
+          "ndvi": 0.732,
+          "valid_pct": 100
+        },
+        {
+          "date": "2026-09-19",
+          "ndvi": 0.644,
+          "valid_pct": 100
+        },
+        {
+          "date": "2026-09-24",
+          "ndvi": 0.663,
+          "valid_pct": 100
+        }
+      ],
+      "health": "good",
+      "images": [
+        {
+          "date": "2026-09-24",
+          "file": "field-3-truecolor-2026-09-24.png",
+          "cloud_pct": 0
+        },
+        {
+          "date": "2026-08-13",
+          "file": "field-3-truecolor-2026-08-13.png",
+          "cloud_pct": 0
+        }
+      ],
+      "image_bbox": [
+        45.642529,
+        42.009066,
+        45.650619,
+        42.013751
+      ],
+      "image_size": [
+        67,
+        52
+      ]
+    }
+  }
+}

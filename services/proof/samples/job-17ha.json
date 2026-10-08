@@ -1,0 +1,24 @@
+{
+  "simulated": true,
+  "notes": "SIMULATED DEMO DATA. Not a real spray job, drone, operator or field. Generated for the Kvali demo and tests (task k06).",
+  "job_id": "SIM-KAKHETI-0017",
+  "field_ref": "SIM-GE-KAKHETI-TELAVI-KISISKHEVI-F017",
+  "region": "Kakheti, Georgia (village batch job, Kisiskhevi area)",
+  "crop": "vineyard + hazelnut (mixed smallholder plots, batched)",
+  "farmers_in_batch": 6,
+  "area_cha": 1700,
+  "target_rate_ml_per_ha": 10000,
+  "tolerance_bps": 1500,
+  "product": {
+    "label": "Copper-based contact fungicide (generic, water-dispersible granule)",
+    "form": "water-based tank mix",
+    "mix_density_kg_per_l": 1.01
+  },
+  "spray_window": {
+    "earliest": "2026-10-12T03:00:00Z",
+    "deadline": "2026-10-16T15:00:00Z"
+  },
+  "label_wind_limit_ms": 4,
+  "payment_usdc": 300,
+  "field_hash": "SIMULATED-sha256-of-field-geojson"
+}

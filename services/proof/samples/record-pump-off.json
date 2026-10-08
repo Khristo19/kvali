@@ -1,0 +1,147 @@
+{
+  "version": 1,
+  "simulated": true,
+  "notes": "SIMULATED DEMO DATA. Not a real spray job, drone, operator or field. Generated for the Kvali demo and tests (task k06). Pump off: same flights and track, almost nothing dispensed. Expected verdict: FAIL on rate.",
+  "sample": "pump-off",
+  "job": "SIMULATED-job-pda",
+  "job_ref": "SIM-KAKHETI-0017",
+  "field_hash": "SIMULATED-sha256-of-field-geojson",
+  "operator": "SIMULATED-operator-pubkey",
+  "drone": {
+    "model": "DJI Agras T50",
+    "tank_capacity_l": 40,
+    "serial_hash": "SIMULATED-sha256-of-drone-serial"
+  },
+  "flights": [
+    {
+      "n": 1,
+      "start": "2026-10-14T03:12:00Z",
+      "end": "2026-10-14T03:27:00Z",
+      "liters": 0.1,
+      "area_ha": 3.65,
+      "tank_kg_before": 38.4,
+      "tank_kg_after": 38.3,
+      "weather": {
+        "wind_ms": 1.6,
+        "gust_ms": 2.4,
+        "wind_dir_deg": 95,
+        "temp_c": 9.8,
+        "humidity_pct": 84
+      }
+    },
+    {
+      "n": 2,
+      "start": "2026-10-14T03:36:00Z",
+      "end": "2026-10-14T03:51:00Z",
+      "liters": 0,
+      "area_ha": 3.6,
+      "tank_kg_before": 38.4,
+      "tank_kg_after": 38.4,
+      "weather": {
+        "wind_ms": 1.8,
+        "gust_ms": 2.7,
+        "wind_dir_deg": 100,
+        "temp_c": 10.6,
+        "humidity_pct": 81
+      }
+    },
+    {
+      "n": 3,
+      "start": "2026-10-14T04:00:00Z",
+      "end": "2026-10-14T04:14:00Z",
+      "liters": 0.1,
+      "area_ha": 3.45,
+      "tank_kg_before": 37.4,
+      "tank_kg_after": 37.3,
+      "weather": {
+        "wind_ms": 2.1,
+        "gust_ms": 3,
+        "wind_dir_deg": 110,
+        "temp_c": 11.9,
+        "humidity_pct": 77
+      }
+    },
+    {
+      "n": 4,
+      "start": "2026-10-14T04:24:00Z",
+      "end": "2026-10-14T04:39:00Z",
+      "liters": 0,
+      "area_ha": 3.6,
+      "tank_kg_before": 38.4,
+      "tank_kg_after": 38.4,
+      "weather": {
+        "wind_ms": 2.4,
+        "gust_ms": 3.3,
+        "wind_dir_deg": 115,
+        "temp_c": 13.2,
+        "humidity_pct": 72
+      }
+    },
+    {
+      "n": 5,
+      "start": "2026-10-14T04:48:00Z",
+      "end": "2026-10-14T05:00:00Z",
+      "liters": 0.1,
+      "area_ha": 2.7,
+      "tank_kg_before": 29.3,
+      "tank_kg_after": 29.2,
+      "weather": {
+        "wind_ms": 2.6,
+        "gust_ms": 3.6,
+        "wind_dir_deg": 120,
+        "temp_c": 14.4,
+        "humidity_pct": 68
+      }
+    }
+  ],
+  "totals": {
+    "liters_ml": 300,
+    "area_covered_cha": 1700
+  },
+  "weather": {
+    "source": "simulated (open-meteo shape)",
+    "wind_ms": 2.6,
+    "gust_ms": 3.6,
+    "wind_dir_deg": 110,
+    "temp_c": 12,
+    "humidity_pct": 76,
+    "label_wind_limit_ms": 4,
+    "within_limits": true
+  },
+  "tank": {
+    "kg_before": 181.9,
+    "kg_after": 181.6,
+    "mix_density_kg_per_l": 1.01,
+    "method": "sum over refills of net mix weight weighed before and after each flight"
+  },
+  "spot_check": {
+    "selected": false,
+    "photos": [],
+    "coverage_pct": null
+  },
+  "verdict": {
+    "pass": false,
+    "applied_rate_ml_per_ha": 17,
+    "coverage_bps": 10000,
+    "checks": [
+      {
+        "name": "coverage",
+        "pass": true,
+        "detail": "100.0% of posted area (min 95%)"
+      },
+      {
+        "name": "rate",
+        "pass": false,
+        "detail": "0.02 L/ha, allowed 8.50–11.50"
+      },
+      {
+        "name": "tank-crosscheck",
+        "pass": true,
+        "detail": "flow 0.3 L vs tank 0.3 L (1.0% apart)"
+      }
+    ]
+  },
+  "raw_files": [],
+  "validators": [],
+  "created_at": "2026-10-14T05:30:00Z"
+}

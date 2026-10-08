@@ -1,0 +1,87 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kvali — Farmer: mark your field</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+body{margin:0}
+a{color:#2F5D3E}a:hover{color:#16241C}
+</style>
+</helmet>
+<div style="width: 390px; height: 960px; box-sizing: border-box; background: #F4F1E8; color: #3E4A40; font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif; font-size: 16px; line-height: 1.45; display: flex; flex-direction: column">
+
+  <div style="display: flex; flex-direction: column; gap: 16px; padding: 60px 20px 24px; flex: 1">
+
+    <div style="display: flex; align-items: center; gap: 12px">
+      <a href="FarmerJobStatus.dc.html" aria-label="Back" style="width: 48px; height: 48px; border-radius: 12px; background: #FBFAF5; border: 1px solid #DCD7C6; display: flex; align-items: center; justify-content: center; flex-shrink: 0">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#16241C" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+      </a>
+      <div style="display: flex; flex-direction: column; min-width: 0">
+        <h1 style="margin: 0; font-family: 'Space Grotesk', 'Helvetica Neue', Arial, sans-serif; font-size: 24px; font-weight: 700; color: #16241C; line-height: 1.1">Mark your field</h1>
+        <p style="margin: 0; font-size: 16px; color: #5E685B">Step 1 of 3 · Post a job</p>
+      </div>
+    </div>
+
+    <div role="tablist" aria-label="How to mark the field" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px; padding: 4px; background: #FBFAF5; border: 1px solid #DCD7C6; border-radius: 14px">
+      <button type="button" role="tab" aria-selected="true" style="min-height: 48px; border-radius: 10px; border: none; background: #2F5D3E; color: #FBFAF5; font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif; font-size: 16px; font-weight: 600; cursor: pointer">Draw on map</button>
+      <a href="FarmerCadastral.dc.html" role="tab" aria-selected="false" style="min-height: 48px; border-radius: 10px; display: flex; align-items: center; justify-content: center; color: #16241C; font-size: 16px; font-weight: 600; text-decoration: none">Cadastral code</a>
+    </div>
+
+    <div style="position: relative; border-radius: 14px; overflow: hidden; border: 1px solid #DCD7C6; height: 380px; background: #33402C">
+      <svg aria-label="Satellite map with the field outline drawn on it" role="img" width="350" height="380" viewBox="0 0 350 380" style="display: block">
+        <rect width="350" height="380" fill="#33402C"/>
+        <path d="M0 0 L140 0 L120 70 L0 95 Z" fill="#46553A"/>
+        <path d="M150 0 L350 0 L350 55 L135 75 Z" fill="#5A5F3E"/>
+        <path d="M0 105 L60 95 L80 355 L0 380 Z" fill="#4E5B3B"/>
+        <path d="M300 75 L350 70 L350 380 L330 380 Z" fill="#3D4A33"/>
+        <path d="M70 380 L330 380 L322 340 L82 362 Z" fill="#6A6545"/>
+        <g stroke="#2A3524" stroke-width="2" opacity="0.7">
+          <path d="M90 108 L278 88"/><path d="M92 128 L281 108"/><path d="M93 148 L283 128"/><path d="M95 168 L285 148"/><path d="M96 188 L287 168"/><path d="M98 208 L289 188"/><path d="M99 228 L291 208"/><path d="M101 248 L293 228"/><path d="M102 268 L295 248"/><path d="M104 288 L297 268"/><path d="M105 308 L299 288"/>
+        </g>
+        <path d="M0 98 C120 82 230 70 350 62" stroke="#8C8463" stroke-width="5" fill="none"/>
+        <path d="M86 92 L292 72 L304 300 L104 336 Z" fill="#F4F1E8" fill-opacity="0.16" stroke="#F4F1E8" stroke-width="3.5" stroke-linejoin="round"/>
+        <g fill="#FBFAF5" stroke="#16241C" stroke-width="2.5">
+          <circle cx="86" cy="92" r="11"/><circle cx="292" cy="72" r="11"/><circle cx="304" cy="300" r="11"/><circle cx="104" cy="336" r="11"/>
+        </g>
+        <g fill="#F4F1E8" fill-opacity="0.8">
+          <circle cx="189" cy="82" r="5"/><circle cx="298" cy="186" r="5"/><circle cx="204" cy="318" r="5"/><circle cx="95" cy="214" r="5"/>
+        </g>
+      </svg>
+      <div style="position: absolute; left: 12px; top: 12px; background: #FBFAF5; border-radius: 10px; padding: 8px 12px; font-size: 15px; font-weight: 600; color: #16241C">4 points · tap to add more</div>
+      <button type="button" aria-label="Go to my location" style="position: absolute; right: 12px; bottom: 12px; width: 48px; height: 48px; border-radius: 12px; background: #FBFAF5; border: 1px solid #DCD7C6; display: flex; align-items: center; justify-content: center; cursor: pointer">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#16241C" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3"/></svg>
+      </button>
+    </div>
+
+    <p style="margin: 0; font-size: 16px; color: #3E4A40">Tap each corner of your field. Drag a point to move it.</p>
+
+    <div style="background: #FBFAF5; border: 1px solid #DCD7C6; border-radius: 14px; padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; gap: 12px">
+      <div style="display: flex; flex-direction: column">
+        <span style="font-size: 16px; color: #5E685B">Field size</span>
+        <span style="font-family: 'Space Grotesk', 'Helvetica Neue', Arial, sans-serif; font-size: 36px; font-weight: 700; color: #16241C; line-height: 1.1">4.2 ha</span>
+      </div>
+      <div style="display: flex; gap: 8px">
+        <button type="button" style="min-height: 48px; padding: 0 16px; border-radius: 12px; background: #F4F1E8; border: 1px solid #DCD7C6; color: #16241C; font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif; font-size: 16px; font-weight: 600; cursor: pointer">Undo</button>
+        <button type="button" style="min-height: 48px; padding: 0 16px; border-radius: 12px; background: #F4F1E8; border: 1px solid #DCD7C6; color: #16241C; font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif; font-size: 16px; font-weight: 600; cursor: pointer">Clear</button>
+      </div>
+    </div>
+
+    <a href="FarmerFieldCard.dc.html" style="display: flex; align-items: center; justify-content: center; min-height: 56px; padding: 12px 20px; border-radius: 14px; background: #2F5D3E; color: #FBFAF5; font-size: 18px; font-weight: 600; text-decoration: none">Save field</a>
+  </div>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":960}}'>
+class Component extends DCLogic {
+  renderVals() {
+    return {};
+  }
+}
+</script>
+</body>
+</html>

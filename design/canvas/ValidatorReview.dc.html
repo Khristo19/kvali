@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Kvali — Validator: proof review</title>
+<script src="./support.js"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+<style>
+body{margin:0}
+a{color:#2F5D3E}a:hover{color:#16241C}
+</style>
+</helmet>
+<div style="width: 390px; height: 1500px; box-sizing: border-box; background: #F4F1E8; color: #3E4A40; font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif; font-size: 16px; line-height: 1.45; display: flex; flex-direction: column">
+
+  <div style="display: flex; flex-direction: column; gap: 16px; padding: 60px 20px 24px; flex: 1">
+
+    <div style="display: flex; align-items: center; gap: 12px">
+      <a href="#queue" aria-label="Back to queue" style="width: 48px; height: 48px; border-radius: 12px; background: #FBFAF5; border: 1px solid #DCD7C6; display: flex; align-items: center; justify-content: center; flex-shrink: 0">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#16241C" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>
+      </a>
+      <div style="display: flex; flex-direction: column; min-width: 0">
+        <h1 style="margin: 0; font-family: 'Space Grotesk', 'Helvetica Neue', Arial, sans-serif; font-size: 24px; font-weight: 700; color: #16241C; line-height: 1.1">Proof review</h1>
+        <p style="margin: 0; font-size: 16px; color: #5E685B">Job K-1042 · 2 of 3 checks needed</p>
+      </div>
+    </div>
+
+    <div style="background: #FBFAF5; border: 1px solid #DCD7C6; border-radius: 14px; padding: 16px 18px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px 12px">
+      <div style="display: flex; flex-direction: column"><span style="font-size: 15px; color: #5E685B">Field</span><span style="font-size: 16px; font-weight: 600; color: #16241C">Vineyard, 4.2 ha, Kakheti</span></div>
+      <div style="display: flex; flex-direction: column"><span style="font-size: 15px; color: #5E685B">Operator</span><span style="font-size: 16px; font-weight: 600; color: #16241C">Giorgi M. · Agras T40</span></div>
+      <div style="display: flex; flex-direction: column"><span style="font-size: 15px; color: #5E685B">Product</span><span style="font-size: 16px; font-weight: 600; color: #16241C">Copper fungicide, 12 L/ha</span></div>
+      <div style="display: flex; flex-direction: column"><span style="font-size: 15px; color: #5E685B">Sprayed</span><span style="font-size: 16px; font-weight: 600; color: #16241C">7 Oct, 07:48–08:31</span></div>
+    </div>
+
+    <div style="background: #FBFAF5; border: 1px solid #DCD7C6; border-radius: 14px; overflow: hidden; display: flex; flex-direction: column">
+      <div style="display: flex; align-items: center; justify-content: space-between; padding: 14px 18px 10px">
+        <span style="font-family: 'Space Grotesk', 'Helvetica Neue', Arial, sans-serif; font-size: 18px; font-weight: 700; color: #16241C">Flight track over field</span>
+        <span style="font-size: 15px; color: #5E685B">GPS · 43 min</span>
+      </div>
+      <div role="img" aria-label="Map placeholder: field outline with drone flight passes" style="height: 220px; background: #E6E3D6; position: relative; display: flex; align-items: center; justify-content: center">
+        <svg width="350" height="200" viewBox="0 0 350 200" fill="none" aria-hidden="true">
+          <path d="M40 40 L300 28 L318 150 L60 172 Z" fill="#D9E3D2" stroke="#2F5D3E" stroke-width="3" stroke-linejoin="round"/>
+          <g stroke="#2F5D3E" stroke-width="2" stroke-dasharray="6 5" opacity="0.8">
+            <path d="M56 60 L302 48"/><path d="M60 82 L304 70"/><path d="M63 104 L307 92"/><path d="M66 126 L310 114"/><path d="M69 148 L313 136"/>
+          </g>
+          <g stroke="#2F5D3E" stroke-width="2"><path d="M302 48 L304 70"/><path d="M60 82 L63 104"/><path d="M307 92 L310 114"/><path d="M66 126 L69 148"/></g>
+          <circle cx="56" cy="60" r="5" fill="#2F5D3E"/>
+          <circle cx="313" cy="136" r="5" fill="#A04F0C"/>
+        </svg>
+        <span style="position: absolute; left: 12px; bottom: 10px; font-size: 14px; color: #3E4A40; background: #FBFAF5; border: 1px solid #DCD7C6; border-radius: 8px; padding: 2px 8px">[map tiles]</span>
+      </div>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 10px">
+      <span style="font-family: 'Space Grotesk', 'Helvetica Neue', Arial, sans-serif; font-size: 18px; font-weight: 700; color: #16241C">Satellite</span>
+      <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px">
+        <figure style="margin: 0; display: flex; flex-direction: column; gap: 6px">
+          <div role="img" aria-label="Satellite image before spraying, placeholder" style="height: 150px; border-radius: 12px; background: #CFD6C3; border: 1px solid #DCD7C6; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #3E4A40">[satellite image]</div>
+          <figcaption style="font-size: 16px; color: #3E4A40"><strong style="font-weight: 600; color: #16241C">Before</strong> · 5 Oct</figcaption>
+        </figure>
+        <figure style="margin: 0; display: flex; flex-direction: column; gap: 6px">
+          <div role="img" aria-label="Satellite image after spraying, placeholder" style="height: 150px; border-radius: 12px; background: #B9C7AD; border: 1px solid #DCD7C6; display: flex; align-items: center; justify-content: center; font-size: 14px; color: #3E4A40">[satellite image]</div>
+          <figcaption style="font-size: 16px; color: #3E4A40"><strong style="font-weight: 600; color: #16241C">After</strong> · 8 Oct</figcaption>
+        </figure>
+      </div>
+    </div>
+
+    <div style="background: #FBFAF5; border: 1px solid #DCD7C6; border-radius: 14px; padding: 18px; display: flex; flex-direction: column; gap: 6px">
+      <div style="display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 6px">
+        <h2 style="margin: 0; font-family: 'Space Grotesk', 'Helvetica Neue', Arial, sans-serif; font-size: 18px; font-weight: 700; color: #16241C">Checklist</h2>
+        <span style="font-family: 'Space Grotesk', 'Helvetica Neue', Arial, sans-serif; font-size: 18px; font-weight: 700; color: #2F5D3E; font-variant-numeric: tabular-nums">{{doneCount}} / 4</span>
+      </div>
+
+      <sc-for list="{{checks}}" as="c" hint-placeholder-count="4">
+        <label style="display: flex; align-items: flex-start; gap: 14px; min-height: 64px; padding: 12px 0; border-top: 1px solid #DCD7C6; cursor: pointer">
+          <input type="checkbox" checked="{{c.checked}}" onChange="{{c.toggle}}" style="width: 28px; height: 28px; margin: 2px 0 0; accent-color: #2F5D3E; flex-shrink: 0; cursor: pointer">
+          <span style="display: flex; flex-direction: column; gap: 2px; flex: 1; min-width: 0">
+            <span style="font-size: 17px; font-weight: 600; color: #16241C">{{c.title}}</span>
+            <span style="font-size: 16px; color: #3E4A40">{{c.measured}}</span>
+            <span style="{{c.verdictStyle}}">{{c.verdict}}</span>
+          </span>
+        </label>
+      </sc-for>
+    </div>
+
+    <div style="display: flex; flex-direction: column; gap: 12px">
+      <button type="button" disabled="{{approveDisabled}}" style="{{approveStyle}}">Approve — proof is good</button>
+      <button type="button" style="display: flex; align-items: center; justify-content: center; min-height: 56px; padding: 12px 20px; border-radius: 14px; background: #FBFAF5; border: 1.5px solid #9B1C1C; color: #9B1C1C; font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif; font-size: 18px; font-weight: 600; cursor: pointer">Refuse and give a reason</button>
+      <p style="margin: 0; text-align: center; font-size: 16px; color: #5E685B">You earn $2.00 ≈ 5.40 ₾ for this review. Tick all four to approve.</p>
+    </div>
+  </div>
+
+  <nav aria-label="Validator sections" style="display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); background: #FBFAF5; border-top: 1px solid #DCD7C6; padding: 8px 8px 22px">
+    <a href="#queue" aria-current="page" style="display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 56px; padding: 6px 2px; border-radius: 12px; color: #2F5D3E; font-size: 15px; font-weight: 600; text-decoration: none">
+      <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#2F5D3E" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 6h16M4 12h16M4 18h10"/></svg>
+      <span>Queue</span>
+    </a>
+    <a href="#reviewed" style="display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 56px; padding: 6px 2px; border-radius: 12px; color: #5E685B; font-size: 15px; font-weight: 600; text-decoration: none">
+      <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#5E685B" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 11l3 3 8-8"/><path d="M20 12v6a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h9"/></svg>
+      <span>Reviewed</span>
+    </a>
+    <a href="#earnings" style="display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 56px; padding: 6px 2px; border-radius: 12px; color: #5E685B; font-size: 15px; font-weight: 600; text-decoration: none">
+      <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#5E685B" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2.5"/><path d="M3 10h18"/></svg>
+      <span>Earnings</span>
+    </a>
+    <a href="#profile" style="display: flex; flex-direction: column; align-items: center; gap: 4px; min-height: 56px; padding: 6px 2px; border-radius: 12px; color: #5E685B; font-size: 15px; font-weight: 600; text-decoration: none">
+      <svg aria-hidden="true" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#5E685B" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg>
+      <span>Profile</span>
+    </a>
+  </nav>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script data-props='{"$preview":{"width":390,"height":1500}}'>
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { checked: { area: true, rate: true, tank: true, sat: false } };
+  }
+  renderVals() {
+    const ch = this.state.checked;
+    const defs = [
+      { id: 'area', title: 'Area sprayed within 105% of field', measured: '4.31 ha sprayed of 4.2 ha declared (103%)', auto: 'Within limit' },
+      { id: 'rate', title: 'Liters per hectare in band', measured: '12.4 L/ha · allowed 10–14 L/ha', auto: 'Within band' },
+      { id: 'tank', title: 'Tank matches flow meter', measured: '52.0 L loaded · 52.1 L metered', auto: 'Matches' },
+      { id: 'sat', title: 'Satellite shows the spray', measured: 'Compare the before and after images above', auto: 'Needs your judgment' }
+    ];
+    const checks = defs.map((d) => {
+      const checked = !!ch[d.id];
+      return {
+        ...d,
+        checked,
+        verdict: checked ? d.auto : d.auto,
+        verdictStyle: 'font-size: 15px; font-weight: 600; margin-top: 2px; ' + (checked ? 'color: #2F5D3E;' : 'color: #A04F0C;'),
+        toggle: () => this.setState({ checked: { ...ch, [d.id]: !checked } })
+      };
+    });
+    const doneCount = checks.filter((c) => c.checked).length;
+    const approveDisabled = doneCount < 4;
+    const approveStyle = "display: flex; align-items: center; justify-content: center; min-height: 56px; padding: 12px 20px; border-radius: 14px; border: none; font-family: 'IBM Plex Sans', 'Helvetica Neue', Arial, sans-serif; font-size: 18px; font-weight: 600; cursor: pointer; " + (approveDisabled ? 'background: #DCD7C6; color: #5E685B; cursor: not-allowed;' : 'background: #2F5D3E; color: #FBFAF5;');
+    return { checks, doneCount, approveDisabled, approveStyle };
+  }
+}
+</script>
+</body>
+</html>

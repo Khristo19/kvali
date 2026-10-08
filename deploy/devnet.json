@@ -1,0 +1,45 @@
+{
+  "deployTx": "4KbHkuaiSyvc85twvJhMrQyWBzh7L297TwvL5LMDLijskVbqpc6WT8qXJkV47X3cgMzwPE2ardZ7yvdd6uTBHKad",
+  "deployDate": "2026-10-08",
+  "network": "devnet",
+  "programId": "2TWg6cMa7bxFa8y7HHoDXZecNJxcbYrUAqwfrg5T8FPK",
+  "programData": "E4KRzLYNP4FTmcscqRWxe5tHdkv155doHJ2eFt25zZKf",
+  "upgradeAuthority": "4qVpVkKTF1t7TPwQkN3wucDsAB7m3C2m7ckKHEXfNqsB",
+  "usdcMint": "2qXfWP8bbgg72XVcRDxAHXStY4G1op6nkE7jwT9B8M14",
+  "treasury": "RtvMo5cf5jMRDrqyhp7c6pLjqrQ4zprbHs92iPmHkr7",
+  "treasuryOwner": "HNATQnYJXmypAkCq7gMoKZCQKyy4ojLxHU9Ar3YW9fWP",
+  "validatorPool": "69SHSjJJz3tZzAk7YWz4NGqvffaWHZ7ovJrc1qKr1net",
+  "validatorPoolOwner": "4qVpVkKTF1t7TPwQkN3wucDsAB7m3C2m7ckKHEXfNqsB",
+  "configPda": "2gyWkqjkM8fmxsXEVQ5GGtgcoJqzQp8tMXGhHsShjFKz",
+  "validators": [
+    {
+      "seat": "operator-side",
+      "pubkey": "7YYttHeDEmDDtxB3hPqcFmvZdEPjxMgnCQddLLdA8E75"
+    },
+    {
+      "seat": "farmer-side",
+      "pubkey": "5PcJ4zcPJGMqJdveshptxKc9e2fturBiT482UeKSx62M"
+    },
+    {
+      "seat": "neutral",
+      "pubkey": "EEindEtx8DTN9BBWtVqZo5gU8x6aFnR1ggJDrLCLjhgN"
+    }
+  ],
+  "farmer": "2AYqQs93Nj27uBkeejLtX2vuN6Vm5NhichKqp7EGUYFs",
+  "operator": "9CWKtq8wGDotw3H2vPi4RV2gpJhW24Uj2tV6gGRmn1oP",
+  "proofThreshold": 2,
+  "panelThreshold": 2,
+  "challengeWindowSecs": 60,
+  "initializeConfigTx": "45soqE9yi2XM9KJ5r3wrh81SJcmeBGcxX4qaNWqhrBGXGj5EFgi2QNbpTFJJFVi1ihcGSTs9W1oCqhF7FcgMkkuR",
+  "demoKeysSetup": {
+    "date": "2026-10-08T17:30:58.609Z",
+    "note": "validators, farmer and operator are PUBLIC demo keys (app/src/devnet/demo-keys.json)",
+    "txs": {
+      "fund demo keys (SOL)": "2bYErHnc6AjU581coNpKne2YAVF1uA4uht3gaAziibJq9VXf3Nu5MtnVspAkZFuETe3zH7hRUdKXGEidfkpe9JXo",
+      "mint test USDC ($5,000 each)": "5dKzgrKAPZLo9rHc1BZPVssnCqoo2YSEfCT6b38txwscwMm2QbRzQTNGtwgH28LcGRGfs1LeMKB2YskPJQtSDu61",
+      "set_validators (demo keys)": "3ctSBCjUTNLR9UP5B8KMjs5fRNAcGeQH5E4tptVsyojw9UYWEUwk5FznzMo1NjzQmkDMNQTs3m4s96dffuSr4Wyb",
+      "register_operator": "n2GiX7LmZFF8Coakupyecq3cokYhm217kipaq16y7pVnMMXRgkrHax37o6USUQ4w9uhh8RySBPQZd72QEfgoY7j",
+      "issue_certificate (demo drone, meter error 2%)": "2fg5EGFqrbyx1gHvSKL8WwGj4gvtV22iNfN9RrsR7HSKTyTx5D1zYe4BxjVN7CQRnqpbTYfBHAmSarDHLrBeYBLr"
+    }
+  }
+}

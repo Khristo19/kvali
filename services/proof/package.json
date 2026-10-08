@@ -1,0 +1,18 @@
+{
+  "name": "@kvali/proof-service",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Ingests spray telemetry, computes the verdict, pins the manifest, co-signs submit_proof",
+  "engines": {
+    "node": ">=22.18"
+  },
+  "scripts": {
+    "test": "node --test \"src/**/*.test.ts\"",
+    "proof": "node src/cli.ts"
+  },
+  "dependencies": {
+    "@irys/upload": "^0.0.15",
+    "@irys/upload-solana": "^0.1.8"
+  }
+}
