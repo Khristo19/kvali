@@ -11,7 +11,7 @@ import { NoticeBar } from "./notice";
 export function Toasts() {
   const s = useDevnetState();
   return (
-    <View style={styles.wrap} pointerEvents="none" accessibilityLiveRegion="polite">
+    <View style={styles.wrap} pointerEvents="none" accessibilityLiveRegion="polite" {...({ dataSet: { kv: "toast" } } as object)}>
       <View style={styles.col}>
         {s.walletNote ? (
           <View style={[styles.box, s.walletOk && styles.ok]}>
@@ -32,7 +32,7 @@ export function Toasts() {
 }
 
 const styles = StyleSheet.create({
-  wrap: { position: "absolute", left: 16, right: 16, bottom: 92, alignItems: "center", zIndex: 100 },
+  wrap: { position: "absolute", left: 16, right: 16, top: 8, alignItems: "center", zIndex: 100 },
   col: { width: "100%", maxWidth: 560, gap: 8 },
   box: { flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderRadius: radius.md, backgroundColor: "#EFE8D2", borderWidth: 1, borderColor: colors.border },
   ok: { backgroundColor: colors.softGreen },

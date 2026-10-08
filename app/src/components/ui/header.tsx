@@ -26,6 +26,7 @@ export function ScreenHeader({
   right?: ReactNode;
 }) {
   return (
+    <View style={styles.outer}>
     <View style={styles.row}>
       {onBack ? (
         <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={onBack} style={styles.back}>
@@ -33,17 +34,20 @@ export function ScreenHeader({
         </Pressable>
       ) : null}
       <View style={styles.titles}>
-        <Text accessibilityRole="header" style={styles.title}>
+        <Text accessibilityRole="header" numberOfLines={2} style={styles.title}>
           {title}
         </Text>
-        {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+        {subtitle ? <Text numberOfLines={2} style={styles.subtitle}>{subtitle}</Text> : null}
       </View>
-      {right}
+    </View>
+    {right ? <View style={styles.rightRow}>{right}</View> : null}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
+  outer: { gap: 8 },
+  rightRow: { alignItems: "flex-end" },
   row: { flexDirection: "row", alignItems: "center", gap: 12 },
   back: {
     width: 48,

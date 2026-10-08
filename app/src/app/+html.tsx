@@ -24,7 +24,7 @@ export default function Root({ children }: PropsWithChildren) {
               "body{background-color:#F4F1E8;}" +
               "@media (min-width:900px){[data-kv=tabbar]{display:none !important}}" +
               "@media (max-width:899px){[data-kv=side]{display:none !important}[data-kv=chip]{max-width:150px !important}[data-kv=chipsub]{display:none !important}[data-kv=chipwide]{display:none !important}}" +
-              "@media (min-width:900px){[data-kv=chipnarrow]{display:none !important}}",
+              "@media (min-width:900px){[data-kv=chipnarrow]{display:none !important}[data-kv=toast]{left:auto !important;width:360px !important;right:16px !important;top:16px !important;align-items:flex-end !important}}",
           }}
         />
       </head>

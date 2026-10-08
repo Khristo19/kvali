@@ -1,6 +1,9 @@
 import { Text, View } from "react-native";
 
-import { Card, CardTitle , RoleShell, TwoUp, useTab } from "@/components/ui";
+import { router, type Href } from "expo-router";
+
+import { useAccount } from "@/account/store";
+import { Button, Card, CardTitle, RoleShell, TwoUp, useTab } from "@/components/ui";
 import { type } from "@/theme";
 
 import {
@@ -29,6 +32,8 @@ const TITLES: Record<string, string> = { "": "My jobs", post: "Post a job", paym
 export default function Farmer() {
   const job = useEngine().state.jobs[SAMPLE_JOB_ID];
   const tab = useTab("farmer");
+  const account = useAccount("farmer");
+  const signedOut = !account && tab !== "help";
   const fs = useFields();
   const sel = selectedField(fs);
   const total = fs.fields.reduce((s, f) => s + fieldHa(f), 0);
@@ -41,6 +46,20 @@ export default function Farmer() {
     >
       <SimBanner />
       <ChainGate>
+      {signedOut ? (
+        <>
+          <Card>
+            <CardTitle>Sign up as a farmer</CardTitle>
+            <Text style={type.body}>Create a demo account to get your own devnet wallet and post a spray job. Meanwhile you can look at the fields below.</Text>
+            <Button label="Sign up as a farmer" onPress={() => router.replace("/?role=farmer" as Href)} />
+          </Card>
+          <TwoUp>
+            <MyFields />
+            <CropHealthCard fieldId={sel.id} />
+          </TwoUp>
+        </>
+      ) : (
+      <>
       {tab === "" &&
         (job ? (
           <>
@@ -99,6 +118,8 @@ export default function Farmer() {
         </>
       )}
       {(tab === "" || tab === "post") && <DemoControls />}
+      </>
+      )}
       </ChainGate>
     </RoleShell>
   );

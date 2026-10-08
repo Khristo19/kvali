@@ -86,10 +86,10 @@ export default function ValidatorScreen() {
 
   const refuse = (jobId: number, key: SampleKey, reason: string) => {
     setError(null);
-    setNotice(`Refusal recorded: ${reason}.`);
+    setNotice(`Refusal recorded: ${reason}. (Demo only: not an on-chain transaction.)`);
     if (pending?.key === key) {
       setPending({ ...pending, refusal: `${reason} (${seat.seat} seat)` });
-      notify("info", "Refusal recorded. Nothing is sent to the chain; the operator is told to submit a different record.");
+      notify("info", "Refusal recorded in this demo (not an on-chain transaction); the proof is not submitted, so no money moves. The operator is told to send a different record.");
     }
     setRefusals({ ...refusals, [`${jobId}:${key}`]: reason });
   };
