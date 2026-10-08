@@ -25,7 +25,7 @@ export function AccountChip({ role }: { role?: Role }) {
   }
   return (
     <View style={styles.box} {...({ dataSet: { kv: "chip" } } as object)}>
-      <View style={styles.who}>
+      <View style={styles.who} {...({ dataSet: { kv: "chipwho" } } as object)}>
         <Text style={styles.name} numberOfLines={1} accessibilityLabel={`Signed in as ${a.name}`}>
           {a.name}
         </Text>
@@ -42,7 +42,10 @@ export function AccountChip({ role }: { role?: Role }) {
         }}
         style={styles.btn}
       >
-        <Text style={[styles.btnText, { textAlign: "center" }]}>Sign out (all roles)</Text>
+        <Text style={[styles.btnText, { textAlign: "center" }]}>
+          <Text {...({ dataSet: { kv: "chipwide" } } as object)}>Sign out (all roles)</Text>
+          <Text {...({ dataSet: { kv: "chipnarrow" } } as object)}>Sign out</Text>
+        </Text>
       </Pressable>
     </View>
   );
