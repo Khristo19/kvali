@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { hectares, litersPerHa } from "@/components/money";
-import { Banner, Card, CardTitle, Fact, FactGrid, RoleShell, TwoUp, useTab } from "@/components/ui";
+import { Banner, Card, CardTitle, Fact, FactGrid, RoleShell, TwoUp, useTab , Button } from "@/components/ui";
 import { SettleNow } from "@/components/settle-now";
 import { ResetDemo, ValidatorEarnings, ValidatorProfile, ValidatorReviewed } from "@/components/tab-views";
 import { notify } from "@/components/ui/notice";
@@ -32,6 +32,7 @@ export default function ValidatorScreen() {
   const [votes, setVotes] = useState<Record<number, Record<string, boolean>>>({});
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [practice, setPractice] = useState(false);
 
   const seat = VALIDATORS.find((v) => v.id === seatId)!;
   const jobs = Object.values(state.jobs);
@@ -56,7 +57,7 @@ export default function ValidatorScreen() {
     if (list.length >= state.config.proofThreshold) {
       try {
         await actions.submitRecord(key, jobId, list);
-        setNotice(`Job ${jobId}: ${list.length} seats approved, proof submitted on chain. The challenge window is open.`);
+        setNotice(null);
       } catch (e) {
         fail(e);
       }
@@ -64,6 +65,17 @@ export default function ValidatorScreen() {
       setNotice(`Approval recorded for the ${seat.seat} seat. 1 more seat is needed: pick another seat and approve.`);
       notify("ok", "Approval recorded. 1 more seat is needed: pick another seat above and approve again.");
     }
+  };
+
+  // Practice records never touch the chain: approvals stay in this page.
+  const practiceSign = (jobId: number, key: SampleKey) => {
+    const job = state.jobs[jobId];
+    if (!fullVerdict(job, key).pass) return fail(new Error("Full verdict fails; this record must be refused."));
+    const k = `practice:${key}`;
+    const list = Array.from(new Set([...(sigs[k] ?? []), seat.id]));
+    setSigs({ ...sigs, [k]: list });
+    setError(null);
+    setNotice(list.length >= state.config.proofThreshold ? "Practice only: 2 seats approved, but nothing was sent to the chain." : `Practice approval recorded for the ${seat.seat} seat.`);
   };
 
   const refuse = (jobId: number, key: SampleKey, reason: string) => {
@@ -84,7 +96,7 @@ export default function ValidatorScreen() {
     if (agree.length >= state.config.panelThreshold) {
       try {
         await actions.resolveChallenge(agree, jobId, uphold);
-        setNotice(uphold ? `Job ${jobId}: challenge upheld, farmer refunded.` : `Job ${jobId}: challenge rejected, operator paid.`);
+        setNotice(null);
       } catch (e) {
         fail(e);
       }
@@ -138,7 +150,7 @@ export default function ValidatorScreen() {
               <Text style={[type.body, { color: colors.error, flexShrink: 1 }]}>{error}</Text>
             </View>
           )}
-          {notice && !error && <Banner tone="ok" text={notice} />}
+          {notice && !error && (accepted.length > 0 || challenged.length > 0) && <Banner tone="ok" text={notice} />}
           {accepted.length === 0 && challenged.length === 0 && (
             <Card>
               <Text style={type.body}>No job to check yet: post one from the Farmer page and accept it from the Operator page.</Text>
@@ -159,39 +171,82 @@ export default function ValidatorScreen() {
         </View>
       </TwoUp>
 
-      {accepted.map((job) => {
-        const queue = pending ? ([pending.key] as SampleKey[]) : KEYS;
-        return (
-          <View key={job.id} style={styles.group}>
-            <Text style={type.heading}>Proofs to check, job {jobRef(job.id, session)}</Text>
-            <Text style={type.small}>
-              {pending
-                ? `The operator sent the record "${recordTitle(pending.key)}" (Demo: simulated drone flight). Approve it with 2 of the 3 seats; the 2nd approval submits the proof on chain, co-signed by both validators.`
-                : "The operator has not sent a record yet. Demo queue: 4 sample spray records checked against this job. Each runs the full verdict first."}
-            </Text>
-            <View style={styles.proofs}>
-              {queue.map((key) => (
-                <View key={key} style={styles.proofCell}>
+      {accepted.map((job) => (
+        <View key={job.id} style={styles.group}>
+          <Text style={type.heading}>Proofs to check, job {jobRef(job.id, session)}</Text>
+          {pending ? (
+            <>
+              <Text style={type.small}>
+                The operator sent the record &ldquo;{recordTitle(pending.key)}&rdquo; (Demo: simulated drone flight). Approve it with 2 of the 3 seats; the 2nd approval submits the proof on chain, co-signed by both validators.
+              </Text>
+              <View style={styles.proofs}>
+                <View style={styles.proofCell}>
                   <ProofCard
                     job={job}
-                    sampleKey={key}
+                    sampleKey={pending.key as SampleKey}
                     seat={seat}
                     validators={VALIDATORS}
-                    signed={pending?.key === key ? pending.approvals : (sigs[`${job.id}:${key}`] ?? [])}
-                    refusal={pending?.key === key ? pending.refusal : refusals[`${job.id}:${key}`]}
-                    onSign={() => sign(job.id, key)}
-                    onRefuse={(reason) => refuse(job.id, key, reason)}
+                    signed={pending.approvals}
+                    refusal={pending.refusal}
+                    onSign={() => sign(job.id, pending.key as SampleKey)}
+                    onRefuse={(reason) => refuse(job.id, pending.key as SampleKey, reason)}
                   />
                 </View>
-              ))}
+              </View>
+            </>
+          ) : (
+            <Card>
+              <Text style={type.body}>The operator has not sent a record yet. When they press &ldquo;Send the record to the validators&rdquo; it appears here.</Text>
+            </Card>
+          )}
+          <Button
+            small
+            kind="secondary"
+            label={practice ? "Hide practice records" : "Show practice records (not on chain)"}
+            onPress={() => setPractice(!practice)}
+          />
+          {practice ? (
+            <View style={styles.practice}>
+              <Text style={type.subheading}>Practice records (not on chain)</Text>
+              <Text style={type.small}>Four sample records to learn the checklist. Approving or refusing here changes nothing on the chain and does not affect the job.</Text>
+              <View style={styles.proofs}>
+                {KEYS.map((key) => (
+                  <View key={key} style={styles.proofCell}>
+                    <ProofCard
+                      job={job}
+                      sampleKey={key}
+                      seat={seat}
+                      validators={VALIDATORS}
+                      signed={sigs[`practice:${key}`] ?? []}
+                      refusal={refusals[`practice:${key}`]}
+                      onSign={() => practiceSign(job.id, key)}
+                      onRefuse={(reason) => {
+                        setRefusals({ ...refusals, [`practice:${key}`]: reason });
+                        setNotice(`Practice refusal for ${recordTitle(key)}. Nothing was sent to the chain.`);
+                      }}
+                    />
+                  </View>
+                ))}
+              </View>
             </View>
-          </View>
-        );
-      })}
+          ) : null}
+        </View>
+      ))}
 
-      {jobs.filter((j) => j.state === "ProofSubmitted").map((j) => (
+      {jobs.filter((j) => j.proof || j.payout).map((j) => (
         <View key={`done-${j.id}`} style={{ gap: 16 }}>
-          <Banner tone="ok" text={`Job ${jobRef(j.id, session)}: the proof is on chain with ${j.proof?.signers.length ?? 0} validator co-signatures.`} />
+          <Banner
+            tone="ok"
+            text={
+              j.state === "ProofSubmitted"
+                ? `Job ${jobRef(j.id, session)}: the proof is on chain with ${j.proof?.signers.length ?? 0} validator co-signatures. Waiting for the challenge window.`
+                : j.state === "Challenged"
+                  ? `Job ${jobRef(j.id, session)}: the farmer challenged it. See Challenges below.`
+                  : j.state === "Released"
+                    ? `Job ${jobRef(j.id, session)}: settled. The operator was paid.`
+                    : `Job ${jobRef(j.id, session)}: ended (${j.state}).`
+            }
+          />
           <SettleNow job={j} />
         </View>
       ))}
@@ -224,6 +279,7 @@ const styles = StyleSheet.create({
   seatText: { flex: 1, flexShrink: 1 },
   dot: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: colors.border, backgroundColor: colors.card },
   dotOn: { borderWidth: 8, borderColor: colors.green },
+  practice: { gap: space.md, padding: space.md, borderRadius: radius.lg, borderWidth: 1, borderStyle: "dashed", borderColor: colors.border },
   group: { gap: space.lg },
   proofs: { flexDirection: "row", flexWrap: "wrap", gap: space.lg },
   proofCell: { flexGrow: 1, flexBasis: 340, minWidth: 0 },

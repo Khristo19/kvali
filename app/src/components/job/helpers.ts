@@ -56,9 +56,8 @@ export function describe(e: EventLogEntry): string {
 
 /** Log entries for this job, plus the operator's certificate once an operator is on the job. */
 export function jobLog(log: EventLogEntry[], job: Job): EventLogEntry[] {
-  return log.filter(
-    (e) => e.jobId === job.id || (e.action === "issueCertificate" && job.operator !== null),
-  );
+  // The operator's certificate is a pre-step from before the job (shown separately), so the story is strictly in block-time order.
+  return log.filter((e) => e.jobId === job.id).sort((a, b) => a.time - b.time || a.seq - b.seq);
 }
 
 export function moneyLine(e: EventLogEntry): string[] {

@@ -4,14 +4,14 @@ import { PublicKey } from "@solana/web3.js";
 
 import * as chain from "./client";
 import { keys } from "./keys";
-import { setDevnetState } from "./mode";
+import { getDevnetState, setDevnetState } from "./mode";
 
 type Role = "farmer" | "operator";
 const USDC_TARGET = 1_000n * 1_000_000n; // $1,000
 const USDC_LOW = 400n * 1_000_000n;
 const inflight: Partial<Record<Role, Promise<void>>> = {};
 
-const say = (msg: string | null) => setDevnetState({ walletNote: msg });
+const say = (msg: string | null, ok = false) => setDevnetState({ walletNote: msg, walletOk: ok });
 
 async function provision(role: Role) {
   const kp = role === "farmer" ? keys.farmer : keys.operator;
@@ -20,7 +20,10 @@ async function provision(role: Role) {
   const lowSol = role === "farmer" ? w.sol < need.farmerOneJob : w.sol < (w.registered ? 1_000_000 : need.operatorMin); // a registered operator only pays fees
   const lowUsdc = w.usdc < USDC_LOW;
   const certOk = role === "farmer" ? true : w.registered && (await chain.certificateValid());
-  if (!lowSol && !lowUsdc && certOk) return;
+  if (!lowSol && !lowUsdc && certOk) {
+    if (getDevnetState().walletNote) say(null); // sign-up showed "setting up" but nothing was needed
+    return;
+  }
 
   say(`Setting up your own devnet ${role} wallet (${kp.publicKey.toBase58().slice(0, 4)}…). This takes a few seconds.`);
   // 1. SOL from the bank (the demo validator that pays the certificate rent is topped up too)
@@ -59,7 +62,8 @@ async function provision(role: Role) {
       /* ignore */
     }
   }
-  say(null);
+  say(`Your devnet ${role} wallet is funded and ready ✓`, true);
+  setTimeout(() => setDevnetState({ walletNote: null, walletOk: false }), 5000);
   setDevnetState({ walletReadyAt: Date.now() });
 }
 

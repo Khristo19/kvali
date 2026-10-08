@@ -23,7 +23,7 @@ import { fieldHa, fieldHash } from "@/data/fields";
 import { selectedField, useFields } from "@/data/fields-store";
 import { useAccount } from "@/account/store";
 import { describeJob } from "@/session/info";
-import { useSession } from "@/session/store";
+import { usePending, useSession } from "@/session/store";
 import { areaCha } from "@/geo/geo";
 import { haText } from "./fields";
 import { errorMessage } from "./ui";
@@ -156,6 +156,7 @@ function headline(job: Job, left: number): { title: string; text: string; done: 
 
 export function StatusCard() {
   const { state } = useEngine();
+  const pending = usePending();
   const job = state.jobs[JOB_ID];
   const now = useTick();
   if (!job) {
@@ -178,6 +179,12 @@ export function StatusCard() {
         <Text style={styles.statusTitle}>{h.title}</Text>
       </View>
       <Text style={type.body}>{h.text}</Text>
+      {job.state === "Accepted" && pending?.refusal ? (
+        <Banner tone="error" text={`A validator refused the operator's record: ${pending.refusal}. The job stays open until the operator sends a new record.`} />
+      ) : null}
+      {job.state === "Accepted" && pending && !pending.refusal ? (
+        <Banner tone="info" text={`The operator sent a record. Validators are checking it (${pending.approvals.length} of 2 approvals).`} />
+      ) : null}
       {counting ? (
         <View style={styles.countdown}>
           <BigNumber caption="Window closes in" value={clock(left)} size={40} live />
@@ -222,9 +229,11 @@ export function TimelineCard() {
   };
   const join = (...parts: string[]) => parts.filter(Boolean).join(" · ");
   const lastTitle = job.state === "Refunded" ? "Money returned to you" : job.state === "Cancelled" ? "Job cancelled" : "Operator paid";
+  const bondBack = job.payout ? (job.payout.operator < job.bond ? job.payout.operator : job.bond) : 0n;
+  const pay = job.payout ? job.payout.operator - bondBack : 0n;
   const lastDetail =
     job.payout && job.state === "Released"
-      ? `${lariAmount(job.payout.operator)} released automatically`
+      ? `Payment ${usdc(pay)} (about ${lari(pay)}) released; the operator's ${usdc(bondBack)} bond was returned separately`
       : job.state === "Refunded" || job.state === "Cancelled"
         ? "Your payment came back to you"
         : `${lariAmount(job.amount)} is released automatically`;
@@ -368,9 +377,11 @@ export function PayoutCard() {
   if (!job || !job.payout) return null;
   const p = job.payout;
   const title = job.state === "Refunded" ? "Refunded" : job.state === "Released" ? "Paid out" : "Job ended";
+  const bondBack = p.operator < job.bond ? p.operator : job.bond;
   const rows: [string, bigint][] = [
     ["Back to you (farmer)", p.farmer],
-    ["Operator", p.operator],
+    ["Operator payment", p.operator - bondBack],
+    ["Operator's own bond returned", bondBack],
     ["Kvali fee", p.kvali],
     ["Validators", p.validators],
   ];

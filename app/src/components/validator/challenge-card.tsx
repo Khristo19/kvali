@@ -5,6 +5,8 @@ import { hectares, lari, litersPerHa, usdc } from "@/components/money";
 import type { Config, Job, Validator } from "@/engine/types";
 import { colors, space, type } from "@/theme";
 import { Btn } from "./ui";
+import { jobRef } from "@/session/info";
+import { useSession } from "@/session/store";
 
 export function ChallengeCard({
   job,
@@ -18,13 +20,14 @@ export function ChallengeCard({
   votes: Record<string, boolean>;
   onVote: (seat: Validator, uphold: boolean) => void;
 }) {
+  const session = useSession();
   const c = job.challenge;
   const p = job.proof;
   if (!c || !p) return null;
   const panelFee = (job.amount * config.panelFeeBps) / 10_000n;
   return (
     <Card>
-      <CardTitle>Job {job.id} challenged</CardTitle>
+      <CardTitle>Job {jobRef(job.id, session)} challenged</CardTitle>
       <Text style={type.body}>Farmer evidence hash: {c.evidenceHash}</Text>
       <Text style={type.body}>
         Bond: {usdc(c.bond)} ({lari(c.bond)})

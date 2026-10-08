@@ -34,6 +34,11 @@ export function SessionEffects() {
     return () => clearInterval(id);
   }, [dev.mode, dev.status, engine]);
 
+  // After the wallet was funded / the operator certified, re-read balances and the operator account right away.
+  useEffect(() => {
+    if (dev.walletReadyAt > 0 && dev.mode === "devnet") void syncChain(engine).catch(() => undefined);
+  }, [dev.walletReadyAt, dev.mode, engine]);
+
   const job = state.jobs[SAMPLE_JOB_ID];
   const due = !!job && job.state === "ProofSubmitted" && windowLeft(job, now) === 0 && now >= (job.proof?.windowEndsAt ?? 0) + AUTO_SETTLE_GRACE_SECS;
   const key = job ? `${dev.mode}:${dev.chainJobId}:${job.proof?.proofHash}` : "";

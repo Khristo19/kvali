@@ -12,7 +12,7 @@ import { BigNumber, Button, Card, RoleShell, TwoUp } from "@/components/ui";
 import type { ChipTone } from "@/components/ui";
 import { jobLog } from "@/components/job/helpers";
 import { Countdown, MoneyWent, SprayCheck, Timeline } from "@/components/job/sections";
-import { Chip, Row, useTick } from "@/components/job/ui";
+import { Chip, Row, TxId, useTick } from "@/components/job/ui";
 import { ModeBanner } from "@/components/devnet/mode-banner";
 import { ChainCard } from "@/components/devnet/chain-card";
 import { useActions } from "@/engine/actions";
@@ -78,6 +78,7 @@ export default function JobStory() {
   const remaining = windowLeft(job, now);
   const entries = jobLog(state.log, job);
   const base = job.postedAt;
+  const cert = job.operator !== null ? state.log.find((l) => l.action === "issueCertificate") : undefined;
   const ended = job.payout !== null;
 
   return (
@@ -105,7 +106,16 @@ export default function JobStory() {
       {error && <Text style={styles.error}>{error}</Text>}
 
       <TwoUp>
-        <Timeline entries={entries} base={base} />
+        <View style={{ gap: 16 }}>
+          <Timeline entries={entries} base={base} />
+          {cert ? (
+            <Card>
+              <Text style={type.subheading}>Before the job</Text>
+              <Text style={type.body}>The operator&apos;s drone calibration certificate was issued by a validator.</Text>
+              <TxId tx={cert.tx} />
+            </Card>
+          ) : null}
+        </View>
         <View style={{ gap: 16 }}>
           <SprayCheck job={job} config={state.config} />
           <MoneyWent job={job} />

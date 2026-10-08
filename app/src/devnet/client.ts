@@ -138,6 +138,7 @@ export interface ChainJob {
 export interface ChainSnapshot {
   at: number;
   slot: number;
+  operatorRegistered: boolean;
   farmerSol: number;
   operatorSol: number;
   usdc: { farmer: bigint; operator: bigint; treasury: bigint; validatorPool: bigint };
@@ -223,7 +224,7 @@ export async function readOperatorActiveJob(): Promise<ChainJob | null> {
 }
 
 export async function readSnapshot(chainJobId: number | bigint | null): Promise<ChainSnapshot> {
-  const [farmer, operator, treasury, validatorPool, job, slot, fs, os] = await Promise.all([
+  const [farmer, operator, treasury, validatorPool, job, slot, fs, os, opAcct] = await Promise.all([
     tokenBalance(ata(keys.farmer.publicKey)),
     tokenBalance(ata(keys.operator.publicKey)),
     tokenBalance(TREASURY),
@@ -232,8 +233,9 @@ export async function readSnapshot(chainJobId: number | bigint | null): Promise<
     connection.getSlot("confirmed"),
     connection.getBalance(keys.farmer.publicKey),
     connection.getBalance(keys.operator.publicKey),
+    accountNs.operator.fetchNullable(pdas.operator(keys.operator.publicKey)),
   ]);
-  return { at: Date.now(), slot, farmerSol: fs / 1e9, operatorSol: os / 1e9, usdc: { farmer, operator, treasury, validatorPool }, job };
+  return { at: Date.now(), slot, operatorRegistered: !!opAcct, farmerSol: fs / 1e9, operatorSol: os / 1e9, usdc: { farmer, operator, treasury, validatorPool }, job };
 }
 
 /** Quick reachability probe for the mode switch. */

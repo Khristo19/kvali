@@ -5,10 +5,10 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { SettlementDemo } from "@/components/settlement-demo";
 import { Button, Icon, useWide } from "@/components/ui";
-import { addressFor, roleHome, roleLabel, saveAccount, shortAddr, signOut, useAccount } from "@/account/store";
+import { addressFor, roleHome, roleLabel, saveAccount, shortAddr, signOut, useAccount, useAccounts } from "@/account/store";
 import { notify } from "@/components/ui/notice";
 import { ensureWallet } from "@/devnet/provision";
-import { getDevnetState, useMode } from "@/devnet/mode";
+import { getDevnetState, setDevnetState, useMode } from "@/devnet/mode";
 import { colors, fonts, radius, space, type } from "@/theme";
 
 type RoleId = "farmer" | "operator" | "validator";
@@ -25,6 +25,8 @@ export default function Home() {
   const [picked, setPicked] = useState<RoleId>(roleParam === "operator" || roleParam === "validator" ? roleParam : "farmer");
   const account = useAccount(picked); // each role has its own demo account
   const anyAccount = useAccount();
+  const all = useAccounts();
+  const accountList = (['farmer', 'operator', 'validator'] as const).map((r) => all[r]).filter((a): a is NonNullable<typeof a> => !!a);
   const [form, setForm] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -49,6 +51,7 @@ export default function Home() {
     if (n.length < 2) return setErr("Please enter your name.");
     if (!/^\S+@\S+\.\S+$/.test(m)) return setErr("Please enter a valid email address, like name@example.com.");
     saveAccount({ name: n, email: m, role: picked });
+    if (picked !== "validator" && getDevnetState().mode === "devnet") setDevnetState({ walletNote: "Setting up your own devnet wallet: funding it with test SOL and test USDC...", walletOk: false });
     // The browser makes its own devnet wallet for this role and the public demo bank funds it (farmer, operator).
     if ((picked === "farmer" || picked === "operator") && getDevnetState().mode === "devnet") {
       void ensureWallet(picked).catch((e: Error) => notify("error", e.message));
@@ -104,14 +107,22 @@ export default function Home() {
             })}
           </View>
 
-          {account ? (
+          {accountList.length > 0 ? (
             <View style={styles.signedIn}>
               <Text style={type.body}>
-                Signed in as <Text style={{ fontWeight: "700", color: colors.ink }}>{account.name}</Text> ({roleLabel(account.role)}) · devnet address{" "}
-                {shortAddr(addressFor(account.role))}
+                Signed in as: {accountList.map((a) => `${roleLabel(a.role)} ${a.name}`).join(" · ")}
               </Text>
-              <Button label={`Open my ${roleLabel(account.role).toLowerCase()} page`} kind="secondary" small onPress={() => router.replace(roleHome(account.role) as Href)} />
-              <Button label="Sign out" kind="secondary" small onPress={() => signOut(account.role)} />
+              {account ? (
+                <>
+                  <Text style={type.small}>
+                    {roleLabel(account.role)}: {account.name}, address {shortAddr(addressFor(account.role))}
+                  </Text>
+                  <Button label={`Open my ${roleLabel(account.role).toLowerCase()} page`} kind="secondary" small onPress={() => router.replace(roleHome(account.role) as Href)} />
+                  <Button label={`Sign out (${roleLabel(account.role).toLowerCase()})`} kind="secondary" small onPress={() => signOut(account.role)} />
+                </>
+              ) : (
+                <Text style={type.small}>Not signed in as {roleLabel(picked)} yet: continue with email below.</Text>
+              )}
             </View>
           ) : null}
 
@@ -119,7 +130,7 @@ export default function Home() {
             <View style={styles.form} accessibilityLabel="Create demo account">
               <Text style={styles.who}>Create your demo account</Text>
               <Text style={type.small}>
-                Role: {role.title}. Saved only in this browser, no password. Your account uses the public devnet demo key for this role.
+                Role: {role.title}. Saved only in this browser, no password. {picked === "validator" ? "Validators use the public demo validator keys." : "A devnet wallet with test money is created in this browser for you."}
               </Text>
               <Text style={type.label}>Your name</Text>
               <TextInput

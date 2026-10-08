@@ -36,6 +36,8 @@ export interface DevnetState {
   restoreNote: string | null;
   /** Progress of the burner-wallet setup (null when idle). */
   walletNote: string | null;
+  /** True for a few seconds after the wallet was funded (shows the check mark). */
+  walletOk: boolean;
   walletReadyAt: number;
 }
 
@@ -52,6 +54,7 @@ let state: DevnetState = {
   heldJob: null,
   restoreNote: null,
   walletNote: null,
+  walletOk: false,
   walletReadyAt: 0,
 };
 const listeners = new Set<() => void>();

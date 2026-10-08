@@ -56,11 +56,6 @@ export function ModeBanner() {
           </ExtLink>
         </Text>
       ) : null}
-      {s.walletNote ? (
-        <Text style={[type.body, { color: colors.accent, fontWeight: "600" }]} accessibilityLiveRegion="polite">
-          {s.walletNote}
-        </Text>
-      ) : null}
       {s.busy ? (
         <Text style={[type.body, { color: colors.accent, fontWeight: "600" }]} accessibilityLiveRegion="polite">
           Sending to devnet: {s.busy}… (a few seconds)
