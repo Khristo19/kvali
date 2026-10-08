@@ -10,6 +10,7 @@ import {
   sampleRecords,
   SAMPLE_AMOUNT,
   SAMPLE_JOB_ID,
+  DEMO_DEADLINE_SECS,
 } from "@/engine/scenario";
 import { windowLeft } from "@/engine/engine";
 import { ModeBanner } from "@/components/devnet/mode-banner";
@@ -20,6 +21,9 @@ import type { Job, JobState } from "@/engine/types";
 import { colors, type } from "@/theme";
 import { fieldHa, fieldHash } from "@/data/fields";
 import { selectedField, useFields } from "@/data/fields-store";
+import { useAccount } from "@/account/store";
+import { describeJob } from "@/session/info";
+import { useSession } from "@/session/store";
 import { areaCha } from "@/geo/geo";
 import { haText } from "./fields";
 import { errorMessage } from "./ui";
@@ -44,19 +48,53 @@ export function PostJobCard() {
   const { state } = useEngine();
   const actions = useActions();
   const job = state.jobs[JOB_ID];
+  const session = useSession();
   const field = selectedField(useFields());
+  const farmer = useAccount("farmer");
   const [err, setErr] = useState<string | null>(null);
-  const deadline = new Date(sampleJob.sprayDeadline);
-  const deadlineText = isNaN(deadline.getTime()) ? sampleJob.sprayDeadline : deadline.toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
+  const now = useTick();
 
   const post = async () => {
     try {
       setErr(null);
-      await actions.postJob(JOB_ID, { hash: fieldHash(field), areaCha: areaCha(field.outline) });
+      await actions.postJob(JOB_ID, { hash: fieldHash(field), areaCha: areaCha(field.outline), name: field.name, crop: field.crop, product: field.product, farmerName: farmer?.name });
     } catch (e) {
       setErr(errorMessage(e));
     }
   };
+
+  if (job) {
+    const d = describeJob(job, session);
+    const left = job.sprayDeadline - now;
+    return (
+      <Card>
+        <CardTitle>Your current job</CardTitle>
+        <Row label="Job" value={d.ref} sub={job.state} />
+        <Row label="Field" value={d.field} sub={`${haText(job.areaCha / 100)}${d.crop ? ` · ${d.crop}` : ""}`} />
+        <Row label="Product" value={d.product} />
+        <Row label="Target" value={litersPerHa(job.targetRateMlPerHa)} />
+        <Row label="Spray by" value={whenText(job.sprayDeadline)} />
+        <Text style={[type.body, { color: colors.green, fontWeight: "600" }]}>
+          {job.payout ? `This job is finished (${job.state}).` : `${usdc(job.amount)} is held safely.`}
+        </Text>
+        {job.payout ? (
+          <Button label="Start a new job" onPress={() => void actions.newJob(JOB_ID).catch(() => undefined)} />
+        ) : job.state === "Posted" ? (
+          <Button label="Cancel this job and take the money back" kind="secondary" onPress={() => void actions.cancelJob(JOB_ID).catch(() => undefined)} />
+        ) : job.state === "Accepted" ? (
+          <>
+            <Text style={type.small}>
+              {left > 0
+                ? `If the operator cannot deliver an accepted record, you can release the job after the spray-by deadline (${whenText(job.sprayDeadline)}, ${Math.ceil(left / 60)} min left): the payment and the operator's bond are returned.`
+                : "The spray-by deadline has passed. Release the job to get your payment back (the operator's bond is returned too)."}
+            </Text>
+            <Button label="Release this job (after the deadline)" kind="secondary" disabled={left > 0} hint="Available once the spray-by deadline has passed" onPress={() => void actions.reclaimExpired(JOB_ID).catch(() => undefined)} />
+          </>
+        ) : null}
+        <ErrorText message={err} />
+      </Card>
+    );
+  }
 
   return (
     <Card>
@@ -65,22 +103,9 @@ export function PostJobCard() {
       <Row label="Field" value={field.name} sub={`${haText(fieldHa(field))} · ${field.crop}`} />
       <Row label="Product" value={field.product} />
       <Row label="Target" value={litersPerHa(sampleJob.targetRateMlPerHa)} />
-      <Row label="Spray by" value={deadlineText} />
+      <Row label="Spray by" value={`${DEMO_DEADLINE_SECS / 60} minutes after posting (demo)`} />
       <Text style={type.body}>Your {usdc(SAMPLE_AMOUNT)} is held safely until the spraying is checked.</Text>
-      {job ? (
-        <>
-          <Text style={[type.body, { color: colors.green, fontWeight: "600" }]}>
-            {job.payout ? `This job is finished (${job.state}).` : `Job posted. ${usdc(job.amount)} is held safely.`}
-          </Text>
-          {job.payout ? (
-            <Button label="Start a new job" onPress={() => void actions.newJob(JOB_ID).catch(() => undefined)} />
-          ) : job.state === "Posted" ? (
-            <Button label="Cancel this job and take the money back" kind="secondary" onPress={() => void actions.cancelJob(JOB_ID).catch(() => undefined)} />
-          ) : null}
-        </>
-      ) : (
-        <Button label={`Post job and hold ${usdc(SAMPLE_AMOUNT)}`} onPress={post} />
-      )}
+      <Button label={`Post job and hold ${usdc(SAMPLE_AMOUNT)}`} onPress={post} />
       <ErrorText message={err} />
     </Card>
   );

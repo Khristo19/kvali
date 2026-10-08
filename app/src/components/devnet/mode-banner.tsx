@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
 import { ExtLink } from "@/components/ui/ext-link";
@@ -19,6 +20,8 @@ function Seg({ label, on, onPress }: { label: string; on: boolean; onPress: () =
 /** Mode switch plus the accurate banner for the current mode. Shown on every role screen. */
 export function ModeBanner() {
   const s = useDevnetState();
+  const [openedAt] = useState(() => Date.now());
+  const last = s.last && s.last.at >= openedAt ? s.last : null;
   const pick = (m: Mode) => {
     if (m !== s.mode) setPending(null); // a staged record belongs to one mode
     setDevnetState({ mode: m, fellBack: false });
@@ -58,12 +61,12 @@ export function ModeBanner() {
           Sending to devnet: {s.busy}… (a few seconds)
         </Text>
       ) : null}
-      {s.mode === "devnet" && s.last ? (
-        <Text style={[type.small, !s.last.ok && { color: colors.error }]} selectable>
-          {s.last.ok ? "Confirmed" : "Refused"}: {s.last.label}
-          {s.last.error ? ` (${s.last.error})` : ""}{" "}
-          {s.last.sig ? (
-            <ExtLink url={explorerTx(s.last.sig)} style={styles.link}>
+      {s.mode === "devnet" && last ? (
+        <Text style={[type.small, !last.ok && { color: colors.error }]} selectable>
+          {last.ok ? "Confirmed" : "Refused"}: {last.label}
+          {last.error ? ` (${last.error})` : ""}{" "}
+          {last.sig ? (
+            <ExtLink url={explorerTx(last.sig)} style={styles.link}>
               Open in Explorer
             </ExtLink>
           ) : null}

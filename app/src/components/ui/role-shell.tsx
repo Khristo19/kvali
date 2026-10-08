@@ -38,7 +38,7 @@ export function RoleShell({
   const body = (
     <ScrollView style={styles.scroll} contentContainerStyle={[styles.content, wide && styles.contentWide]} keyboardShouldPersistTaps="handled">
       <View style={[styles.column, wide && styles.columnWide]}>
-        <ScreenHeader title={title} subtitle={subtitle} onBack={onBack} right={<AccountChip />} />
+        <ScreenHeader title={title} subtitle={subtitle} onBack={onBack} right={<AccountChip role={role} />} />
         <NoticeBar />
         {children}
       </View>

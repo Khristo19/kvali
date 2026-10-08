@@ -339,3 +339,29 @@ export async function revokeCertificate(validatorIds: string[]) {
     .remainingAccounts(signerMetas(panel)).instruction();
   return send([ix], panel[0], panel);
 }
+
+const IX_ACTION: Record<string, string> = {
+  PostJob: "postJob", AcceptJob: "acceptJob", SubmitProof: "submitProof", Settle: "settle", Challenge: "challenge",
+  ResolveChallenge: "resolveChallenge", ReclaimExpired: "reclaimExpired", CancelJob: "cancelJob",
+};
+
+/** The successful Kvali transactions that touched a job account, read from the chain (signature, kind, block time). Oldest first. */
+export async function jobTxs(jobPda: string): Promise<{ action: string; sig: string; time?: number }[]> {
+  const sigs = await connection.getSignaturesForAddress(new PublicKey(jobPda), { limit: 25 }, "confirmed");
+  const out: { action: string; sig: string; time?: number }[] = [];
+  for (const s of sigs) {
+    if (s.err) continue;
+    try {
+      const t = await connection.getTransaction(s.signature, { commitment: "confirmed", maxSupportedTransactionVersion: 0 });
+      const log = (t?.meta?.logMessages ?? []).map((l) => l.match(/Instruction: (\w+)/)?.[1]).find((n) => n && IX_ACTION[n]);
+      if (log) out.push({ action: IX_ACTION[log], sig: s.signature, time: t?.blockTime ?? s.blockTime ?? undefined });
+    } catch {
+      /* skip this one */
+    }
+  }
+  return out.sort((a, b) => (a.time ?? 0) - (b.time ?? 0));
+}
+
+export async function reclaimExpiredAsFarmer(chainJobId: number) {
+  return reclaimExpired(chainJobId);
+}

@@ -1,4 +1,4 @@
-import { router, type Href } from "expo-router";
+import { router, useLocalSearchParams, type Href } from "expo-router";
 import { useState } from "react";
 import { Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
@@ -19,8 +19,10 @@ const roles: { id: RoleId; title: string; desc: string; href: Href; glyph: strin
 
 export default function Home() {
   const mode = useMode();
-  const account = useAccount();
-  const [picked, setPicked] = useState<RoleId>("farmer");
+  const { role: roleParam } = useLocalSearchParams<{ role?: string }>();
+  const [picked, setPicked] = useState<RoleId>(roleParam === "operator" || roleParam === "validator" ? roleParam : "farmer");
+  const account = useAccount(picked); // each role has its own demo account
+  const anyAccount = useAccount();
   const [form, setForm] = useState(false);
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -32,9 +34,10 @@ export default function Home() {
   const openForm = () => {
     setErr(null);
     setPhantom(false);
-    if (account) {
-      setName((n) => n || account.name);
-      setEmail((m) => m || account.email);
+    const prefill = account ?? anyAccount;
+    if (prefill) {
+      setName((n) => n || prefill.name);
+      setEmail((m) => m || prefill.email);
     }
     setForm(true);
   };
@@ -102,7 +105,7 @@ export default function Home() {
                 {shortAddr(addressFor(account.role))}
               </Text>
               <Button label={`Open my ${roleLabel(account.role).toLowerCase()} page`} kind="secondary" small onPress={() => router.replace(roleHome(account.role) as Href)} />
-              <Button label="Sign out" kind="secondary" small onPress={() => signOut()} />
+              <Button label="Sign out" kind="secondary" small onPress={() => signOut(account.role)} />
             </View>
           ) : null}
 

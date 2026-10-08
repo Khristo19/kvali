@@ -1,4 +1,7 @@
 import { router } from "expo-router";
+import { describeJob, jobRef } from "@/session/info";
+import { recordTitle } from "@/components/records";
+import { useSession, type Session } from "@/session/store";
 import { useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
@@ -26,16 +29,15 @@ import { setPending, usePending } from "@/session/store";
 import { useActions } from "@/engine/actions";
 import { useEngine } from "@/engine/useEngine";
 import { EngineError, type Job } from "@/engine/types";
-import { DRONE, SAMPLE_JOB_ID, WALLETS, sampleJob, recordFor, sampleRecords } from "@/engine/scenario";
+import { DRONE, WALLETS, recordFor, sampleRecords } from "@/engine/scenario";
 import { colors, space, type } from "@/theme";
 
 const date = (secs: number) => new Date(secs * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
-const dayMonth = (secs: number) => new Date(secs * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "short", timeZone: "UTC" });
 const both = (a: bigint) => `${usdc(a)} (${lari(a)})`;
 
 export function Wallet() {
-  const { engine } = useEngine();
-  const b = engine.balance(WALLETS.operator);
+  const { state } = useEngine();
+  const b = state.balances[WALLETS.operator] ?? 0n;
   return (
     <Card>
       <Text style={type.label}>Your wallet</Text>
@@ -112,41 +114,37 @@ function plainError(e: unknown): string {
   return "Something went wrong. Try again.";
 }
 
-/** "Vineyard + hazelnut" from the long sample crop text. */
-function cropName(): string {
-  const raw = sampleJob.raw as { crop?: string };
-  const c = (raw.crop ?? "Field").split("(")[0].trim();
-  return c.charAt(0).toUpperCase() + c.slice(1);
-}
+const when = (secs: number) => new Date(secs * 1000).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
-const ref = (id: number) => (id > 100000 ? `…${String(id).slice(-5)}` : String(id));
-
-function jobCard(j: Job, feeBps: bigint, onAccept: () => void, onChain = false) {
-  const raw = sampleJob.raw as { region?: string; product?: { label?: string } };
-  const sample = j.id === SAMPLE_JOB_ID;
-  const title = `${sample ? cropName() : `Job #${ref(j.id)}`} · ${hectares(j.areaCha).replace(".00", "")}`;
-  const place = sample && raw.region ? raw.region.split(",")[0] : "Georgia";
-  const product = sample ? (raw.product?.label ?? "").split("(")[0].trim() || "Spray product" : "Spray product";
+function jobCard(j: Job, feeBps: bigint, onAccept: () => void, o: { onChain?: boolean; session: Session | null; disabledReason?: string; mine?: boolean }) {
+  const d = describeJob(j, o.session);
+  const title = `${d.field} · ${hectares(j.areaCha)}`;
   const receive = j.amount - (j.amount * feeBps) / 10_000n;
   return (
-    <Card key={j.id}>
+    <Card key={`${j.id}-${o.onChain ? "chain" : "mine"}`}>
       <View style={styles.cardHead}>
         <View style={{ flex: 1, flexShrink: 1, minWidth: 0 }}>
           <Text style={styles.jobTitle}>{title}</Text>
-          <Text style={type.small}>{place} · job #{ref(j.id)}{onChain ? " · read from Solana devnet" : ""}</Text>
+          <Text style={type.small}>
+            {d.farmer ? `Farmer: ${d.farmer} · ` : ""}job {d.ref}
+            {o.onChain ? " · read from Solana devnet" : ""}
+          </Text>
         </View>
-        <StatusChip label="New" tone="green" />
+        <StatusChip label={o.mine ? "Your demo job" : "Open"} tone="green" />
       </View>
       <BigNumber value={usdc(j.amount)} size={30} sub={`${lari(j.amount)} · you receive ${usdc(receive)} after fee`} />
       <Divider />
       <FactGrid>
-        <Fact label="Product" value={product} />
+        <Fact label="Field" value={d.field} />
+        <Fact label="Product" value={d.product} />
         <Fact label="Rate" value={litersPerHa(j.targetRateMlPerHa)} />
-        <Fact label="Spray by" value={dayMonth(j.sprayDeadline)} />
         <Fact label="Area" value={hectares(j.areaCha)} />
+        <Fact label="Spray by" value={when(j.sprayDeadline)} />
+        <Fact label="Price" value={usdc(j.amount)} />
       </FactGrid>
       <Text style={type.body}>You lock {usdc(j.amount)} as a bond; you get it back when the job is approved.</Text>
-      <Button label={`Accept job ${ref(j.id)} and lock ${usdc(j.amount)} bond`} onPress={onAccept} />
+      <Button label={`Accept job ${d.ref} and lock ${usdc(j.amount)} bond`} disabled={!!o.disabledReason} hint={o.disabledReason} onPress={onAccept} />
+      {o.disabledReason ? <Text style={type.small}>{o.disabledReason}</Text> : null}
     </Card>
   );
 }
@@ -174,6 +172,7 @@ export function OpenJobs({ onError, onDone }: { onError: (m: string | null) => v
   const { state } = useEngine();
   const actions = useActions();
   const { dev, extra, held } = useChainJobs();
+  const session = useSession();
   const jobs = Object.values(state.jobs).filter((j) => j.state === "Posted");
   const feeBps = state.config.kvaliFeeBps + state.config.validatorFeeBps;
   const run = async (fn: () => Promise<void>) => {
@@ -185,6 +184,8 @@ export function OpenJobs({ onError, onDone }: { onError: (m: string | null) => v
       onError(plainError(e));
     }
   };
+  const local = state.jobs[17];
+  const busyReason = local && !['Released', 'Refunded', 'Cancelled'].includes(local.state) ? (local.state === 'Posted' ? 'The demo job above is still open. Accept it, or ask the farmer to cancel it, before taking another one.' : 'You are working on the demo job. Finish it or release it first.') : undefined;
   const reading = dev.mode === "devnet" && dev.openJobs === null;
   const none = jobs.length === 0 && extra.length === 0 && !held;
   return (
@@ -193,13 +194,20 @@ export function OpenJobs({ onError, onDone }: { onError: (m: string | null) => v
         <Card>
           <CardTitle>You still hold a job on chain</CardTitle>
           <Text style={type.body}>
-            Job {ref(held.chainJobId)} is {held.state} and your bond is locked in it (from an earlier visit). Continue it to finish it here.
+            Job …{String(held.chainJobId).slice(-5)} is {held.state} and your bond is locked in it (from an earlier visit). Continue it to finish it here.
           </Text>
-          <Button label={`Continue job ${ref(held.chainJobId)}`} onPress={() => void run(() => actions.continueHeldJob(held.chainJobId))} />
+          <Button label={`Continue job …${String(held.chainJobId).slice(-5)}`} onPress={() => void run(() => actions.continueHeldJob(held.chainJobId))} />
         </Card>
       ) : null}
-      {jobs.map((j) => jobCard(j, feeBps, () => void run(() => actions.acceptJob(j.id))))}
-      {extra.map((c) => jobCard(chainAsJob(c), feeBps, () => void run(() => actions.acceptOpenJob(c.chainJobId)), true))}
+      {jobs.map((j) => jobCard(j, feeBps, () => void run(() => actions.acceptJob(j.id)), { session, mine: true }))}
+      {extra.length > 0 && jobs.length > 0 ? <Text style={type.label}>Other open jobs on Solana devnet</Text> : null}
+      {extra.map((c) =>
+        jobCard(chainAsJob(c), feeBps, () => void run(() => actions.acceptOpenJob(c.chainJobId)), {
+          onChain: true,
+          session,
+          disabledReason: busyReason,
+        }),
+      )}
       {none ? (
         <Card>
           <CardTitle>Jobs near you</CardTitle>
@@ -232,6 +240,7 @@ const SAMPLE_INFO: { key: keyof typeof sampleRecords; title: string; desc: strin
 export function UploadRecord({ job, onError }: { job: Job; onError: (m: string | null) => void }) {
   const actions = useActions();
   const pending = usePending();
+  const session = useSession();
   const [key, setKey] = useState<keyof typeof sampleRecords>((pending?.key as keyof typeof sampleRecords) ?? "honest");
   const r = recordFor(key, job.areaCha);
   const rate = job.areaCha > 0 ? Math.round(r.litersMl / (job.areaCha / 100)) : 0;
@@ -239,7 +248,7 @@ export function UploadRecord({ job, onError }: { job: Job; onError: (m: string |
   const stage = () => {
     onError(null);
     setPending({ key, approvals: [] });
-    notify("ok", `Record "${SAMPLE_INFO.find((s) => s.key === key)?.title}" sent to the validators. Open the Validator page and approve it with 2 of 3 seats.`);
+    notify("ok", `Record "${recordTitle(key)}" sent to the validators. Open the Validator page and approve it with 2 of 3 seats.`);
   };
   const shortcut = async () => {
     try {
@@ -253,7 +262,7 @@ export function UploadRecord({ job, onError }: { job: Job; onError: (m: string |
     <Card>
       <CardTitle>Demo: simulate the drone flight</CardTitle>
       <Text style={type.body}>
-        Presenter control. A real drone would upload its flight log after spraying job {ref(job.id)}. Here you pick a sample record instead.
+        Presenter control. A real drone would upload its flight log after spraying {describeJob(job, session).field} (job {jobRef(job.id, session)}). Here you pick a sample record instead.
       </Text>
       {SAMPLE_INFO.map((s) => (
         <Button small key={s.key} kind={s.key === key ? "primary" : "secondary"} label={s.title + (s.key === key ? " (selected)" : "")} onPress={() => setKey(s.key)} />
@@ -271,15 +280,36 @@ export function UploadRecord({ job, onError }: { job: Job; onError: (m: string |
           tone={pending.refusal ? "error" : "info"}
           text={
             pending.refusal
-              ? `A validator refused the record "${pending.key}": ${pending.refusal}. Pick another record and send it again.`
-              : `Waiting for validators: record "${pending.key}", ${pending.approvals.length} of 2 approvals.`
+              ? `A validator refused the record "${recordTitle(pending.key)}": ${pending.refusal}. Pick another record and send it again, or release the job below.`
+              : `Waiting for validators: record "${recordTitle(pending.key)}", ${pending.approvals.length} of 2 approvals.`
           }
         />
       ) : null}
       <Button label="Send the record to the validators" onPress={stage} />
       {pending ? <Button label="Open the Validator page" kind="secondary" onPress={() => router.replace("/validator")} /> : null}
       <Button small kind="secondary" label="Presenter shortcut: skip the validators (co-sign automatically)" onPress={shortcut} />
+      <ReleaseJob job={job} />
     </Card>
+  );
+}
+
+/** Way out of a stuck accepted job: after the spray-by deadline the program returns payment and bond (reclaim_expired). */
+export function ReleaseJob({ job }: { job: Job }) {
+  const actions = useActions();
+  const now = useTick();
+  if (job.state !== "Accepted") return null;
+  const left = job.sprayDeadline - now;
+  return (
+    <>
+      <Divider />
+      <Text style={type.label}>Stuck? Release this job</Text>
+      <Text style={type.small}>
+        {left > 0
+          ? `Demo jobs must be sprayed within 30 minutes (until ${when(job.sprayDeadline)}). If no good record is accepted by then, the program returns the farmer's payment and your bond: press the button after the deadline (${Math.ceil(left / 60)} min left).`
+          : "The spray-by deadline has passed with no accepted proof. Release the job to return the payment and the bond."}
+      </Text>
+      <Button small kind="warn" label="Release this job (after the deadline)" disabled={left > 0} hint="Available once the spray-by deadline has passed" onPress={() => void actions.reclaimExpired(job.id).catch(() => undefined)} />
+    </>
   );
 }
 

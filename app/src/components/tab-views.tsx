@@ -6,6 +6,8 @@ import { addressFor, roleLabel, shortAddr, useAccount } from "@/account/store";
 import { lari, litersPerHa, usdc } from "@/components/money";
 import { actorName, jobLog, moneyLine } from "@/components/job/helpers";
 import { TxId } from "@/components/job/ui";
+import { jobRef } from "@/session/info";
+import { useSession } from "@/session/store";
 import { Banner, Button, Card, CardTitle, Row, StatusChip } from "@/components/ui";
 import { SAMPLE_JOB_ID, VALIDATORS, WALLETS } from "@/engine/scenario";
 import { useEngine } from "@/engine/useEngine";
@@ -38,9 +40,9 @@ function LogList({ job }: { job: Job }) {
 }
 
 export function FarmerPayments() {
-  const { engine, state } = useEngine();
+  const { state } = useEngine();
   const job = state.jobs[SAMPLE_JOB_ID];
-  const bal = engine.balance(WALLETS.farmer);
+  const bal = state.balances[WALLETS.farmer] ?? 0n;
   const held = job && !ENDED.includes(job.state) ? job.amount : 0n;
   return (
     <>
@@ -71,6 +73,7 @@ export function FarmerPayments() {
 
 export function OperatorMine() {
   const { state } = useEngine();
+  const session = useSession();
   const mine = Object.values(state.jobs).filter((j) => j.operator === WALLETS.operator);
   return (
     <Card>
@@ -78,7 +81,7 @@ export function OperatorMine() {
       {mine.length === 0 ? <Text style={type.body}>You have not accepted a job yet. Open the Jobs tab to find one.</Text> : null}
       {mine.map((j) => (
         <View key={j.id} style={{ gap: 6 }}>
-          <Row label={`Job ${j.id > 100000 ? `…${String(j.id).slice(-5)}` : `#${j.id}`}`} value={j.state} sub={`${usdc(j.amount)} · bond ${usdc(j.bond)}`} />
+          <Row label={`Job ${jobRef(j.id, session)}`} value={j.state} sub={`${usdc(j.amount)} · bond ${usdc(j.bond)}`} />
           <StatusChip label={j.state} tone={tone(j.state)} />
           <Button small kind="secondary" label="Open the job story" onPress={() => router.push("/job")} />
         </View>
@@ -88,9 +91,9 @@ export function OperatorMine() {
 }
 
 export function OperatorEarnings() {
-  const { engine, state } = useEngine();
+  const { state } = useEngine();
   const op = state.operators[WALLETS.operator];
-  const bal = engine.balance(WALLETS.operator);
+  const bal = state.balances[WALLETS.operator] ?? 0n;
   const earned = state.log
     .filter((l) => l.action === "settle" || l.action === "resolveChallenge" || l.action === "reclaimExpired")
     .reduce((s, l) => s + (l.amounts[WALLETS.operator] ?? 0n), 0n);
@@ -117,6 +120,7 @@ export function OperatorEarnings() {
 
 export function ValidatorReviewed() {
   const { state } = useEngine();
+  const session = useSession();
   const done = Object.values(state.jobs).filter((j) => j.proof);
   return (
     <Card>
@@ -124,7 +128,7 @@ export function ValidatorReviewed() {
       {done.length === 0 ? <Text style={type.body}>Nothing reviewed yet. Approved records appear here once the proof is on chain.</Text> : null}
       {done.map((j) => (
         <View key={j.id} style={{ gap: 4 }}>
-          <Row label={`Job ${j.id > 100000 ? `…${String(j.id).slice(-5)}` : `#${j.id}`}`} value={j.state} sub={`${j.proof!.signers.length} of 3 seats approved`} />
+          <Row label={`Job ${jobRef(j.id, session)}`} value={j.state} sub={`${j.proof!.signers.length} of 3 seats approved`} />
           <Row label="Applied rate" value={litersPerHa(j.proof!.appliedRateMlPerHa)} sub={`target ${litersPerHa(j.targetRateMlPerHa)}`} />
           <Row label="Coverage" value={`${(j.proof!.coverageBps / 100).toFixed(1)}%`} />
         </View>
@@ -135,8 +139,8 @@ export function ValidatorReviewed() {
 }
 
 export function ValidatorEarnings() {
-  const { engine, state } = useEngine();
-  const pool = engine.balance(WALLETS.validatorPool);
+  const { state } = useEngine();
+  const pool = state.balances[WALLETS.validatorPool] ?? 0n;
   const settled = Object.values(state.jobs).filter((j) => j.state === "Released").length;
   return (
     <Card>
@@ -150,7 +154,7 @@ export function ValidatorEarnings() {
 }
 
 export function ValidatorProfile() {
-  const a = useAccount();
+  const a = useAccount("validator");
   return (
     <Card>
       <CardTitle>Profile</CardTitle>

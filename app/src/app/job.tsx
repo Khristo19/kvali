@@ -1,6 +1,8 @@
 import { useLocalSearchParams } from "expo-router";
 
 import { useAccount } from "@/account/store";
+import { describeJob, jobRef } from "@/session/info";
+import { useSession } from "@/session/store";
 import { SettleNow } from "@/components/settle-now";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
@@ -38,6 +40,7 @@ export default function JobStory() {
   const [error, setError] = useState<string | null>(null);
   const now = useTick();
   const account = useAccount();
+  const session = useSession();
   const role = account?.role ?? "farmer";
 
   const job = state.jobs[jobId];
@@ -78,15 +81,16 @@ export default function JobStory() {
   const ended = job.payout !== null;
 
   return (
-    <RoleShell role={role} active={-1} title="Job story" subtitle={`Job #${job.id}`}>
+    <RoleShell role={role} active={-1} title="Job story" subtitle={`${describeJob(job, session).field} · job ${jobRef(job.id, session)}`}>
       <ModeBanner />
 
       <Card>
         <View style={styles.head}>
-          <Text style={type.heading}>Job #{job.id}</Text>
+          <Text style={type.heading}>Job {jobRef(job.id, session)}</Text>
           <Chip label={job.state} tone={STATE_TONE[job.state]} />
         </View>
-        <Row left="Field" right={hectares(job.areaCha)} />
+        <Row left="Field" right={`${describeJob(job, session).field}, ${hectares(job.areaCha)}`} />
+        <Row left="Product" right={describeJob(job, session).product} />
         <Row left="Target" right={`${litersPerHa(job.targetRateMlPerHa)} ± ${job.toleranceBps / 100}%`} />
         <BigNumber caption="Price" value={lariAmount(job.amount)} sub={`${usdc(job.amount)} USDC`} />
       </Card>

@@ -14,6 +14,8 @@ export interface LastTx {
   ok: boolean;
   /** Short plain-text reason when the program refused it. */
   error?: string;
+  /** Date.now() when it happened (pages only show results from after they opened). */
+  at: number;
 }
 
 export interface DevnetState {

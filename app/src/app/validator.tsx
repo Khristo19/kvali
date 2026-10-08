@@ -6,13 +6,15 @@ import { Banner, Card, CardTitle, Fact, FactGrid, RoleShell, TwoUp, useTab } fro
 import { SettleNow } from "@/components/settle-now";
 import { ValidatorEarnings, ValidatorProfile, ValidatorReviewed } from "@/components/tab-views";
 import { notify } from "@/components/ui/notice";
-import { setPending, usePending } from "@/session/store";
+import { describeJob, jobRef } from "@/session/info";
+import { recordTitle } from "@/components/records";
+import { setPending, usePending, useSession } from "@/session/store";
 import { ChallengeCard } from "@/components/validator/challenge-card";
 import { ProofCard, fullVerdict, type SampleKey } from "@/components/validator/proof-card";
 import { ModeBanner } from "@/components/devnet/mode-banner";
 import { useActions } from "@/engine/actions";
 import { useEngine } from "@/engine/useEngine";
-import { DRONE, SAMPLE_JOB_ID, VALIDATORS, sampleJob, sampleRecords } from "@/engine/scenario";
+import { DRONE, VALIDATORS, sampleRecords } from "@/engine/scenario";
 import { EngineError, type Validator } from "@/engine/types";
 import { colors, radius, space, type } from "@/theme";
 
@@ -23,6 +25,7 @@ export default function ValidatorScreen() {
   const actions = useActions();
   const tab = useTab("validator");
   const pending = usePending();
+  const session = useSession();
   const [seatId, setSeatId] = useState(VALIDATORS[0].id);
   const [sigs, setSigs] = useState<Record<string, string[]>>({});
   const [refusals, setRefusals] = useState<Record<string, string>>({});
@@ -91,12 +94,11 @@ export default function ValidatorScreen() {
   };
 
   const first = accepted[0] ?? challenged[0];
-  const raw = sampleJob.raw as { region?: string; product?: { label?: string } };
   return (
     <RoleShell
       role="validator"
       title={tab === "" ? "Proof review" : tab === "reviewed" ? "Reviewed" : tab === "earnings" ? "Earnings" : "Profile"}
-      subtitle={tab === "" ? (first ? `Job ${first.id > 100000 ? `…${String(first.id).slice(-5)}` : `#${first.id}`} · ${state.config.proofThreshold} of ${state.config.validators.length} checks needed` : "Nothing to check right now") : undefined}
+      subtitle={tab === "" ? (first ? `Job ${jobRef(first.id, session)} · ${state.config.proofThreshold} of ${state.config.validators.length} checks needed` : "Nothing to check right now") : undefined}
     >
       <ModeBanner />
       {tab === "reviewed" && <ValidatorReviewed />}
@@ -139,11 +141,12 @@ export default function ValidatorScreen() {
           )}
           {accepted.map((job) => (
             <Card key={`sum-${job.id}`}>
-              <CardTitle>Job #{job.id}</CardTitle>
+              <CardTitle>Job {jobRef(job.id, session)}</CardTitle>
               <FactGrid>
-                <Fact label="Field" value={`${hectares(job.areaCha)}${job.id === SAMPLE_JOB_ID && raw.region ? `, ${raw.region.split(",")[0]}` : ""}`} />
+                <Fact label="Field" value={`${describeJob(job, session).field}, ${hectares(job.areaCha)}`} />
                 <Fact label="Drone" value={DRONE.model} />
-                <Fact label="Product" value={job.id === SAMPLE_JOB_ID ? ((raw.product?.label ?? "").split("(")[0].trim() || "Spray product") : "Spray product"} />
+                <Fact label="Spray by" value={new Date(job.sprayDeadline * 1000).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} />
+                <Fact label="Product" value={describeJob(job, session).product} />
                 <Fact label="Target" value={`${litersPerHa(job.targetRateMlPerHa)} ± ${job.toleranceBps / 100}%`} />
               </FactGrid>
             </Card>
@@ -155,10 +158,10 @@ export default function ValidatorScreen() {
         const queue = pending ? ([pending.key] as SampleKey[]) : KEYS;
         return (
           <View key={job.id} style={styles.group}>
-            <Text style={type.heading}>Proofs to check, job {job.id > 100000 ? `…${String(job.id).slice(-5)}` : job.id}</Text>
+            <Text style={type.heading}>Proofs to check, job {jobRef(job.id, session)}</Text>
             <Text style={type.small}>
               {pending
-                ? `The operator sent the record "${pending.key}" (Demo: simulated drone flight). Approve it with 2 of the 3 seats; the 2nd approval submits the proof on chain, co-signed by both validators.`
+                ? `The operator sent the record "${recordTitle(pending.key)}" (Demo: simulated drone flight). Approve it with 2 of the 3 seats; the 2nd approval submits the proof on chain, co-signed by both validators.`
                 : "The operator has not sent a record yet. Demo queue: 4 sample spray records checked against this job. Each runs the full verdict first."}
             </Text>
             <View style={styles.proofs}>
@@ -183,7 +186,7 @@ export default function ValidatorScreen() {
 
       {jobs.filter((j) => j.state === "ProofSubmitted").map((j) => (
         <View key={`done-${j.id}`} style={{ gap: 16 }}>
-          <Banner tone="ok" text={`Job ${j.id > 100000 ? `…${String(j.id).slice(-5)}` : j.id}: the proof is on chain with ${j.proof?.signers.length ?? 0} validator co-signatures.`} />
+          <Banner tone="ok" text={`Job ${jobRef(j.id, session)}: the proof is on chain with ${j.proof?.signers.length ?? 0} validator co-signatures.`} />
           <SettleNow job={j} />
         </View>
       ))}

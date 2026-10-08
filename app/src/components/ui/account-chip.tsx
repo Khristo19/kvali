@@ -1,16 +1,16 @@
-import { router } from "expo-router";
+import { router, type Href } from "expo-router";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 
-import { addressFor, roleLabel, shortAddr, signOut, useAccount } from "@/account/store";
+import { addressFor, roleLabel, shortAddr, signOut, useAccount, type Role } from "@/account/store";
 import { colors, fonts, radius } from "@/theme";
 
 /** Signed-in demo account (name, role, public devnet address) with "Sign out"; "Sign in" when there is none. */
-export function AccountChip() {
-  const a = useAccount();
+export function AccountChip({ role }: { role?: Role }) {
+  const a = useAccount(role);
   if (!a) {
     return (
-      <Pressable accessibilityRole="link" onPress={() => router.replace("/")} style={styles.btn}>
-        <Text style={styles.btnText}>Sign in</Text>
+      <Pressable accessibilityRole="link" onPress={() => router.replace((role ? `/?role=${role}` : "/") as Href)} style={styles.btn}>
+        <Text style={styles.btnText}>{role ? `Sign up as ${roleLabel(role).toLowerCase()}` : "Sign in"}</Text>
       </Pressable>
     );
   }
@@ -28,7 +28,7 @@ export function AccountChip() {
         accessibilityRole="button"
         accessibilityLabel="Sign out"
         onPress={() => {
-          signOut();
+          signOut(a.role);
           router.replace("/");
         }}
         style={styles.btn}

@@ -21,6 +21,7 @@ function simActions(e: Engine): Actions {
     settle: async (caller, id) => e.settle(caller, id),
     challenge: async (farmer, id) => e.challenge(farmer, id, "SIM-evidence-hash"),
     resolveChallenge: async (signers, id, upheld) => e.resolveChallenge(signers, id, upheld, "SIM-panel-report"),
+    reclaimExpired: async (id) => e.reclaimExpired("farmer-group-1", id),
     cancelJob: async (id) => e.cancelJob("farmer-group-1", id),
     acceptOpenJob: async () => {
       throw new Error("There are no other open jobs in the simulation.");
@@ -44,6 +45,7 @@ const OK: Record<keyof Actions, string> = {
   settle: "Settled. The operator was paid.",
   challenge: "Challenge raised. A validator panel will decide.",
   resolveChallenge: "The panel has decided and the money was paid out.",
+  reclaimExpired: "Job released. The payment and the bond went back (the spray-by deadline had passed).",
   cancelJob: "Job cancelled. Your payment came back.",
   acceptOpenJob: "Job accepted. Your bond is locked. Next: fly the job (use \"Demo: simulate the drone flight\" below).",
   continueHeldJob: "Continuing the job you hold on chain.",

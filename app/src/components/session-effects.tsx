@@ -5,16 +5,17 @@ import { useEffect, useRef } from "react";
 import { loadAccount } from "@/account/store";
 import { notify } from "@/components/ui/notice";
 import { useTick } from "@/components/ui/use-tick";
-import { useDevnetState } from "@/devnet/mode";
+import { useDevnetState , getDevnetState } from "@/devnet/mode";
 import { useActions } from "@/engine/actions";
 import { windowLeft } from "@/engine/engine";
 import { SAMPLE_JOB_ID, WALLETS } from "@/engine/scenario";
+import { syncChain } from "@/devnet/bridge";
 import { useEngine } from "@/engine/useEngine";
 
 export const AUTO_SETTLE_GRACE_SECS = 5;
 
 export function SessionEffects() {
-  const { state } = useEngine();
+  const { engine, state } = useEngine();
   const actions = useActions();
   const dev = useDevnetState();
   const now = useTick();
@@ -23,6 +24,15 @@ export function SessionEffects() {
   useEffect(() => {
     loadAccount();
   }, []);
+
+  // Devnet balances and the job window come from the chain: re-read every 20 s while a page is open.
+  useEffect(() => {
+    if (dev.mode !== "devnet" || dev.status !== "ready") return;
+    const id = setInterval(() => {
+      if (!getDevnetState().busy) void syncChain(engine).catch(() => undefined);
+    }, 20000);
+    return () => clearInterval(id);
+  }, [dev.mode, dev.status, engine]);
 
   const job = state.jobs[SAMPLE_JOB_ID];
   const due = !!job && job.state === "ProofSubmitted" && windowLeft(job, now) === 0 && now >= (job.proof?.windowEndsAt ?? 0) + AUTO_SETTLE_GRACE_SECS;

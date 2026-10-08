@@ -1,4 +1,4 @@
-import { StyleSheet, Text, View } from "react-native";
+import { StyleSheet, Text, View , TextInput } from "react-native";
 
 import { computeVerdict } from "@kvali/proof/verdict";
 
@@ -9,6 +9,7 @@ import type { sampleRecords } from "@/engine/samples";
 import type { Job, Validator } from "@/engine/types";
 import { colors, space, type } from "@/theme";
 import { useState } from "react";
+import { recordTitle } from "@/components/records";
 import { CheckList } from "./check-list";
 import { FlightCard } from "./flight-card";
 
@@ -58,13 +59,15 @@ export function ProofCard({
   const names = signed.map((id) => validators.find((x) => x.id === id)?.seat ?? id);
 
   const [flight, setFlight] = useState(false);
+  const [asking, setAsking] = useState(false);
+  const [text, setText] = useState("");
   const total = v.checks.length;
   const passed = v.checks.filter((c) => c.pass).length;
   return (
     <Card>
       <View style={styles.head}>
         <View style={{ flex: 1, flexShrink: 1, minWidth: 0 }}>
-          <CardTitle>Record: {r.sample}</CardTitle>
+          <CardTitle>Record: {recordTitle(sampleKey)}</CardTitle>
           <Text style={type.body}>
             {(r.litersMl / 1000).toFixed(1)} L sprayed over {hectares(r.areaCoveredCha)} (job {hectares(job.areaCha)})
           </Text>
@@ -93,13 +96,55 @@ export function ProofCard({
           hint={!v.pass ? "Disabled because the full verdict fails" : undefined}
           onPress={onSign}
         />
-        <Button label="Refuse and give a reason" kind="danger" onPress={() => onRefuse(v.pass ? "refused by validator (verdict passes)" : reason)} />
+        {asking ? (
+          <View style={styles.reasonBox}>
+            <Text style={type.subheading}>Why do you refuse?</Text>
+            <View style={styles.picks}>
+              {QUICK_REASONS.map((q) => (
+                <Button small key={q} kind={text === q ? "primary" : "secondary"} label={q} onPress={() => setText(q)} />
+              ))}
+            </View>
+            <TextInput
+              value={text}
+              onChangeText={setText}
+              placeholder="Write the reason (a few words)"
+              accessibilityLabel="Reason for refusing"
+              style={styles.input}
+            />
+            {!v.pass ? <Text style={type.small}>The checklist says: {reason}</Text> : null}
+            <Button
+              label="Send refusal"
+              kind="danger"
+              disabled={text.trim().length < 3}
+              onPress={() => {
+                onRefuse(text.trim());
+                setAsking(false);
+                setText("");
+              }}
+            />
+            <Button small kind="secondary" label="Cancel" onPress={() => setAsking(false)} />
+          </View>
+        ) : (
+          <Button
+            label="Refuse and give a reason"
+            kind="danger"
+            onPress={() => {
+              setText(v.pass ? "" : failing.map((c) => c.name).join(", ") + " failed");
+              setAsking(true);
+            }}
+          />
+        )}
       </View>
     </Card>
   );
 }
 
+const QUICK_REASONS = ["Spray rate out of range", "Field not fully covered", "Pump was off", "Tank weights do not match the meter"];
+
 const styles = StyleSheet.create({
+  reasonBox: { gap: space.sm, padding: space.md, borderRadius: 12, borderWidth: 1, borderColor: colors.error },
+  picks: { gap: space.sm },
+  input: { minHeight: 48, borderWidth: 1.5, borderColor: colors.border, borderRadius: 12, paddingHorizontal: 12, fontSize: 16, color: colors.ink, backgroundColor: colors.background },
   head: { flexDirection: "row", alignItems: "flex-start", justifyContent: "space-between", gap: space.md },
   checkHead: { flexDirection: "row", justifyContent: "space-between", alignItems: "baseline" },
   actions: { gap: space.md },

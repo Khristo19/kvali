@@ -30,8 +30,8 @@ export const DRONE = {
 
 export const SAMPLE_JOB_ID = 17;
 export const SAMPLE_AMOUNT = 300n * USDC;
-/** One day, comfortably after the demo's 60 s window. */
-export const DEMO_DEADLINE_SECS = 4 * 24 * 3600;
+/** Demo jobs must be spray-by within 30 minutes: long enough for a walkthrough, short enough that an abandoned job can be released (reclaim_expired) the same day. */
+export const DEMO_DEADLINE_SECS = 30 * 60;
 
 /** Two data validators sign (operator-side + neutral). Any 2 of 3 would do. */
 export const PROOF_SIGNERS = [VALIDATORS[0].id, VALIDATORS[2].id];

@@ -22,6 +22,11 @@ export interface Session {
   fieldHash: string;
   areaCha: number;
   sprayDeadline: number;
+  /** Details shown on every role page (the chain only holds the field hash). */
+  fieldName?: string;
+  crop?: string;
+  product?: string;
+  farmerName?: string;
   txs: SessionTx[];
   /** Record that was actually submitted on chain. */
   recordKey: string | null;
@@ -75,7 +80,7 @@ export function addSessionTx(tx: SessionTx) {
   if (!state) return;
   setSession({ ...state, txs: [...state.txs, tx] });
 }
-export function newSession(p: { chainJobId: number; fieldHash: string; areaCha: number; sprayDeadline: number }) {
+export function newSession(p: { chainJobId: number; fieldHash: string; areaCha: number; sprayDeadline: number; fieldName?: string; crop?: string; product?: string; farmerName?: string }) {
   setSession({ ...p, txs: [], recordKey: null, signers: [], resolution: null });
 }
 
