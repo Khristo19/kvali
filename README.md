@@ -12,7 +12,7 @@ Built for the Colosseum Crypto World's Fair, Solana track. Submitted solo.
 
 | What | Link |
 |---|---|
-| Live web demo | [LIVE WEB DEMO URL] |
+| Live web demo | [khristo19.github.io/kvali](https://khristo19.github.io/kvali/) |
 | Pitch video | [PITCH VIDEO] |
 | Tech demo video | [TECH DEMO VIDEO] |
 | Program on Solana devnet | [`2TWg6cMa7bxFa8y7HHoDXZecNJxcbYrUAqwfrg5T8FPK`](https://explorer.solana.com/address/2TWg6cMa7bxFa8y7HHoDXZecNJxcbYrUAqwfrg5T8FPK?cluster=devnet) |
