@@ -37,13 +37,16 @@ const STATE_TONE: Record<JobState, ChipTone> = {
 /** The job is shared by all roles: links to each role's page. */
 function RoleLinks() {
   return (
-    <Card>
-      <Text style={type.subheading}>Open this demo as</Text>
-      <Button small kind="secondary" label="Farmer" onPress={() => router.replace("/farmer")} />
-      <Button small kind="secondary" label="Drone operator" onPress={() => router.replace("/operator")} />
-      <Button small kind="secondary" label="Validator" onPress={() => router.replace("/validator")} />
-      <Button small kind="secondary" label="Home" onPress={() => router.replace("/")} />
-    </Card>
+    <View style={styles.links}>
+      <Text style={type.label}>Open this demo as:</Text>
+      <View style={styles.linkRow}>
+        {([["Farmer", "/farmer"], ["Drone operator", "/operator"], ["Validator", "/validator"], ["Home", "/"]] as const).map(([label, href]) => (
+          <View key={label} style={{ flexGrow: 1, flexBasis: 140 }}>
+            <Button small kind="secondary" label={label} onPress={() => router.replace(href)} />
+          </View>
+        ))}
+      </View>
+    </View>
   );
 }
 
@@ -81,6 +84,7 @@ export default function JobStory() {
   if (!job) {
     return (
       <RoleShell role={role} active={-1} title="Job story" subtitle="Every step, in plain words">
+        <RoleLinks />
         <ChainGate>
         <Card>
           <Text style={[type.body, { color: colors.ink }]}>No job yet. Post one from the Farmer page.</Text>
@@ -94,7 +98,6 @@ export default function JobStory() {
           {!farmerAcct || !operatorAcct ? <Text style={type.small}>Sign up as a farmer and as a drone operator first (home page).</Text> : null}
           {error && <Text style={styles.error}>{error}</Text>}
         </Card>
-        <RoleLinks />
         </ChainGate>
       </RoleShell>
     );
@@ -107,6 +110,7 @@ export default function JobStory() {
 
   return (
     <RoleShell role={role} active={-1} title="Job story" subtitle={`${describeJob(job, session).field} · job ${jobRef(job.id, session)}`}>
+      <RoleLinks />
       <ModeBanner />
       <ChainGate>
       <Card>
@@ -146,13 +150,14 @@ export default function JobStory() {
           <ChainCard />
         </View>
       </TwoUp>
-      <RoleLinks />
       </ChainGate>
     </RoleShell>
   );
 }
 
 const styles = StyleSheet.create({
+  links: { gap: 6 },
+  linkRow: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   head: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: space.md },
   error: { ...type.body, color: colors.error },
 });

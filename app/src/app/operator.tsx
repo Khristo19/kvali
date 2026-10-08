@@ -31,10 +31,11 @@ export default function Operator() {
   const dev = useDevnetState();
   const account = useAccount("operator");
   // Devnet: no certificate or wallet is shown until this browser's operator account exists on chain.
-  const needsSetup = dev.mode === "devnet" && dev.status === "ready" && !!dev.snapshot && !dev.snapshot.operatorRegistered;
+  // Signed out, or signed up but not on chain yet: only the sign-up / setup card (plus a read-only job list), no wallet, certificate or earnings.
+  const needsSetup = !account || (dev.mode === "devnet" && dev.status === "ready" && !!dev.snapshot && !dev.snapshot.operatorRegistered);
 
   return (
-    <RoleShell role="operator" title={TITLES[tab]} subtitle={tab === "" ? openText : undefined}>
+    <RoleShell role="operator" title={account ? TITLES[tab] : "Jobs near you"} subtitle={tab === "" && account ? openText : undefined}>
       <ModeBanner />
       <ChainGate>
       {needsSetup ? (
@@ -59,7 +60,7 @@ export default function Operator() {
           )}
         </Card>
       ) : null}
-      {needsSetup ? null : <CertificateStrip />}
+      {needsSetup ? <OpenJobs onError={setError} onDone={() => undefined} /> : <CertificateStrip />}
       {error && <Banner tone="error" text={error} />}
       {needsSetup ? null : tab === "" && (
         <TwoUp>

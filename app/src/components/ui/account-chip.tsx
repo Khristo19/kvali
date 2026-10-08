@@ -35,14 +35,14 @@ export function AccountChip({ role }: { role?: Role }) {
       </View>
       <Pressable
         accessibilityRole="button"
-        accessibilityLabel="Sign out"
+        accessibilityLabel="Sign out (all roles)"
         onPress={() => {
-          signOut(a.role);
+          signOut();
           router.replace("/");
         }}
         style={styles.btn}
       >
-        <Text style={styles.btnText}>Sign out</Text>
+        <Text style={[styles.btnText, { textAlign: "center" }]}>Sign out (all roles)</Text>
       </Pressable>
     </View>
   );

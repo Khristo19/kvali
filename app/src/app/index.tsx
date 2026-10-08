@@ -186,7 +186,7 @@ export default function Home() {
                     {roleLabel(account.role)}: {account.name}, address {shortAddr(addressFor(account.role))}
                   </Text>
                   <Button label={`Open my ${roleLabel(account.role).toLowerCase()} page`} kind="secondary" small onPress={() => router.replace(roleHome(account.role) as Href)} />
-                  <Button label={`Sign out (${roleLabel(account.role).toLowerCase()})`} kind="secondary" small onPress={() => signOut(account.role)} />
+                  <Button label="Sign out (all roles)" kind="secondary" small onPress={() => signOut()} />
                 </>
               ) : (
                 <Text style={type.small}>Not signed in as {roleLabel(picked)} yet: continue with email below.</Text>

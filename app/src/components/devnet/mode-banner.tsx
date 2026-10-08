@@ -49,22 +49,25 @@ export function ModeBanner() {
         <Seg label="Devnet (real)" on={s.mode === "devnet"} onPress={() => pick("devnet")} />
         <Seg label="Simulated" on={s.mode === "sim"} onPress={() => pick("sim")} />
       </View>
-      <Text style={[type.body, { color: tone === "error" ? colors.error : colors.body }]}>{text}</Text>
-      {s.mode === "devnet" && s.status === "ready" ? (
-        <Text style={type.small}>
-          Your wallet is a devnet burner key kept in this browser (test funds only); validators use public demo keys.{" "}
-          <ExtLink url={explorerAddr(addresses.programId.toBase58())} style={styles.link}>
-            Program on Explorer
-          </ExtLink>
+      <Text style={[type.body, { color: tone === "error" ? colors.error : colors.body, minHeight: 46 }]}>{text}</Text>
+      {s.mode === "devnet" ? (
+        <Text style={[type.small, { minHeight: 44 }]}>
+          {s.status === "ready" ? (
+            <>
+              Your wallet is a devnet burner key kept in this browser (test funds only); validators use public demo keys.{" "}
+              <ExtLink url={explorerAddr(addresses.programId.toBase58())} style={styles.link}>
+                Program on Explorer
+              </ExtLink>
+            </>
+          ) : (
+            " "
+          )}
         </Text>
       ) : null}
-      {s.busy ? (
-        <Text style={[type.body, { color: colors.accent, fontWeight: "600" }]} accessibilityLiveRegion="polite">
-          Sending to devnet: {s.busy}… (a few seconds)
-        </Text>
-      ) : null}
-      {s.mode === "devnet" && last ? (
-        <Text style={[type.small, !last.ok && { color: colors.error }]} selectable>
+      {s.mode === "devnet" ? (
+        <Text style={[type.small, { minHeight: 44 }, last && !last.ok && { color: colors.error }]} selectable>
+          {last ? (
+            <>
           {last.ok ? "Confirmed" : "Refused"}: {last.label}
           {last.error ? ` (${last.error})` : ""}{" "}
           {last.sig ? (
@@ -72,6 +75,10 @@ export function ModeBanner() {
               Open in Explorer
             </ExtLink>
           ) : null}
+            </>
+          ) : (
+            " "
+          )}
         </Text>
       ) : null}
     </View>

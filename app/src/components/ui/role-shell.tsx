@@ -7,8 +7,8 @@ import { ScreenHeader } from "./header";
 import { useWide } from "./layout";
 import { AccountChip } from "./account-chip";
 import { ROLE_TABS, SideNav, TabBar, useTab, type Role } from "./nav";
-import { NoticeBar, clearNotice } from "./notice";
-import { WalletBar } from "./wallet-bar";
+import { clearNotice } from "./notice";
+import { Toasts } from "./toasts";
 
 /**
  * Page frame for every role screen.
@@ -46,13 +46,12 @@ export function RoleShell({
         <ScrollView style={styles.scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.column}>
             <ScreenHeader title={title} subtitle={subtitle} onBack={onBack} right={<AccountChip role={role} />} />
-            <WalletBar />
-            <NoticeBar />
             {children}
           </View>
         </ScrollView>
       </View>
       {role && (web || !wide) ? <TabBar role={role} active={idx} /> : null}
+      <Toasts />
     </SafeAreaView>
   );
 }

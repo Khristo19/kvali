@@ -402,15 +402,15 @@ export function PayoutCard() {
   const title = job.state === "Refunded" ? "Refunded" : job.state === "Released" ? "Paid out" : "Job ended";
   const bondBack = p.operator < job.bond ? p.operator : job.bond;
   const rows: [string, bigint][] = [
-    ["Back to you (farmer)", p.farmer],
-    ["Operator payment", p.operator - bondBack],
-    ["Operator's own bond returned", bondBack],
+    ["To the operator: payment", p.operator - bondBack],
+    ["To the operator: their own bond back (not your money)", bondBack],
     ["Kvali fee", p.kvali],
     ["Validators", p.validators],
   ];
   return (
     <Card>
       <CardTitle>{title}</CardTitle>
+      <Row label="Back to you (farmer)" value={usdc(p.farmer)} sub={p.farmer === 0n ? "paid in full: nothing to return" : lari(p.farmer)} />
       {rows.map(([l, v]) => (
         <Row key={l} label={l} value={usdc(v)} sub={lari(v)} />
       ))}

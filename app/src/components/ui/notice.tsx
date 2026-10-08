@@ -14,8 +14,13 @@ const listeners = new Set<() => void>();
 const emit = () => listeners.forEach((l) => l());
 
 export function notify(tone: Notice["tone"], text: string) {
-  current = { tone, text, id: ++seq };
+  const id = ++seq;
+  current = { tone, text, id };
   emit();
+  // A result line is a toast: it fades after a while and never sits in the page flow.
+  setTimeout(() => {
+    if (current?.id === id) clearNotice();
+  }, tone === "error" ? 15000 : 8000);
 }
 export function clearNotice() {
   current = null;
