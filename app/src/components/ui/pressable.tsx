@@ -23,11 +23,16 @@ export function Pressable(props: PressableProps) {
     if (Platform.OS !== "web") return;
     const el = ref.current as unknown as HTMLElement | null;
     if (!el || typeof el.addEventListener !== "function") return;
+    // This native listener runs BEFORE React's delegated handler for the same click, so wait a tick and only fire
+    // if the press responder did not handle the click itself (otherwise a toggle would flip twice).
     const onClick = (ev: Event) => {
-      if (off.current || !latest.current) return;
-      if (Date.now() - last.current < 600) return; // the press responder already handled this click
-      last.current = Date.now();
-      latest.current(ev as unknown as GestureResponderEvent);
+      const at = Date.now();
+      setTimeout(() => {
+        if (off.current || !latest.current) return;
+        if (last.current >= at - 600) return; // the press responder handled this click (or one just before it)
+        last.current = Date.now();
+        latest.current(ev as unknown as GestureResponderEvent);
+      }, 80);
     };
     el.addEventListener("click", onClick);
     return () => el.removeEventListener("click", onClick);

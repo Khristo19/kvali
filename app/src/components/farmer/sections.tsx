@@ -214,7 +214,7 @@ export function MoneyCard() {
     const pay = p.operator - bondBack;
     return (
       <Card style={styles.moneyCard}>
-        <BigNumber caption="Paid to the operator" value={usdc(pay)} sub={`≈ ${lari(pay)} · plus the operator's own ${usdc(bondBack)} bond returned`} />
+        <BigNumber caption="Paid to the operator" value={usdc(pay)} sub={`${lari(pay)} · plus the operator's own ${usdc(bondBack)} bond returned`} />
         <View style={styles.lockTile}>
           <Icon name="lock" color={colors.green} size={26} />
         </View>
@@ -256,7 +256,7 @@ export function TimelineCard() {
   const pay = job.payout ? job.payout.operator - bondBack : 0n;
   const lastDetail =
     job.payout && job.state === "Released"
-      ? `Payment ${usdc(pay)} (≈ ${lari(pay)}) released; the operator's ${usdc(bondBack)} bond was returned separately`
+      ? `Payment ${usdc(pay)} (${lari(pay)}) released; the operator's ${usdc(bondBack)} bond was returned separately`
       : job.state === "Refunded" || job.state === "Cancelled"
         ? "Your payment came back to you"
         : `${lariAmount(job.amount)} is released automatically`;

@@ -5,6 +5,7 @@ import { ChainGate } from "@/components/chain-gate";
 
 import { describeJob, jobRef } from "@/session/info";
 import { useSession } from "@/session/store";
+import { useAccount } from "@/account/store";
 import { SettleNow } from "@/components/settle-now";
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
@@ -58,6 +59,8 @@ export default function JobStory() {
 
   const job = state.jobs[jobId];
 
+  const farmerAcct = useAccount("farmer");
+  const operatorAcct = useAccount("operator");
   const run = async (fn: () => Promise<void>) => {
     try {
       setError(null);
@@ -82,7 +85,13 @@ export default function JobStory() {
         <Card>
           <Text style={[type.body, { color: colors.ink }]}>No job yet. Post one from the Farmer page.</Text>
           <Text style={type.body}>Presenter shortcut: posts, accepts and submits a record for you, with real transactions in Devnet mode.</Text>
-          <Button label="Presenter: run the whole job automatically" onPress={runDemo} />
+          <Button
+            label="Presenter: run the whole job automatically"
+            onPress={runDemo}
+            disabled={!farmerAcct || !operatorAcct}
+            hint={!farmerAcct || !operatorAcct ? "Sign up as a farmer and as a drone operator first (home page)." : undefined}
+          />
+          {!farmerAcct || !operatorAcct ? <Text style={type.small}>Sign up as a farmer and as a drone operator first (home page).</Text> : null}
           {error && <Text style={styles.error}>{error}</Text>}
         </Card>
         <RoleLinks />
