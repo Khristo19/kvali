@@ -41,5 +41,57 @@
       "register_operator": "n2GiX7LmZFF8Coakupyecq3cokYhm217kipaq16y7pVnMMXRgkrHax37o6USUQ4w9uhh8RySBPQZd72QEfgoY7j",
       "issue_certificate (demo drone, meter error 2%)": "2fg5EGFqrbyx1gHvSKL8WwGj4gvtV22iNfN9RrsR7HSKTyTx5D1zYe4BxjVN7CQRnqpbTYfBHAmSarDHLrBeYBLr"
     }
+  },
+  "staking": {
+    "date": "2026-10-09T21:50:34.737Z",
+    "note": "demo validators staked with test USDC; min_validator_stake 0 keeps the pre-staking flow",
+    "stakeVault": "7KnN9XFCkoiKQj7jSpWpp7PKSTsVuushqBccKSheKXiB",
+    "stakes": [
+      {
+        "seat": "operator-side",
+        "validator": "7YYttHeDEmDDtxB3hPqcFmvZdEPjxMgnCQddLLdA8E75",
+        "stakePda": "Afgch1moUPcErLzuh8qNXbgDtLxsqL7YZxnbowtsvXzo",
+        "amount": "500000000",
+        "slashed": false,
+        "unstaking": false,
+        "openCosigns": 0
+      },
+      {
+        "seat": "farmer-side",
+        "validator": "5PcJ4zcPJGMqJdveshptxKc9e2fturBiT482UeKSx62M",
+        "stakePda": "5tC4jz3quhP6Cxta5DsAuSDpaQzGhWhkKFYNZTVUaZe2",
+        "amount": "500000000",
+        "slashed": false,
+        "unstaking": false,
+        "openCosigns": 0
+      },
+      {
+        "seat": "neutral",
+        "validator": "EEindEtx8DTN9BBWtVqZo5gU8x6aFnR1ggJDrLCLjhgN",
+        "stakePda": "6m5mqLjyeh1titXJjTveKDVqYzJei1CnuivAfzghydNT",
+        "amount": "500000000",
+        "slashed": false,
+        "unstaking": false,
+        "openCosigns": 0
+      }
+    ],
+    "txs": {
+      "migrate_config": "3GhTPApPiKi47PTwmZStX2ebqsuPpd3B5BAWb9Qa5dtdM9d8Df7Qv8PtDQovkGhdDwvtf3wxz7tSE2kbaJxj2zTu",
+      "set_staking_params (min $0.00, cooldown 60 s)": "5HHqg2LNWRiYR9dKSpS76tY6v62tbX4tkLip1dSVTHsqTdcHgs5uTNwzPwPTiJ4DWhrJvoDsMiWbxPtgW1NpMHPQ",
+      "stake_validator operator-side ($500.00 test USDC)": "2V4PjPiNWkysXRF8SmdpsuYhEWpdFvtrSR766rtaEdPbrNx3H2wWsAPyVfB98H5VoeG721gRFyvrLQUdgwKgAh2M",
+      "stake_validator farmer-side ($500.00 test USDC)": "VgJhSEjiN43yMuiVLKF3qGTCKizSPS8RWMiyRBFnboNYLJGU7wGdGokwBZxMA2W5QoCSJduvuqNkHUEfmWM91Fy",
+      "stake_validator neutral ($500.00 test USDC)": "atvM2XseeMFjMLgNM56g5fHANeb56D8ygpFyK1siAzr1c54H1Z5CbcpHLtsjixxCPch7vwrdSRy8qiKp4FD5Qic"
+    }
+  },
+  "stakingUpgrade": {
+    "date": "2026-10-10",
+    "upgradeTx": "4Zi8WpkCukbiGYjBkGT2GC581YXiLcUrseM52yNYDyY13h9CvfesKQEb5JF9N6EGganNnzixn48DUA6p1wvAgSdS",
+    "programExtendedBytes": 60000,
+    "programDataLength": 623100,
+    "configLenBefore": 372,
+    "configLenAfter": 390,
+    "bankLoanTx": "5uNo3zWxNrasD7i2KHgYsQ5ndYZstN7QhqVYtrMLGGkMSEcp8xn4dPi8WPRdiMxG6sk4BXeJ7ivMGATxZbuNQWzg",
+    "bankRepayTx": "28pLMh7uQRRjvVssqgbGfcPBexYYVCkDrL4ab4V5xs1T6RJ6uhyqEecuyJPTQqA4EQ6ZvVc4VGV3gCbxrVz4hX6Y",
+    "note": "bank lent 3.3 SOL for the upgrade buffer and extension, 2.9827 SOL returned (extension rent ~0.305 SOL is permanent)"
   }
 }

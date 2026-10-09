@@ -3,9 +3,9 @@
   "programId": "2TWg6cMa7bxFa8y7HHoDXZecNJxcbYrUAqwfrg5T8FPK",
   "scenarios": {
     "A": {
-      "jobId": "1791480667665",
-      "job": "DydfcSEmj9oXc9DiuE5Ku6TkzuYjFt93ftpiBZp9gCuL",
-      "vault": "FKiKToB53g7FsLR2Cz1mFZPGDG4fp7a7iWywx8trvK5b",
+      "jobId": "1791582871106",
+      "job": "4vyMJw6GwveLLW6nUpEgpR69AAtcjVZ4iERSPiGjJmX5",
+      "vault": "8czYRcqLT5anHFQkYVAeaTGecaiLN4Xx2grCX6zWGvBb",
       "manifestHash": "1f6eac362f8f5d9f10313c45abe757e49e95ee2856af4324485d56a002400741",
       "manifest": {
         "version": 1,
@@ -46,18 +46,18 @@
         }
       },
       "txs": {
-        "postJob": "25JwkhiMg2mA2YuiWWQepBHbo6jWABTK8AqnTCfYbWYoeCRwkNm5RfHRD8cAVcEBDPWc8kYJK6bmmsaWXySa6cWC",
-        "acceptJob": "3Y2g3UP22TvaBs1jA6tdeQDN6dcXsb8XseKuaiMMncXEYwnhFaV7z6iftLSVDzEHVoCC5gCL4N3oxVzeuC9HfW24",
-        "submitProof": "3st2zThHbfXyftsAtmqpGfmzWAxeHgfYN5CUWQmqqv2D73ERhgbEdmSkXTzhovPoQDuB7AwhyC1wjR4PEBGuPHy9",
-        "settle": "35tbpLSnWMgye6CQgDi7GvJKHst4YZjiDXdaTp8on7LGLPQD7em8ffGjoaHbA8kjkwMRX7q4qo6DX85RRNNMvDww"
+        "postJob": "3xv7ppHskT4Neuc5yupXqYVinxLybwejQPJYuwBd78myV4hfVr7WLBjHGQzi6VhPZuYGpweX2kRPSTos9hCGBs8D",
+        "acceptJob": "5A6TD8UBad1GWaeoLduf3q38ayogTmEiyFhT1iGRv4TEr5RA9FNaw6WRc1bajzoQdjU229G8NPsKw7LPDKWv9Zs7",
+        "submitProof": "4GNXF4c8wEkYFwBnk1JwnzT1Uftf8d1jabV7jBD8HLf3Jg5hWXaXeo8ugApNdHBVRX8SXpMx6yw76WXTBhUoPhdQ",
+        "settle": "5HWSBiALzEwGxvD365UcXYpFifPa5H9zS4Dubr6YvzpbcebLNSFVLsdAox7KYnnhLbUYgna5zu2jm7bKbJYDi2mj"
       },
       "balancesUsdc": {
-        "operatorAfterBondLocked": "$4,700.00",
-        "operatorAfterSettle": "$5,285.00",
-        "treasuryBefore": "$9.00",
-        "treasuryAfter": "$18.00",
-        "poolBefore": "$6.00",
-        "poolAfter": "$12.00"
+        "operatorAfterBondLocked": "$6,110.00",
+        "operatorAfterSettle": "$6,695.00",
+        "treasuryBefore": "$171.00",
+        "treasuryAfter": "$180.00",
+        "poolBefore": "$114.00",
+        "poolAfter": "$120.00"
       },
       "expectedFromSettlementTs": {
         "operatorPayout": "585000000",
@@ -68,76 +68,83 @@
       "matchesSettlementTs": true
     },
     "B": {
-      "jobId": "1791480734166",
-      "job": "7MAzsBQVz8sHVEnevLUXgrdS69xyRDPbdxmTRAsfNLkT",
+      "jobId": "1791582937617",
+      "job": "9gHbzFWUgqgFdbJ1aFQTnjbp2NzLXEkbcYZ9ScWixBq",
       "manifestHashOfRejectedRecord": "eb1e21897d616e5872054fc06e681e7fe0f9b6e7995fe000f5bc8057bca1d18c",
       "txs": {
-        "postJob": "EePq7CdpbzoL1wr5nkxhRxeAYBsPAbmZDBBsbKp7pu5hg7M7boKFgwjT8S168TwYZ5jaFLzRfduTMh8dmxSZ3fs",
-        "acceptJob": "2dSfvoJDtKnxLkktLK47UAMwYeD8hy3H8e4D3Kzju3PgkLk6LuTH2KpnTi1MktjqSJJaqBPLLiVoCfpE5NLA24N9",
-        "submitProofRejected": "4EL8nKZz7G8Fu9vkJmXRR5iUj7W8d4j5wiMmegiM9YW3Luv2j3MF9nUCZgu1FnLHsH7gBbgTexgcZ6cweuHhfP9i"
+        "postJob": "3DhvY5sS4iniKAkUo7EurcUEpyu9Kke13iBAnfwKosPuz7zStxUZtJtMSfE7Z8VBNGtS79Doi5khDCJVgdHtrSYd",
+        "acceptJob": "41X1zuUkK1eDfojEKWm4EoqQ3SBu5ic9EnidqMvNXZGAEv8sYJF2MQQU4oRKgvde5DMq3hYxkHPeriSbaDe3Yehj",
+        "submitProofRejected": "4H7RjS3Wv3d3ckxxU57z8DsGyX1oEJH3zHD7ksgVHcsAqtsTtmx8Qp4iSx2xr6tXJrt7rhxyAtGW9cyiJgzGCb44"
       },
       "rejectedWith": "RateOutOfBand (code 6011): Applied liters per hectare is outside the tolerance band",
       "appliedRateMlPerHa": 17,
       "nextStep": "reclaim_expired after the spray deadline refunds the farmer",
-      "sprayDeadline": "2026-10-08T17:34:44.000Z"
+      "sprayDeadline": "2026-10-09T21:58:07.000Z"
     }
   },
   "txs": [
     {
+      "label": "fund farmer",
+      "signature": "4PiF6tqEcJWcuiwgZgYt6XeAVC9GydeJ1UKYFT3PEMsUWkS65n3L5QwywcCYE7rh3vjnGitt5TfyXXS5tKFP9PGi",
+      "explorer": "https://explorer.solana.com/tx/4PiF6tqEcJWcuiwgZgYt6XeAVC9GydeJ1UKYFT3PEMsUWkS65n3L5QwywcCYE7rh3vjnGitt5TfyXXS5tKFP9PGi?cluster=devnet",
+      "ok": true,
+      "error": null
+    },
+    {
       "label": "A post_job",
-      "signature": "25JwkhiMg2mA2YuiWWQepBHbo6jWABTK8AqnTCfYbWYoeCRwkNm5RfHRD8cAVcEBDPWc8kYJK6bmmsaWXySa6cWC",
-      "explorer": "https://explorer.solana.com/tx/25JwkhiMg2mA2YuiWWQepBHbo6jWABTK8AqnTCfYbWYoeCRwkNm5RfHRD8cAVcEBDPWc8kYJK6bmmsaWXySa6cWC?cluster=devnet",
+      "signature": "3xv7ppHskT4Neuc5yupXqYVinxLybwejQPJYuwBd78myV4hfVr7WLBjHGQzi6VhPZuYGpweX2kRPSTos9hCGBs8D",
+      "explorer": "https://explorer.solana.com/tx/3xv7ppHskT4Neuc5yupXqYVinxLybwejQPJYuwBd78myV4hfVr7WLBjHGQzi6VhPZuYGpweX2kRPSTos9hCGBs8D?cluster=devnet",
       "ok": true,
       "error": null
     },
     {
       "label": "A accept_job",
-      "signature": "3Y2g3UP22TvaBs1jA6tdeQDN6dcXsb8XseKuaiMMncXEYwnhFaV7z6iftLSVDzEHVoCC5gCL4N3oxVzeuC9HfW24",
-      "explorer": "https://explorer.solana.com/tx/3Y2g3UP22TvaBs1jA6tdeQDN6dcXsb8XseKuaiMMncXEYwnhFaV7z6iftLSVDzEHVoCC5gCL4N3oxVzeuC9HfW24?cluster=devnet",
+      "signature": "5A6TD8UBad1GWaeoLduf3q38ayogTmEiyFhT1iGRv4TEr5RA9FNaw6WRc1bajzoQdjU229G8NPsKw7LPDKWv9Zs7",
+      "explorer": "https://explorer.solana.com/tx/5A6TD8UBad1GWaeoLduf3q38ayogTmEiyFhT1iGRv4TEr5RA9FNaw6WRc1bajzoQdjU229G8NPsKw7LPDKWv9Zs7?cluster=devnet",
       "ok": true,
       "error": null
     },
     {
       "label": "A submit_proof",
-      "signature": "3st2zThHbfXyftsAtmqpGfmzWAxeHgfYN5CUWQmqqv2D73ERhgbEdmSkXTzhovPoQDuB7AwhyC1wjR4PEBGuPHy9",
-      "explorer": "https://explorer.solana.com/tx/3st2zThHbfXyftsAtmqpGfmzWAxeHgfYN5CUWQmqqv2D73ERhgbEdmSkXTzhovPoQDuB7AwhyC1wjR4PEBGuPHy9?cluster=devnet",
+      "signature": "4GNXF4c8wEkYFwBnk1JwnzT1Uftf8d1jabV7jBD8HLf3Jg5hWXaXeo8ugApNdHBVRX8SXpMx6yw76WXTBhUoPhdQ",
+      "explorer": "https://explorer.solana.com/tx/4GNXF4c8wEkYFwBnk1JwnzT1Uftf8d1jabV7jBD8HLf3Jg5hWXaXeo8ugApNdHBVRX8SXpMx6yw76WXTBhUoPhdQ?cluster=devnet",
       "ok": true,
       "error": null
     },
     {
       "label": "A settle",
-      "signature": "35tbpLSnWMgye6CQgDi7GvJKHst4YZjiDXdaTp8on7LGLPQD7em8ffGjoaHbA8kjkwMRX7q4qo6DX85RRNNMvDww",
-      "explorer": "https://explorer.solana.com/tx/35tbpLSnWMgye6CQgDi7GvJKHst4YZjiDXdaTp8on7LGLPQD7em8ffGjoaHbA8kjkwMRX7q4qo6DX85RRNNMvDww?cluster=devnet",
+      "signature": "5HWSBiALzEwGxvD365UcXYpFifPa5H9zS4Dubr6YvzpbcebLNSFVLsdAox7KYnnhLbUYgna5zu2jm7bKbJYDi2mj",
+      "explorer": "https://explorer.solana.com/tx/5HWSBiALzEwGxvD365UcXYpFifPa5H9zS4Dubr6YvzpbcebLNSFVLsdAox7KYnnhLbUYgna5zu2jm7bKbJYDi2mj?cluster=devnet",
       "ok": true,
       "error": null
     },
     {
       "label": "B post_job",
-      "signature": "EePq7CdpbzoL1wr5nkxhRxeAYBsPAbmZDBBsbKp7pu5hg7M7boKFgwjT8S168TwYZ5jaFLzRfduTMh8dmxSZ3fs",
-      "explorer": "https://explorer.solana.com/tx/EePq7CdpbzoL1wr5nkxhRxeAYBsPAbmZDBBsbKp7pu5hg7M7boKFgwjT8S168TwYZ5jaFLzRfduTMh8dmxSZ3fs?cluster=devnet",
+      "signature": "3DhvY5sS4iniKAkUo7EurcUEpyu9Kke13iBAnfwKosPuz7zStxUZtJtMSfE7Z8VBNGtS79Doi5khDCJVgdHtrSYd",
+      "explorer": "https://explorer.solana.com/tx/3DhvY5sS4iniKAkUo7EurcUEpyu9Kke13iBAnfwKosPuz7zStxUZtJtMSfE7Z8VBNGtS79Doi5khDCJVgdHtrSYd?cluster=devnet",
       "ok": true,
       "error": null
     },
     {
       "label": "B accept_job",
-      "signature": "2dSfvoJDtKnxLkktLK47UAMwYeD8hy3H8e4D3Kzju3PgkLk6LuTH2KpnTi1MktjqSJJaqBPLLiVoCfpE5NLA24N9",
-      "explorer": "https://explorer.solana.com/tx/2dSfvoJDtKnxLkktLK47UAMwYeD8hy3H8e4D3Kzju3PgkLk6LuTH2KpnTi1MktjqSJJaqBPLLiVoCfpE5NLA24N9?cluster=devnet",
+      "signature": "41X1zuUkK1eDfojEKWm4EoqQ3SBu5ic9EnidqMvNXZGAEv8sYJF2MQQU4oRKgvde5DMq3hYxkHPeriSbaDe3Yehj",
+      "explorer": "https://explorer.solana.com/tx/41X1zuUkK1eDfojEKWm4EoqQ3SBu5ic9EnidqMvNXZGAEv8sYJF2MQQU4oRKgvde5DMq3hYxkHPeriSbaDe3Yehj?cluster=devnet",
       "ok": true,
       "error": null
     },
     {
       "label": "B submit_proof (pump-off)",
-      "signature": "4EL8nKZz7G8Fu9vkJmXRR5iUj7W8d4j5wiMmegiM9YW3Luv2j3MF9nUCZgu1FnLHsH7gBbgTexgcZ6cweuHhfP9i",
-      "explorer": "https://explorer.solana.com/tx/4EL8nKZz7G8Fu9vkJmXRR5iUj7W8d4j5wiMmegiM9YW3Luv2j3MF9nUCZgu1FnLHsH7gBbgTexgcZ6cweuHhfP9i?cluster=devnet",
+      "signature": "4H7RjS3Wv3d3ckxxU57z8DsGyX1oEJH3zHD7ksgVHcsAqtsTtmx8Qp4iSx2xr6tXJrt7rhxyAtGW9cyiJgzGCb44",
+      "explorer": "https://explorer.solana.com/tx/4H7RjS3Wv3d3ckxxU57z8DsGyX1oEJH3zHD7ksgVHcsAqtsTtmx8Qp4iSx2xr6tXJrt7rhxyAtGW9cyiJgzGCb44?cluster=devnet",
       "ok": false,
       "error": "RateOutOfBand (code 6011): Applied liters per hectare is outside the tolerance band"
     }
   ],
   "sol": {
-    "payerStart": "846763129",
-    "payerEnd": "846678129",
-    "spentSol": 0.000085,
-    "payerLeftSol": 0.846678129
+    "payerStart": "395305600",
+    "payerEnd": "390298160",
+    "spentSol": 0.00500744,
+    "payerLeftSol": 0.39029816
   },
-  "finishedAt": "2026-10-08T17:32:18.176Z"
+  "finishedAt": "2026-10-09T21:55:41.228Z"
 }
