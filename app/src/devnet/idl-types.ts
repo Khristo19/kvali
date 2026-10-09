@@ -1,4 +1,10 @@
-{
+/**
+ * Program IDL in camelCase format in order to be used in JS/TS.
+ *
+ * Note that this is only a type helper and is not the actual IDL. The original
+ * IDL can be found at `target/idl/kvali.json`.
+ */
+export type Kvali = {
   "address": "2TWg6cMa7bxFa8y7HHoDXZecNJxcbYrUAqwfrg5T8FPK",
   "metadata": {
     "name": "kvali",
@@ -8,7 +14,7 @@
   },
   "instructions": [
     {
-      "name": "accept_job",
+      "name": "acceptJob",
       "docs": [
         "Operator accepts and locks a bond of at least the job amount. The",
         "drone they will fly must hold a valid calibration certificate."
@@ -52,7 +58,7 @@
               {
                 "kind": "account",
                 "path": "certificate.drone_hash",
-                "account": "Certificate"
+                "account": "certificate"
               }
             ]
           }
@@ -127,25 +133,25 @@
           }
         },
         {
-          "name": "usdc_mint"
+          "name": "usdcMint"
         },
         {
-          "name": "operator_token",
+          "name": "operatorToken",
           "writable": true
         },
         {
-          "name": "token_program"
+          "name": "tokenProgram"
         }
       ],
       "args": [
         {
-          "name": "bond_amount",
+          "name": "bondAmount",
           "type": "u64"
         }
       ]
     },
     {
-      "name": "cancel_job",
+      "name": "cancelJob",
       "docs": [
         "Farmer withdraws a job nobody has accepted yet."
       ],
@@ -209,14 +215,14 @@
           }
         },
         {
-          "name": "usdc_mint"
+          "name": "usdcMint"
         },
         {
-          "name": "farmer_token",
+          "name": "farmerToken",
           "writable": true
         },
         {
-          "name": "farmer_profile",
+          "name": "farmerProfile",
           "writable": true,
           "pda": {
             "seeds": [
@@ -234,7 +240,7 @@
               {
                 "kind": "account",
                 "path": "job.farmer",
-                "account": "Job"
+                "account": "job"
               }
             ]
           }
@@ -264,26 +270,26 @@
               {
                 "kind": "account",
                 "path": "job.operator",
-                "account": "Job"
+                "account": "job"
               }
             ]
           }
         },
         {
-          "name": "operator_token",
+          "name": "operatorToken",
           "writable": true,
           "optional": true
         },
         {
-          "name": "treasury_token",
+          "name": "treasuryToken",
           "writable": true
         },
         {
-          "name": "validator_pool_token",
+          "name": "validatorPoolToken",
           "writable": true
         },
         {
-          "name": "token_program"
+          "name": "tokenProgram"
         }
       ],
       "args": []
@@ -358,19 +364,19 @@
           }
         },
         {
-          "name": "usdc_mint"
+          "name": "usdcMint"
         },
         {
-          "name": "farmer_token",
+          "name": "farmerToken",
           "writable": true
         },
         {
-          "name": "token_program"
+          "name": "tokenProgram"
         }
       ],
       "args": [
         {
-          "name": "evidence_hash",
+          "name": "evidenceHash",
           "type": {
             "array": [
               "u8",
@@ -381,7 +387,7 @@
       ]
     },
     {
-      "name": "initialize_config",
+      "name": "initializeConfig",
       "discriminator": [
         208,
         127,
@@ -422,19 +428,19 @@
           "address": "2TWg6cMa7bxFa8y7HHoDXZecNJxcbYrUAqwfrg5T8FPK"
         },
         {
-          "name": "program_data"
+          "name": "programData"
         },
         {
-          "name": "usdc_mint"
+          "name": "usdcMint"
         },
         {
           "name": "treasury"
         },
         {
-          "name": "validator_pool"
+          "name": "validatorPool"
         },
         {
-          "name": "system_program",
+          "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }
       ],
@@ -446,21 +452,21 @@
           }
         },
         {
-          "name": "proof_threshold",
+          "name": "proofThreshold",
           "type": "u8"
         },
         {
-          "name": "panel_threshold",
+          "name": "panelThreshold",
           "type": "u8"
         },
         {
-          "name": "challenge_window_secs",
+          "name": "challengeWindowSecs",
           "type": "i64"
         }
       ]
     },
     {
-      "name": "issue_certificate",
+      "name": "issueCertificate",
       "docs": [
         "A field validator records a calibration test for one operator + drone",
         "(docs/CALIBRATION.md). Re-running the test renews the certificate,",
@@ -502,7 +508,7 @@
           }
         },
         {
-          "name": "operator_authority"
+          "name": "operatorAuthority"
         },
         {
           "name": "certificate",
@@ -520,23 +526,23 @@
               },
               {
                 "kind": "account",
-                "path": "operator_authority"
+                "path": "operatorAuthority"
               },
               {
                 "kind": "arg",
-                "path": "drone_hash"
+                "path": "droneHash"
               }
             ]
           }
         },
         {
-          "name": "system_program",
+          "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "drone_hash",
+          "name": "droneHash",
           "type": {
             "array": [
               "u8",
@@ -545,15 +551,15 @@
           }
         },
         {
-          "name": "meter_error_bps",
+          "name": "meterErrorBps",
           "type": "u16"
         },
         {
-          "name": "operator_passed",
+          "name": "operatorPassed",
           "type": "bool"
         },
         {
-          "name": "report_hash",
+          "name": "reportHash",
           "type": {
             "array": [
               "u8",
@@ -562,13 +568,13 @@
           }
         },
         {
-          "name": "valid_until",
+          "name": "validUntil",
           "type": "i64"
         }
       ]
     },
     {
-      "name": "migrate_config",
+      "name": "migrateConfig",
       "docs": [
         "One-off migration for a Config created before validator staking",
         "existed (372 bytes): grows the account to the current size and sets",
@@ -616,14 +622,14 @@
           }
         },
         {
-          "name": "system_program",
+          "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
     },
     {
-      "name": "post_job",
+      "name": "postJob",
       "docs": [
         "Farmer posts a job and funds the escrow vault with `amount` USDC."
       ],
@@ -662,14 +668,14 @@
           }
         },
         {
-          "name": "usdc_mint"
+          "name": "usdcMint"
         },
         {
-          "name": "farmer_token",
+          "name": "farmerToken",
           "writable": true
         },
         {
-          "name": "farmer_profile",
+          "name": "farmerProfile",
           "writable": true,
           "pda": {
             "seeds": [
@@ -710,7 +716,7 @@
               },
               {
                 "kind": "arg",
-                "path": "job_id"
+                "path": "jobId"
               }
             ]
           }
@@ -738,16 +744,16 @@
           }
         },
         {
-          "name": "token_program"
+          "name": "tokenProgram"
         },
         {
-          "name": "system_program",
+          "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": [
         {
-          "name": "job_id",
+          "name": "jobId",
           "type": "u64"
         },
         {
@@ -755,7 +761,7 @@
           "type": "u64"
         },
         {
-          "name": "field_hash",
+          "name": "fieldHash",
           "type": {
             "array": [
               "u8",
@@ -764,29 +770,29 @@
           }
         },
         {
-          "name": "chemical_code",
+          "name": "chemicalCode",
           "type": "u16"
         },
         {
-          "name": "target_rate_ml_per_ha",
+          "name": "targetRateMlPerHa",
           "type": "u32"
         },
         {
-          "name": "tolerance_bps",
+          "name": "toleranceBps",
           "type": "u16"
         },
         {
-          "name": "area_cha",
+          "name": "areaCha",
           "type": "u32"
         },
         {
-          "name": "spray_deadline",
+          "name": "sprayDeadline",
           "type": "i64"
         }
       ]
     },
     {
-      "name": "reclaim_expired",
+      "name": "reclaimExpired",
       "docs": [
         "Operator accepted but never proved by the spray deadline:",
         "farmer gets the payment back plus the bond. Permissionless."
@@ -851,14 +857,14 @@
           }
         },
         {
-          "name": "usdc_mint"
+          "name": "usdcMint"
         },
         {
-          "name": "farmer_token",
+          "name": "farmerToken",
           "writable": true
         },
         {
-          "name": "farmer_profile",
+          "name": "farmerProfile",
           "writable": true,
           "pda": {
             "seeds": [
@@ -876,7 +882,7 @@
               {
                 "kind": "account",
                 "path": "job.farmer",
-                "account": "Job"
+                "account": "job"
               }
             ]
           }
@@ -906,32 +912,32 @@
               {
                 "kind": "account",
                 "path": "job.operator",
-                "account": "Job"
+                "account": "job"
               }
             ]
           }
         },
         {
-          "name": "operator_token",
+          "name": "operatorToken",
           "writable": true,
           "optional": true
         },
         {
-          "name": "treasury_token",
+          "name": "treasuryToken",
           "writable": true
         },
         {
-          "name": "validator_pool_token",
+          "name": "validatorPoolToken",
           "writable": true
         },
         {
-          "name": "token_program"
+          "name": "tokenProgram"
         }
       ],
       "args": []
     },
     {
-      "name": "register_operator",
+      "name": "registerOperator",
       "discriminator": [
         49,
         242,
@@ -974,14 +980,14 @@
           }
         },
         {
-          "name": "system_program",
+          "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }
       ],
       "args": []
     },
     {
-      "name": "release_cosign",
+      "name": "releaseCosign",
       "docs": [
         "Permissionless: once a job is finally settled in the operator's",
         "favour (Released), frees one co-signer's stake lock for it so they",
@@ -1025,7 +1031,7 @@
               {
                 "kind": "account",
                 "path": "stake.validator",
-                "account": "ValidatorStake"
+                "account": "validatorStake"
               }
             ]
           }
@@ -1034,7 +1040,7 @@
       "args": []
     },
     {
-      "name": "request_unstake",
+      "name": "requestUnstake",
       "docs": [
         "Starts the unstake cooldown. From now on the stake no longer counts",
         "for co-signing; `withdraw_stake` works once the cooldown has passed."
@@ -1101,7 +1107,7 @@
       "args": []
     },
     {
-      "name": "resolve_challenge",
+      "name": "resolveChallenge",
       "docs": [
         "The field-validator panel rules on a challenge. At least",
         "`panel_threshold` validators must sign (signer remaining accounts) and",
@@ -1168,14 +1174,14 @@
           }
         },
         {
-          "name": "usdc_mint"
+          "name": "usdcMint"
         },
         {
-          "name": "farmer_token",
+          "name": "farmerToken",
           "writable": true
         },
         {
-          "name": "farmer_profile",
+          "name": "farmerProfile",
           "writable": true,
           "pda": {
             "seeds": [
@@ -1193,7 +1199,7 @@
               {
                 "kind": "account",
                 "path": "job.farmer",
-                "account": "Job"
+                "account": "job"
               }
             ]
           }
@@ -1223,26 +1229,26 @@
               {
                 "kind": "account",
                 "path": "job.operator",
-                "account": "Job"
+                "account": "job"
               }
             ]
           }
         },
         {
-          "name": "operator_token",
+          "name": "operatorToken",
           "writable": true,
           "optional": true
         },
         {
-          "name": "treasury_token",
+          "name": "treasuryToken",
           "writable": true
         },
         {
-          "name": "validator_pool_token",
+          "name": "validatorPoolToken",
           "writable": true
         },
         {
-          "name": "token_program"
+          "name": "tokenProgram"
         }
       ],
       "args": [
@@ -1251,7 +1257,7 @@
           "type": "bool"
         },
         {
-          "name": "report_hash",
+          "name": "reportHash",
           "type": {
             "array": [
               "u8",
@@ -1262,7 +1268,7 @@
       ]
     },
     {
-      "name": "revoke_certificate",
+      "name": "revokeCertificate",
       "docs": [
         "A validator panel withdraws a certificate, e.g. after a spot check",
         "shows the drone's meter no longer matches reality.",
@@ -1309,7 +1315,7 @@
       "args": []
     },
     {
-      "name": "set_challenge_window",
+      "name": "setChallengeWindow",
       "docs": [
         "Admin changes the challenge window (60 s ..= 7 days). Applies to",
         "proofs submitted afterwards; open windows keep their deadline."
@@ -1354,13 +1360,13 @@
       ],
       "args": [
         {
-          "name": "challenge_window_secs",
+          "name": "challengeWindowSecs",
           "type": "i64"
         }
       ]
     },
     {
-      "name": "set_staking_params",
+      "name": "setStakingParams",
       "docs": [
         "Admin sets the validator staking rules. `min_validator_stake` 0 turns",
         "the stake requirement for co-signing off (the pre-staking behaviour).",
@@ -1407,21 +1413,21 @@
       ],
       "args": [
         {
-          "name": "min_validator_stake",
+          "name": "minValidatorStake",
           "type": "u64"
         },
         {
-          "name": "unstake_cooldown_secs",
+          "name": "unstakeCooldownSecs",
           "type": "i64"
         },
         {
-          "name": "slash_bps",
+          "name": "slashBps",
           "type": "u16"
         }
       ]
     },
     {
-      "name": "set_validators",
+      "name": "setValidators",
       "docs": [
         "v1 governance: admin replaces the validator set. Move admin to a",
         "multisig before mainnet."
@@ -1472,11 +1478,11 @@
           }
         },
         {
-          "name": "proof_threshold",
+          "name": "proofThreshold",
           "type": "u8"
         },
         {
-          "name": "panel_threshold",
+          "name": "panelThreshold",
           "type": "u8"
         }
       ]
@@ -1547,14 +1553,14 @@
           }
         },
         {
-          "name": "usdc_mint"
+          "name": "usdcMint"
         },
         {
-          "name": "farmer_token",
+          "name": "farmerToken",
           "writable": true
         },
         {
-          "name": "farmer_profile",
+          "name": "farmerProfile",
           "writable": true,
           "pda": {
             "seeds": [
@@ -1572,7 +1578,7 @@
               {
                 "kind": "account",
                 "path": "job.farmer",
-                "account": "Job"
+                "account": "job"
               }
             ]
           }
@@ -1602,32 +1608,32 @@
               {
                 "kind": "account",
                 "path": "job.operator",
-                "account": "Job"
+                "account": "job"
               }
             ]
           }
         },
         {
-          "name": "operator_token",
+          "name": "operatorToken",
           "writable": true,
           "optional": true
         },
         {
-          "name": "treasury_token",
+          "name": "treasuryToken",
           "writable": true
         },
         {
-          "name": "validator_pool_token",
+          "name": "validatorPoolToken",
           "writable": true
         },
         {
-          "name": "token_program"
+          "name": "tokenProgram"
         }
       ],
       "args": []
     },
     {
-      "name": "stake_validator",
+      "name": "stakeValidator",
       "docs": [
         "A validator locks `amount` USDC in the program's stake vault (adds to",
         "an existing stake). Not allowed once slashed or while unstaking."
@@ -1689,7 +1695,7 @@
           }
         },
         {
-          "name": "stake_vault",
+          "name": "stakeVault",
           "writable": true,
           "pda": {
             "seeds": [
@@ -1713,17 +1719,17 @@
           }
         },
         {
-          "name": "usdc_mint"
+          "name": "usdcMint"
         },
         {
-          "name": "validator_token",
+          "name": "validatorToken",
           "writable": true
         },
         {
-          "name": "token_program"
+          "name": "tokenProgram"
         },
         {
-          "name": "system_program",
+          "name": "systemProgram",
           "address": "11111111111111111111111111111111"
         }
       ],
@@ -1735,7 +1741,7 @@
       ]
     },
     {
-      "name": "submit_proof",
+      "name": "submitProof",
       "docs": [
         "Operator submits the proof. At least `proof_threshold` data validators",
         "must co-sign (passed as signer remaining accounts). The program itself",
@@ -1790,7 +1796,7 @@
       ],
       "args": [
         {
-          "name": "proof_hash",
+          "name": "proofHash",
           "type": {
             "array": [
               "u8",
@@ -1799,17 +1805,17 @@
           }
         },
         {
-          "name": "liters_ml",
+          "name": "litersMl",
           "type": "u64"
         },
         {
-          "name": "area_covered_cha",
+          "name": "areaCoveredCha",
           "type": "u32"
         }
       ]
     },
     {
-      "name": "withdraw_stake",
+      "name": "withdrawStake",
       "docs": [
         "Withdraws the whole remaining stake after the cooldown. Blocked while",
         "any proof this stake co-signed is not finally settled (open challenge",
@@ -1875,7 +1881,7 @@
           }
         },
         {
-          "name": "stake_vault",
+          "name": "stakeVault",
           "writable": true,
           "pda": {
             "seeds": [
@@ -1899,14 +1905,14 @@
           }
         },
         {
-          "name": "usdc_mint"
+          "name": "usdcMint"
         },
         {
-          "name": "validator_token",
+          "name": "validatorToken",
           "writable": true
         },
         {
-          "name": "token_program"
+          "name": "tokenProgram"
         }
       ],
       "args": []
@@ -1914,7 +1920,7 @@
   ],
   "accounts": [
     {
-      "name": "Certificate",
+      "name": "certificate",
       "discriminator": [
         202,
         229,
@@ -1927,7 +1933,7 @@
       ]
     },
     {
-      "name": "Config",
+      "name": "config",
       "discriminator": [
         155,
         12,
@@ -1940,7 +1946,7 @@
       ]
     },
     {
-      "name": "FarmerProfile",
+      "name": "farmerProfile",
       "discriminator": [
         167,
         109,
@@ -1953,7 +1959,7 @@
       ]
     },
     {
-      "name": "Job",
+      "name": "job",
       "discriminator": [
         75,
         124,
@@ -1966,7 +1972,7 @@
       ]
     },
     {
-      "name": "Operator",
+      "name": "operator",
       "discriminator": [
         219,
         31,
@@ -1979,7 +1985,7 @@
       ]
     },
     {
-      "name": "ValidatorStake",
+      "name": "validatorStake",
       "discriminator": [
         95,
         210,
@@ -1994,7 +2000,7 @@
   ],
   "events": [
     {
-      "name": "ConfigMigrated",
+      "name": "configMigrated",
       "discriminator": [
         115,
         69,
@@ -2007,7 +2013,7 @@
       ]
     },
     {
-      "name": "CosignReleased",
+      "name": "cosignReleased",
       "discriminator": [
         210,
         215,
@@ -2020,7 +2026,7 @@
       ]
     },
     {
-      "name": "ProofCosigned",
+      "name": "proofCosigned",
       "discriminator": [
         170,
         211,
@@ -2033,7 +2039,7 @@
       ]
     },
     {
-      "name": "StakeWithdrawn",
+      "name": "stakeWithdrawn",
       "discriminator": [
         33,
         120,
@@ -2046,7 +2052,7 @@
       ]
     },
     {
-      "name": "StakingParamsSet",
+      "name": "stakingParamsSet",
       "discriminator": [
         63,
         246,
@@ -2059,7 +2065,7 @@
       ]
     },
     {
-      "name": "UnstakeRequested",
+      "name": "unstakeRequested",
       "discriminator": [
         21,
         253,
@@ -2072,7 +2078,7 @@
       ]
     },
     {
-      "name": "ValidatorSlashed",
+      "name": "validatorSlashed",
       "discriminator": [
         1,
         160,
@@ -2085,7 +2091,7 @@
       ]
     },
     {
-      "name": "ValidatorStaked",
+      "name": "validatorStaked",
       "discriminator": [
         228,
         142,
@@ -2101,213 +2107,213 @@
   "errors": [
     {
       "code": 6000,
-      "name": "InvalidAmount",
+      "name": "invalidAmount",
       "msg": "Amount must be greater than zero"
     },
     {
       "code": 6001,
-      "name": "InvalidArea",
+      "name": "invalidArea",
       "msg": "Area must be greater than zero"
     },
     {
       "code": 6002,
-      "name": "InvalidRate",
+      "name": "invalidRate",
       "msg": "Invalid target rate or tolerance"
     },
     {
       "code": 6003,
-      "name": "InvalidDeadline",
+      "name": "invalidDeadline",
       "msg": "Deadline must be in the future"
     },
     {
       "code": 6004,
-      "name": "InvalidState",
+      "name": "invalidState",
       "msg": "Job is not in the required state"
     },
     {
       "code": 6005,
-      "name": "Unauthorized",
+      "name": "unauthorized",
       "msg": "Signer is not allowed to do this"
     },
     {
       "code": 6006,
-      "name": "BondTooSmall",
+      "name": "bondTooSmall",
       "msg": "Bond must be at least the job amount"
     },
     {
       "code": 6007,
-      "name": "OperatorBusy",
+      "name": "operatorBusy",
       "msg": "Operator already has an active job"
     },
     {
       "code": 6008,
-      "name": "DeadlinePassed",
+      "name": "deadlinePassed",
       "msg": "Spray deadline has passed"
     },
     {
       "code": 6009,
-      "name": "DeadlineNotReached",
+      "name": "deadlineNotReached",
       "msg": "Spray deadline has not passed yet"
     },
     {
       "code": 6010,
-      "name": "InsufficientCoverage",
+      "name": "insufficientCoverage",
       "msg": "Covered area is below the minimum"
     },
     {
       "code": 6011,
-      "name": "RateOutOfBand",
+      "name": "rateOutOfBand",
       "msg": "Applied liters per hectare is outside the tolerance band"
     },
     {
       "code": 6012,
-      "name": "WindowOpen",
+      "name": "windowOpen",
       "msg": "Challenge window is still open"
     },
     {
       "code": 6013,
-      "name": "WindowClosed",
+      "name": "windowClosed",
       "msg": "Challenge window has closed"
     },
     {
       "code": 6014,
-      "name": "MissingOperatorAccount",
+      "name": "missingOperatorAccount",
       "msg": "Operator accounts are required for this instruction"
     },
     {
       "code": 6015,
-      "name": "NotEnoughValidators",
+      "name": "notEnoughValidators",
       "msg": "Not enough validators signed"
     },
     {
       "code": 6016,
-      "name": "InvalidValidatorSet",
+      "name": "invalidValidatorSet",
       "msg": "Validator set or thresholds are invalid"
     },
     {
       "code": 6017,
-      "name": "InsufficientFunds",
+      "name": "insufficientFunds",
       "msg": "Vault balance does not cover the fees"
     },
     {
       "code": 6018,
-      "name": "NotCertified",
+      "name": "notCertified",
       "msg": "Drone and operator need a valid calibration certificate"
     },
     {
       "code": 6019,
-      "name": "InvalidChallengeWindow",
+      "name": "invalidChallengeWindow",
       "msg": "Challenge window must be between 60 seconds and 7 days"
     },
     {
       "code": 6020,
-      "name": "CertificateRevoked",
+      "name": "certificateRevoked",
       "msg": "Certificate was revoked by a validator panel and cannot be re-issued"
     },
     {
       "code": 6021,
-      "name": "ProofAfterDeadline",
+      "name": "proofAfterDeadline",
       "msg": "Proof submitted after the spray deadline"
     },
     {
       "code": 6022,
-      "name": "AreaExceedsPosted",
+      "name": "areaExceedsPosted",
       "msg": "Covered area exceeds 105% of the posted area"
     },
     {
       "code": 6023,
-      "name": "OperatorIsFarmer",
+      "name": "operatorIsFarmer",
       "msg": "The job's farmer cannot accept their own job"
     },
     {
       "code": 6024,
-      "name": "MathOverflow",
+      "name": "mathOverflow",
       "msg": "Arithmetic overflow"
     },
     {
       "code": 6025,
-      "name": "InvalidConfigAccount",
+      "name": "invalidConfigAccount",
       "msg": "Config account is not a pre-staking Config of this program"
     },
     {
       "code": 6026,
-      "name": "InvalidStakingParams",
+      "name": "invalidStakingParams",
       "msg": "Unstake cooldown must be 60 s - 365 days and slash share 1 - 10000 bps"
     },
     {
       "code": 6027,
-      "name": "StakeSlashed",
+      "name": "stakeSlashed",
       "msg": "This validator's stake was slashed; it can no longer stake or co-sign"
     },
     {
       "code": 6028,
-      "name": "UnstakePending",
+      "name": "unstakePending",
       "msg": "Unstaking is in progress; withdraw first"
     },
     {
       "code": 6029,
-      "name": "NothingStaked",
+      "name": "nothingStaked",
       "msg": "Nothing is staked"
     },
     {
       "code": 6030,
-      "name": "UnstakeAlreadyRequested",
+      "name": "unstakeAlreadyRequested",
       "msg": "Unstake was already requested"
     },
     {
       "code": 6031,
-      "name": "UnstakeNotRequested",
+      "name": "unstakeNotRequested",
       "msg": "Request unstake first"
     },
     {
       "code": 6032,
-      "name": "CooldownNotElapsed",
+      "name": "cooldownNotElapsed",
       "msg": "Unstake cooldown has not passed yet"
     },
     {
       "code": 6033,
-      "name": "StakeLockedByOpenJobs",
+      "name": "stakeLockedByOpenJobs",
       "msg": "Stake is locked by co-signed proofs that are not finally settled"
     },
     {
       "code": 6034,
-      "name": "ValidatorStakeTooLow",
+      "name": "validatorStakeTooLow",
       "msg": "Not enough co-signers with an active stake of at least the minimum"
     },
     {
       "code": 6035,
-      "name": "JobPredatesStaking",
+      "name": "jobPredatesStaking",
       "msg": "Job was posted before staking and cannot record co-signers; staking is required"
     },
     {
       "code": 6036,
-      "name": "StakeAccountNotWritable",
+      "name": "stakeAccountNotWritable",
       "msg": "Validator stake account must be writable"
     },
     {
       "code": 6037,
-      "name": "InvalidStakeAccount",
+      "name": "invalidStakeAccount",
       "msg": "Account is not this validator's stake PDA"
     },
     {
       "code": 6038,
-      "name": "MissingStakeAccount",
+      "name": "missingStakeAccount",
       "msg": "A staked co-signer's stake account is missing"
     },
     {
       "code": 6039,
-      "name": "MissingStakeVault",
+      "name": "missingStakeVault",
       "msg": "The stake vault account is missing"
     },
     {
       "code": 6040,
-      "name": "NothingToRelease",
+      "name": "nothingToRelease",
       "msg": "No open stake lock for this validator on this job"
     }
   ],
   "types": [
     {
-      "name": "Certificate",
+      "name": "certificate",
       "docs": [
         "Calibration certificate for one operator flying one drone."
       ],
@@ -2319,7 +2325,7 @@
             "type": "pubkey"
           },
           {
-            "name": "drone_hash",
+            "name": "droneHash",
             "docs": [
               "SHA-256 of the drone serial number."
             ],
@@ -2331,21 +2337,21 @@
             }
           },
           {
-            "name": "meter_error_bps",
+            "name": "meterErrorBps",
             "docs": [
               "|reported liters − weighed liters| / weighed liters, in basis points."
             ],
             "type": "u16"
           },
           {
-            "name": "operator_passed",
+            "name": "operatorPassed",
             "docs": [
               "Operator passed the practical part (planning, accuracy, safety)."
             ],
             "type": "bool"
           },
           {
-            "name": "report_hash",
+            "name": "reportHash",
             "docs": [
               "SHA-256 of the full test report (cards, photos, weights) on Arweave."
             ],
@@ -2357,15 +2363,15 @@
             }
           },
           {
-            "name": "issued_by",
+            "name": "issuedBy",
             "type": "pubkey"
           },
           {
-            "name": "issued_at",
+            "name": "issuedAt",
             "type": "i64"
           },
           {
-            "name": "valid_until",
+            "name": "validUntil",
             "type": "i64"
           },
           {
@@ -2380,7 +2386,7 @@
       }
     },
     {
-      "name": "Config",
+      "name": "config",
       "type": {
         "kind": "struct",
         "fields": [
@@ -2389,7 +2395,7 @@
             "type": "pubkey"
           },
           {
-            "name": "usdc_mint",
+            "name": "usdcMint",
             "type": "pubkey"
           },
           {
@@ -2400,7 +2406,7 @@
             "type": "pubkey"
           },
           {
-            "name": "validator_pool",
+            "name": "validatorPool",
             "docs": [
               "USDC token account receiving validator fees (v1: a multisig of the",
               "validators, who split it off-chain; v2: on-chain claims)."
@@ -2420,25 +2426,25 @@
             }
           },
           {
-            "name": "validator_count",
+            "name": "validatorCount",
             "type": "u8"
           },
           {
-            "name": "proof_threshold",
+            "name": "proofThreshold",
             "docs": [
               "Data validators needed to co-sign a proof."
             ],
             "type": "u8"
           },
           {
-            "name": "panel_threshold",
+            "name": "panelThreshold",
             "docs": [
               "Field validators needed to rule on a challenge."
             ],
             "type": "u8"
           },
           {
-            "name": "challenge_window_secs",
+            "name": "challengeWindowSecs",
             "docs": [
               "Seconds a passing proof stays open to challenge (D14: 24 h real,",
               "60 s demo). Bounded by MIN/MAX_CHALLENGE_WINDOW_SECS."
@@ -2450,7 +2456,7 @@
             "type": "u8"
           },
           {
-            "name": "min_validator_stake",
+            "name": "minValidatorStake",
             "docs": [
               "Minimum active stake (USDC base units) a validator needs to co-sign a",
               "proof. 0 = no stake required (pre-staking behaviour)."
@@ -2458,7 +2464,7 @@
             "type": "u64"
           },
           {
-            "name": "unstake_cooldown_secs",
+            "name": "unstakeCooldownSecs",
             "docs": [
               "Seconds between `request_unstake` and `withdraw_stake` (7 days real,",
               "60 s demo)."
@@ -2466,7 +2472,7 @@
             "type": "i64"
           },
           {
-            "name": "slash_bps",
+            "name": "slashBps",
             "docs": [
               "Share of a co-signer's stake slashed when a panel rules against the",
               "proof (basis points, 1..=10_000)."
@@ -2477,23 +2483,23 @@
       }
     },
     {
-      "name": "ConfigMigrated",
+      "name": "configMigrated",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "old_len",
+            "name": "oldLen",
             "type": "u32"
           },
           {
-            "name": "new_len",
+            "name": "newLen",
             "type": "u32"
           }
         ]
       }
     },
     {
-      "name": "CosignReleased",
+      "name": "cosignReleased",
       "type": {
         "kind": "struct",
         "fields": [
@@ -2509,7 +2515,7 @@
       }
     },
     {
-      "name": "FarmerProfile",
+      "name": "farmerProfile",
       "docs": [
         "Public record of a farmer's behaviour, so operators can see serial",
         "challengers before accepting."
@@ -2522,15 +2528,15 @@
             "type": "pubkey"
           },
           {
-            "name": "jobs_posted",
+            "name": "jobsPosted",
             "type": "u32"
           },
           {
-            "name": "challenges_won",
+            "name": "challengesWon",
             "type": "u32"
           },
           {
-            "name": "challenges_lost",
+            "name": "challengesLost",
             "type": "u32"
           },
           {
@@ -2541,7 +2547,7 @@
       }
     },
     {
-      "name": "Job",
+      "name": "job",
       "type": {
         "kind": "struct",
         "fields": [
@@ -2554,7 +2560,7 @@
             "type": "pubkey"
           },
           {
-            "name": "job_id",
+            "name": "jobId",
             "type": "u64"
           },
           {
@@ -2565,15 +2571,15 @@
             "type": "u64"
           },
           {
-            "name": "bond_amount",
+            "name": "bondAmount",
             "type": "u64"
           },
           {
-            "name": "challenge_bond",
+            "name": "challengeBond",
             "type": "u64"
           },
           {
-            "name": "field_hash",
+            "name": "fieldHash",
             "docs": [
               "SHA-256 of the field polygon GeoJSON."
             ],
@@ -2585,26 +2591,26 @@
             }
           },
           {
-            "name": "chemical_code",
+            "name": "chemicalCode",
             "type": "u16"
           },
           {
-            "name": "target_rate_ml_per_ha",
+            "name": "targetRateMlPerHa",
             "type": "u32"
           },
           {
-            "name": "tolerance_bps",
+            "name": "toleranceBps",
             "type": "u16"
           },
           {
-            "name": "area_cha",
+            "name": "areaCha",
             "docs": [
               "Area in hundredths of a hectare (1 cha = 100 m²)."
             ],
             "type": "u32"
           },
           {
-            "name": "drone_hash",
+            "name": "droneHash",
             "docs": [
               "SHA-256 of the certified drone's serial number; the proof manifest",
               "must come from this drone."
@@ -2617,7 +2623,7 @@
             }
           },
           {
-            "name": "proof_hash",
+            "name": "proofHash",
             "docs": [
               "SHA-256 of the Arweave proof manifest."
             ],
@@ -2629,7 +2635,7 @@
             }
           },
           {
-            "name": "evidence_hash",
+            "name": "evidenceHash",
             "docs": [
               "SHA-256 of the farmer's challenge evidence."
             ],
@@ -2641,7 +2647,7 @@
             }
           },
           {
-            "name": "report_hash",
+            "name": "reportHash",
             "docs": [
               "SHA-256 of the validator panel's inspection report."
             ],
@@ -2653,31 +2659,31 @@
             }
           },
           {
-            "name": "liters_ml",
+            "name": "litersMl",
             "type": "u64"
           },
           {
-            "name": "area_covered_cha",
+            "name": "areaCoveredCha",
             "type": "u32"
           },
           {
             "name": "state",
             "type": {
               "defined": {
-                "name": "JobState"
+                "name": "jobState"
               }
             }
           },
           {
-            "name": "created_at",
+            "name": "createdAt",
             "type": "i64"
           },
           {
-            "name": "spray_deadline",
+            "name": "sprayDeadline",
             "type": "i64"
           },
           {
-            "name": "challenge_deadline",
+            "name": "challengeDeadline",
             "type": "i64"
           },
           {
@@ -2685,43 +2691,43 @@
             "type": "u8"
           },
           {
-            "name": "vault_bump",
+            "name": "vaultBump",
             "type": "u8"
           }
         ]
       }
     },
     {
-      "name": "JobState",
+      "name": "jobState",
       "type": {
         "kind": "enum",
         "variants": [
           {
-            "name": "Posted"
+            "name": "posted"
           },
           {
-            "name": "Accepted"
+            "name": "accepted"
           },
           {
-            "name": "ProofSubmitted"
+            "name": "proofSubmitted"
           },
           {
-            "name": "Challenged"
+            "name": "challenged"
           },
           {
-            "name": "Released"
+            "name": "released"
           },
           {
-            "name": "Refunded"
+            "name": "refunded"
           },
           {
-            "name": "Cancelled"
+            "name": "cancelled"
           }
         ]
       }
     },
     {
-      "name": "Operator",
+      "name": "operator",
       "type": {
         "kind": "struct",
         "fields": [
@@ -2730,15 +2736,15 @@
             "type": "pubkey"
           },
           {
-            "name": "jobs_completed",
+            "name": "jobsCompleted",
             "type": "u32"
           },
           {
-            "name": "jobs_failed",
+            "name": "jobsFailed",
             "type": "u32"
           },
           {
-            "name": "active_job",
+            "name": "activeJob",
             "type": {
               "option": "pubkey"
             }
@@ -2751,7 +2757,7 @@
       }
     },
     {
-      "name": "ProofCosigned",
+      "name": "proofCosigned",
       "type": {
         "kind": "struct",
         "fields": [
@@ -2771,7 +2777,7 @@
       }
     },
     {
-      "name": "StakeWithdrawn",
+      "name": "stakeWithdrawn",
       "type": {
         "kind": "struct",
         "fields": [
@@ -2787,27 +2793,27 @@
       }
     },
     {
-      "name": "StakingParamsSet",
+      "name": "stakingParamsSet",
       "type": {
         "kind": "struct",
         "fields": [
           {
-            "name": "min_validator_stake",
+            "name": "minValidatorStake",
             "type": "u64"
           },
           {
-            "name": "unstake_cooldown_secs",
+            "name": "unstakeCooldownSecs",
             "type": "i64"
           },
           {
-            "name": "slash_bps",
+            "name": "slashBps",
             "type": "u16"
           }
         ]
       }
     },
     {
-      "name": "UnstakeRequested",
+      "name": "unstakeRequested",
       "type": {
         "kind": "struct",
         "fields": [
@@ -2820,14 +2826,14 @@
             "type": "u64"
           },
           {
-            "name": "available_at",
+            "name": "availableAt",
             "type": "i64"
           }
         ]
       }
     },
     {
-      "name": "ValidatorSlashed",
+      "name": "validatorSlashed",
       "type": {
         "kind": "struct",
         "fields": [
@@ -2855,7 +2861,7 @@
       }
     },
     {
-      "name": "ValidatorStake",
+      "name": "validatorStake",
       "docs": [
         "A validator's USDC stake, held in the program's stake vault",
         "(`[\"stake_vault\"]`, owned by the Config PDA)."
@@ -2875,7 +2881,7 @@
             "type": "u64"
           },
           {
-            "name": "unstake_requested_at",
+            "name": "unstakeRequestedAt",
             "docs": [
               "0 = not unstaking; otherwise when `request_unstake` was called."
             ],
@@ -2890,33 +2896,33 @@
             "type": "bool"
           },
           {
-            "name": "open_cosigns",
+            "name": "openCosigns",
             "docs": [
               "Co-signed proofs not yet finally settled; withdrawal needs 0."
             ],
             "type": "u16"
           },
           {
-            "name": "proofs_cosigned",
+            "name": "proofsCosigned",
             "type": "u32"
           },
           {
-            "name": "times_slashed",
+            "name": "timesSlashed",
             "type": "u32"
           },
           {
-            "name": "total_staked",
+            "name": "totalStaked",
             "docs": [
               "Lifetime deposits and lifetime slashed amount (USDC base units)."
             ],
             "type": "u64"
           },
           {
-            "name": "total_slashed",
+            "name": "totalSlashed",
             "type": "u64"
           },
           {
-            "name": "created_at",
+            "name": "createdAt",
             "type": "i64"
           },
           {
@@ -2927,7 +2933,7 @@
       }
     },
     {
-      "name": "ValidatorStaked",
+      "name": "validatorStaked",
       "type": {
         "kind": "struct",
         "fields": [
@@ -2947,4 +2953,4 @@
       }
     }
   ]
-}
+};
