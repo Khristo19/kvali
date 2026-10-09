@@ -36,7 +36,7 @@ export default function MarkField() {
     <RoleShell role="farmer" active={0} title="Mark your field" subtitle="Step 1 of 3 · Post a job" onBack={() => (router.canGoBack() ? router.back() : router.replace("/farmer"))}>
       <View accessibilityRole="tablist" style={styles.tabs}>
         {([["draw", "Draw on map"], ["code", "Cadastral code"]] as const).map(([k, label]) => (
-          <Pressable key={k} accessibilityRole="tab" accessibilityState={{ selected: tab === k }} onPress={() => setTab(k)} style={[styles.tab, tab === k && styles.tabOn]}>
+          <Pressable key={k} accessibilityRole="tab" aria-selected={tab === k} onPress={() => setTab(k)} style={[styles.tab, tab === k && styles.tabOn]}>
             <Text style={[styles.tabText, tab === k && { color: colors.onAccent }]}>{label}</Text>
           </Pressable>
         ))}

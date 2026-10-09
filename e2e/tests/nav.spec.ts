@@ -165,3 +165,12 @@ test("Layout: no horizontal overflow at 390 px on every page", async ({ page }) 
     });
   }
 });
+
+// Z1/Z2: a direct URL load must show real content, never sit on the "Reading ..." placeholder.
+for (const path of ["validator", "job", "farmer", "operator"] as const) {
+  test(`Nav: direct load of /${path} leaves the loading placeholder within 20 s`, async ({ page }) => {
+    await go(page, path);
+    await expect(tid(page, "page-title")).toBeVisible({ timeout: 20_000 });
+    await expect(tid(page, "chain-gate")).toHaveCount(0, { timeout: 20_000 });
+  });
+}

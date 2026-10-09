@@ -140,7 +140,7 @@ export default function ValidatorScreen() {
               testID={`seat-${v.seat}`}
               accessibilityRole="radio"
               accessibilityLabel={`${v.label}, ${v.seat} seat`}
-              accessibilityState={{ selected: v.id === seatId }}
+              aria-checked={v.id === seatId}
               onPress={() => setSeatId(v.id)}
               style={[styles.seat, v.id === seatId && styles.seatOn]}
             >

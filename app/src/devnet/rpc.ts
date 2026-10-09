@@ -68,8 +68,17 @@ async function attempt(url: string, init: RequestInit | undefined): Promise<{ st
   let waited = false;
   for (let i = 0; i < MAX_ATTEMPTS; i++) {
     try {
-      const res = await slot(() => fetch(url, init));
-      const text = await res.text();
+      // A request that never answers must not hold a queue slot forever.
+      const ctl = new AbortController();
+      const timer = setTimeout(() => ctl.abort(), 20000);
+      let res: Response;
+      let text: string;
+      try {
+        res = await slot(() => fetch(url, { ...init, signal: ctl.signal }));
+        text = await res.text();
+      } finally {
+        clearTimeout(timer);
+      }
       if (res.status !== 429 && res.status < 500) {
         if (waited) markBusy(false);
         return { status: res.status, text };

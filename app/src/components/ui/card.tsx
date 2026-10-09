@@ -20,7 +20,7 @@ export function CardTitle({ children }: { children: ReactNode }) {
 export function Row({ label, value, sub, bold, testID }: { label: string; value: string; sub?: string; bold?: boolean; testID?: string }) {
   return (
     <View style={styles.row} testID={testID}>
-      <Text style={[styles.rowLabel, { flexShrink: 1 }]}>{label}</Text>
+      <Text style={[styles.rowLabel, { flex: 1, minWidth: 0 }]}>{label}</Text>
       <View style={styles.rowValueBox}>
         <Text style={[styles.rowValue, bold && styles.rowValueBold]}>{value}</Text>
         {sub ? <Text style={styles.rowSub}>{sub}</Text> : null}
@@ -127,7 +127,7 @@ const styles = StyleSheet.create({
   cardTitle: { fontFamily: fonts.display, fontSize: 18, fontWeight: "700", color: colors.ink },
   row: { flexDirection: "row", justifyContent: "space-between", gap: space.md, alignItems: "flex-start" },
   rowLabel: { ...type.body, color: colors.muted },
-  rowValueBox: { alignItems: "flex-end", flexShrink: 1, maxWidth: "65%" },
+  rowValueBox: { alignItems: "flex-end", flexShrink: 0, maxWidth: "55%" },
   rowValue: { ...type.body, color: colors.ink, fontWeight: "600", textAlign: "right", flexShrink: 1 },
   rowValueBold: { fontFamily: fonts.display, fontWeight: "700", fontSize: 18 },
   rowSub: { ...type.small, textAlign: "right", flexShrink: 1 },

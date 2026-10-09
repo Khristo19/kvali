@@ -72,6 +72,17 @@ const ENDED = ["Released", "Refunded", "Cancelled"];
  * using the saved signatures only for Explorer links. The mirror's own rules re-run on the same values the chain accepted.
  */
 function replay(engine: Engine, cj: chain.ChainJob, s: Session, txs: { action: string; sig: string; time?: number }[] = s.txs) {
+  const known = engine.getState().balances;
+  // The mirror needs funds to replay the steps; the real balances are put back right after.
+  engine.chainSetBalances({ ...known, [WALLETS.farmer]: 1_000_000_000_000n, [WALLETS.operator]: 1_000_000_000_000n });
+  try {
+    replayInner(engine, cj, s, txs);
+  } finally {
+    engine.chainSetBalances(known);
+  }
+}
+
+function replayInner(engine: Engine, cj: chain.ChainJob, s: Session, txs: { action: string; sig: string; time?: number }[]) {
   const jobId = localJobId();
   const farmer = WALLETS.farmer;
   const op = WALLETS.operator;
@@ -234,11 +245,13 @@ function applyJobCache(engine: Engine): boolean {
 }
 
 let restoreOk = false;
+const withTimeout = <T,>(p: Promise<T>, ms: number): Promise<T> => Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error("the node is slow to answer")), ms))]);
 
 /** Probe devnet, show the last known job at once, restore from the chain, then read balances. Never falls back to the simulation. */
 export async function bootDevnet(engine: Engine): Promise<boolean> {
   setDevnetState({ status: "connecting" });
   loadPending();
+  engine.chainSetBalances({}); // never show the simulation's seeded $1,000 in devnet mode
   if (applyJobCache(engine)) setDevnetState({ cachedReady: true });
   // A rate-limited or slow node is not "unreachable": keep trying quietly (the RPC layer shows "devnet is busy").
   for (;;) {
@@ -246,14 +259,14 @@ export async function bootDevnet(engine: Engine): Promise<boolean> {
     await new Promise((r) => setTimeout(r, 6000));
   }
   try {
-    await restoreSession(engine);
+    await withTimeout(restoreSession(engine), 30000);
     restoreOk = true;
   } catch (e) {
     setDevnetState({ restoreNote: `Still reading your job from the chain (${friendlyMessage((e as Error).message)}).` });
   }
   retagCertificate(engine);
   try {
-    await syncChain(engine);
+    await withTimeout(syncChain(engine), 15000);
   } catch {
     // Never leave the seeded (simulated) balances on screen in devnet mode; the poll below keeps trying.
     if (!getDevnetState().cachedReady) engine.chainSetBalances({});

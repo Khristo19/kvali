@@ -9,6 +9,7 @@ import { SettlementDemo } from "@/components/settlement-demo";
 import { Button, Icon } from "@/components/ui";
 import { addressFor, roleHome, roleLabel, saveAccount, shortAddr, signOut, useAccount, useAccounts } from "@/account/store";
 import { notify } from "@/components/ui/notice";
+import { hasBurner } from "@/devnet/keys";
 import { ensureWallet } from "@/devnet/provision";
 import { getDevnetState, setDevnetState, useMode } from "@/devnet/mode";
 import { colors, fonts, radius, space, type } from "@/theme";
@@ -51,8 +52,9 @@ export default function Home() {
     const m = email.trim();
     if (n.length < 2) return setErr("Please enter your name.");
     if (!/^\S+@\S+\.\S+$/.test(m)) return setErr("Please enter a valid email address, like name@example.com.");
+    const freshWallet = picked !== "validator" && !hasBurner(picked);
     saveAccount({ name: n, email: m, role: picked });
-    if (picked !== "validator" && getDevnetState().mode === "devnet") setDevnetState({ walletNote: "Setting up your own devnet wallet: funding it with test SOL and test USDC...", walletOk: false });
+    if (picked !== "validator" && getDevnetState().mode === "devnet" && freshWallet) setDevnetState({ walletNote: "Setting up your own devnet wallet: funding it with test SOL and test USDC...", walletOk: false });
     // The browser makes its own devnet wallet for this role and the public demo bank funds it (farmer, operator).
     if ((picked === "farmer" || picked === "operator") && getDevnetState().mode === "devnet") {
       void ensureWallet(picked).catch((e: Error) => notify("error", e.message));
@@ -88,7 +90,7 @@ export default function Home() {
                   key={r.id}
                   testID={`role-${r.id}`}
                   accessibilityRole="radio"
-                  accessibilityState={{ selected: on, checked: on }}
+                  aria-checked={on}
                   accessibilityLabel={`${r.title}. ${r.desc}`}
                   onPress={() => {
                     setPicked(r.id);

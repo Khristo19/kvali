@@ -77,7 +77,7 @@ export function TabBar({ role, active }: { role: Role; active: number }) {
             key={t.label}
             testID={`nav-${t.key || "home"}`}
             accessibilityRole="tab"
-            accessibilityState={{ selected: on }}
+            aria-selected={on}
             accessibilityLabel={t.label}
             onPress={() => go(t.key)}
             style={styles.tab}
@@ -116,7 +116,7 @@ export function SideNav({ role, active }: { role: Role; active: number }) {
             key={t.label}
             testID={`nav-${t.key || "home"}`}
             accessibilityRole="tab"
-            accessibilityState={{ selected: on }}
+            aria-selected={on}
             onPress={() => go(t.key)}
             style={[styles.sideItem, on && styles.sideItemOn]}
           >

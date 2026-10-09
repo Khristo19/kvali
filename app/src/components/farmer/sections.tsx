@@ -359,7 +359,7 @@ function DetailsToggle() {
   const p = job?.proof;
   return (
     <View style={{ gap: 12 }}>
-      <Pressable accessibilityRole="button" accessibilityState={{ expanded: open }} onPress={() => setOpen(!open)} style={styles.detailsLink}>
+      <Pressable accessibilityRole="button" aria-expanded={open} onPress={() => setOpen(!open)} style={styles.detailsLink}>
         <Text style={styles.detailsText}>{open ? "Hide details" : "Details"}</Text>
       </Pressable>
       {open && job ? (
@@ -441,7 +441,7 @@ export function DemoControls() {
         accessibilityRole="button"
         testID="demo-controls-toggle"
         accessibilityLabel="Demo controls, presenter only"
-        accessibilityState={{ expanded: open }}
+        aria-expanded={open}
         onPress={() => setOpen(!open)}
         style={{ minHeight: 44, justifyContent: "center" }}
       >

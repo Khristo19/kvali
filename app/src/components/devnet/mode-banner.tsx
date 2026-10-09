@@ -13,7 +13,7 @@ import { colors, radius, type } from "@/theme";
 
 function Seg({ label, on, onPress }: { label: string; on: boolean; onPress: () => void }) {
   return (
-    <Pressable accessibilityRole="radio" accessibilityState={{ selected: on }} accessibilityLabel={label} onPress={onPress} style={[styles.seg, on && styles.segOn]}>
+    <Pressable accessibilityRole="radio" aria-checked={on} accessibilityLabel={label} onPress={onPress} style={[styles.seg, on && styles.segOn]}>
       <Text style={[styles.segText, on && styles.segTextOn]}>{label}</Text>
     </Pressable>
   );
@@ -56,7 +56,7 @@ export function ModeBanner() {
         <Text style={[type.small, { minHeight: 44 }]}>
           {s.status === "ready" ? (
             <>
-              Your wallet is a devnet burner key kept in this browser (test funds only); validators use public demo keys.{" "}
+              A devnet test key is kept in this browser (test funds only); validators use public demo keys.{" "}
               <ExtLink url={explorerAddr(addresses.programId.toBase58())} style={styles.link}>
                 Program on Explorer
               </ExtLink>
