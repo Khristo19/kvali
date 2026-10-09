@@ -30,3 +30,17 @@ Run order and what to say while it runs:
 4. Optional scenario C (`--challenge`) for the challenge branch.
 
 Record the console and cut to Explorer. Results (job ids, signatures, balances, manifest hash) are saved to `deploy/demo-run-latest.json`. The spray record is simulated; chain, escrow, signatures and money movement are real devnet.
+
+## Technical demo: the web app, 2:00 (validator bots and staking, 10 Oct)
+
+Live site https://khristo19.github.io/kvali/ (devnet; test USDC). One browser, three roles. The arithmetic checks are automatic; humans only do certificates, spot checks and challenges.
+
+| Time | Beat | Show |
+|---|---|---|
+| 0:00-0:20 | **Post the job** | Farmer page: pick an OSM vineyard, Post job. Real `post_job` tx; $300 sits in the vault PDA. Open the Explorer link. |
+| 0:20-0:35 | **Operator accepts** | Operator page, Accept: the operator's $300 bond is locked on chain (`accept_job`). |
+| 0:35-0:50 | **Flight** | "Demo: simulate the drone flight", pick Honest flight, Send. (A real drone uploads its log; here it is a sample record.) |
+| 0:50-1:15 | **Bots co-sign automatically** | Open the Validator page. "Bot verdicts": every bot ran coverage, L/ha band and flow-meter-vs-tank; 2 of 3 co-signed and `submit_proof` went on chain with no human click. Open the co-sign transaction on Explorer (three signers plus the stake accounts). Optional: send the Pump off record on another job; the bots refuse it, nothing is signed or paid. |
+| 1:15-1:35 | **Stake card** | Each seat shows $500 staked, active, proofs co-signed, open co-signs. One line: "Checkers lock their own USDC. If a panel rules that a proof they signed was false, their stake goes to the farmer and they lose their seat." Unstake and withdraw are switched off for the public demo seats; slashing is proven by the program tests, not run on the shared demo keys. |
+| 1:35-1:50 | **Settle and payout** | The 60 s window closes and the app settles by itself: operator $285 plus the $300 bond back, treasury $9, validator pool $6. Show Operator earnings and the farmer's "Operator paid" card. After settle the app calls `release_cosign` for each co-signer, so open co-signs go back to 0. |
+| 1:50-2:00 | **Explorer links** | Job story page: every step has its Explorer link and "Adds up". |

@@ -64,11 +64,12 @@ export async function operatorAccepts(page: Page) {
   await expect(tid(page, "simulate-flight")).toBeVisible({ timeout: 180_000 });
 }
 
+/** Pick a sample record and send it. The validator bots check it and (if it passes) co-sign and submit the proof; no human validator step. */
 export async function operatorSendsRecord(page: Page, key: "honest" | "pumpOff" | "halfField" | "tankMismatch") {
   await tid(page, `record-${key}`).click();
   await expect(tid(page, `record-${key}`)).toContainText("(selected)");
   await tid(page, "send-record").click();
-  await expect(tid(page, "record-pending-banner")).toContainText("Waiting for validators");
+  // The checker bots run right away in this browser: an honest record goes on chain by itself, a bad one gets a refusal banner.
 }
 
 export function warn(testInfo: TestInfo, description: string) {

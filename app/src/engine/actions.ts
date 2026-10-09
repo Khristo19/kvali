@@ -8,6 +8,8 @@ import { friendlyMessage } from "@/devnet/rpc";
 import { devnetActions, type DevActions } from "@/devnet/bridge";
 import { useMode } from "@/devnet/mode";
 import type { Engine } from "./engine";
+import { BotRefused, failReason, fullVerdict } from "./bots";
+import { setPending } from "@/session/store";
 import { acceptSampleJob, postSampleJob, submitSampleRecord, PROOF_SIGNERS, type sampleRecords } from "./scenario";
 import { useEngineInstance } from "./useEngine";
 import { EngineError } from "./types";
@@ -18,7 +20,15 @@ function simActions(e: Engine): Actions {
   return {
     postJob: async (id, field) => void postSampleJob(e, id, field),
     acceptJob: async (id) => acceptSampleJob(e, id),
-    submitRecord: async (k: keyof typeof sampleRecords, id, signers = PROOF_SIGNERS) => submitSampleRecord(e, k, id, signers),
+    submitRecord: async (k: keyof typeof sampleRecords, id) => {
+      const v = fullVerdict(e.getState().jobs[id], k);
+      if (!v.pass) {
+        setPending({ key: k, approvals: [], refusal: `Bots refused: ${failReason(v.checks)}` });
+        throw new BotRefused(`The checker bots refused this record (${failReason(v.checks)}). Nothing was signed and nothing was paid.`);
+      }
+      setPending(null);
+      submitSampleRecord(e, k, id, PROOF_SIGNERS);
+    },
     settle: async (caller, id) => e.settle(caller, id),
     challenge: async (farmer, id) => e.challenge(farmer, id, "SIM-evidence-hash"),
     resolveChallenge: async (signers, id, upheld) => e.resolveChallenge(signers, id, upheld, "SIM-panel-report"),
@@ -42,7 +52,7 @@ function plain(e: unknown): string {
 const OK: Record<keyof Actions, string> = {
   postJob: "Job posted. The payment is held safely until the spraying is checked.",
   acceptJob: "Job accepted. Your bond is locked. Next: fly the job (use \"Demo: simulate the drone flight\" below).",
-  submitRecord: "Spray record submitted with the validators' co-signatures. The 60 second challenge window is open.",
+  submitRecord: "The checker bots passed the record and 2 of 3 co-signed: the proof is on chain. The challenge window is open.",
   settle: "Settled. The operator was paid.",
   challenge: "Challenge raised. A validator panel will decide.",
   resolveChallenge: "The panel has decided and the money was paid out.",

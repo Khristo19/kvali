@@ -13,12 +13,15 @@ export function ChallengeCard({
   config,
   votes,
   onVote,
+  upholdOff,
 }: {
   job: Job;
   config: Config;
   /** seat id -> true = uphold, false = reject */
   votes: Record<string, boolean>;
   onVote: (seat: Validator, uphold: boolean) => void;
+  /** Why Uphold is disabled (public devnet demo: upholding would slash the shared demo validators). */
+  upholdOff?: string;
 }) {
   const session = useSession();
   const c = job.challenge;
@@ -46,12 +49,13 @@ export function ChallengeCard({
               {vote === undefined ? "" : vote ? ": Uphold" : ": Reject"}
             </Text>
             <View style={styles.actions}>
-              <Btn label={`Uphold (${v.seat})`} kind={vote === true ? "primary" : "ghost"} onPress={() => onVote(v, true)} />
+              <Btn label={`Uphold (${v.seat})`} kind={vote === true ? "primary" : "ghost"} disabled={!!upholdOff} hint={upholdOff} onPress={() => onVote(v, true)} />
               <Btn label={`Reject (${v.seat})`} kind={vote === false ? "primary" : "ghost"} onPress={() => onVote(v, false)} />
             </View>
           </View>
         );
       })}
+      {upholdOff ? <Text style={type.small}>{upholdOff}</Text> : null}
       <Text style={type.small}>
         Uphold: the farmer was right, so the farmer gets the money back and the operator bond is lost. Reject: the proof stands, so the
         operator is paid and the farmer loses the challenge bond.

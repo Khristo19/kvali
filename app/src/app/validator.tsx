@@ -9,10 +9,12 @@ import { SettleNow } from "@/components/settle-now";
 import { ResetDemo, ValidatorEarnings, ValidatorProfile, ValidatorReviewed } from "@/components/tab-views";
 import { notify } from "@/components/ui/notice";
 import { describeJob, jobRef } from "@/session/info";
-import { recordTitle } from "@/components/records";
-import { setPending, usePending, useSession } from "@/session/store";
+import { usePending, useSession } from "@/session/store";
 import { ChallengeCard } from "@/components/validator/challenge-card";
-import { ProofCard, fullVerdict, type SampleKey } from "@/components/validator/proof-card";
+import { ProofCard, type SampleKey } from "@/components/validator/proof-card";
+import { BotVerdicts } from "@/components/validator/bot-card";
+import { StakeCards } from "@/components/validator/stake-card";
+import { useMode } from "@/devnet/mode";
 import { useAccount } from "@/account/store";
 import { ChainGate } from "@/components/chain-gate";
 import { ModeBanner } from "@/components/devnet/mode-banner";
@@ -32,68 +34,25 @@ export default function ValidatorScreen() {
   const pending = usePending();
   const session = useSession();
   const validatorAcct = useAccount("validator");
-  const locked = validatorAcct ? undefined : "Sign up as a validator first (home page) to approve or refuse.";
+  const locked = validatorAcct ? undefined : "Sign up as a validator first (home page) to add stake.";
   const seatId = useSeat(); // persisted on staging (account switcher), starts at the first seat on live
   const setSeatId = setSeat;
-  const [sigs, setSigs] = useState<Record<string, string[]>>({});
-  const [refusals, setRefusals] = useState<Record<string, string>>({});
   const [votes, setVotes] = useState<Record<number, Record<string, boolean>>>({});
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [practice, setPractice] = useState(false);
+  const [spot, setSpot] = useState(false);
+  const devnet = useMode() === "devnet";
 
-  const seat = VALIDATORS.find((v) => v.id === seatId)!;
   const jobs = Object.values(state.jobs);
   const accepted = jobs.filter((j) => j.state === "Accepted");
   const challenged = jobs.filter((j) => j.state === "Challenged");
+  const current = jobs[0];
+  const spotKey = (session?.bots?.key ?? session?.recordKey ?? pending?.key) as SampleKey | undefined;
 
   const fail = (e: unknown) => {
     setNotice(null);
     setError(e instanceof EngineError ? `${e.code}: ${e.message}` : e instanceof Error ? e.message : String(e));
-  };
-
-  const sign = async (jobId: number, key: SampleKey) => {
-    setError(null);
-    const k = `${jobId}:${key}`;
-    const job = state.jobs[jobId];
-    // Validators run the FULL verdict before signing.
-    if (!fullVerdict(job, key).pass) return fail(new Error("Full verdict fails; this record must be refused."));
-    const isPending = pending?.key === key;
-    const list = Array.from(new Set([...(isPending ? pending.approvals : (sigs[k] ?? [])), seat.id]));
-    if (isPending) setPending({ ...pending, approvals: list, refusal: undefined });
-    else setSigs({ ...sigs, [k]: list });
-    if (list.length >= state.config.proofThreshold) {
-      try {
-        await actions.submitRecord(key, jobId, list);
-        setNotice(null);
-      } catch (e) {
-        fail(e);
-      }
-    } else {
-      setNotice(`Approval recorded for the ${seat.seat} seat. 1 more seat is needed: pick another seat and approve.`);
-      notify("ok", "Approval recorded. 1 more seat is needed: pick another seat above and approve again.");
-    }
-  };
-
-  // Practice records never touch the chain: approvals stay in this page.
-  const practiceSign = (jobId: number, key: SampleKey) => {
-    const job = state.jobs[jobId];
-    if (!fullVerdict(job, key).pass) return fail(new Error("Full verdict fails; this record must be refused."));
-    const k = `practice:${key}`;
-    const list = Array.from(new Set([...(sigs[k] ?? []), seat.id]));
-    setSigs({ ...sigs, [k]: list });
-    setError(null);
-    setNotice(list.length >= state.config.proofThreshold ? "Practice only: 2 seats approved, but nothing was sent to the chain." : `Practice approval recorded for the ${seat.seat} seat.`);
-  };
-
-  const refuse = (jobId: number, key: SampleKey, reason: string) => {
-    setError(null);
-    setNotice(`Refusal recorded: ${reason}. (Demo only: not an on-chain transaction.)`);
-    if (pending?.key === key) {
-      setPending({ ...pending, refusal: `${reason} (${seat.seat} seat)` });
-      notify("info", "Refusal recorded in this demo (not an on-chain transaction); the proof is not submitted, so no money moves. The operator is told to send a different record.");
-    }
-    setRefusals({ ...refusals, [`${jobId}:${key}`]: reason });
   };
 
   const vote = async (jobId: number, v: Validator, uphold: boolean) => {
@@ -118,7 +77,7 @@ export default function ValidatorScreen() {
     <RoleShell
       role="validator"
       title={tab === "" ? "Proof review" : tab === "reviewed" ? "Reviewed" : tab === "earnings" ? "Earnings" : "Profile"}
-      subtitle={tab === "" ? (first ? `Job ${jobRef(first.id, session)} · ${state.config.proofThreshold} of ${state.config.validators.length} checks needed` : "Nothing to check right now") : undefined}
+      subtitle={tab === "" ? (first ? `Job ${jobRef(first.id, session)} · checker bots: ${state.config.proofThreshold} of ${state.config.validators.length} must co-sign` : "Nothing to check right now") : undefined}
     >
       <ModeBanner />
       <ChainGate>
@@ -160,91 +119,65 @@ export default function ValidatorScreen() {
               <Text style={[type.body, { color: colors.error, flexShrink: 1 }]}>{error}</Text>
             </View>
           )}
-          {notice && !error && (accepted.length > 0 || challenged.length > 0) && <Banner tone="ok" text={notice} />}
-          {accepted.length === 0 && challenged.length === 0 && (
+          {notice && !error && <Banner tone="ok" text={notice} />}
+          {!current && (
             <Card>
               <Text style={type.body}>No job to check yet: post one from the Farmer page and accept it from the Operator page.</Text>
             </Card>
           )}
-          {accepted.map((job) => (
-            <Card key={`sum-${job.id}`}>
-              <CardTitle>Job {jobRef(job.id, session)}</CardTitle>
+          {current && (
+            <Card key={`sum-${current.id}`}>
+              <CardTitle>Job {jobRef(current.id, session)}</CardTitle>
               <FactGrid>
-                <Fact label="Field" value={`${describeJob(job, session).field}, ${hectares(job.areaCha)}`} />
+                <Fact label="Field" value={`${describeJob(current, session).field}, ${hectares(current.areaCha)}`} />
                 <Fact label="Drone" value={DRONE.model} />
-                <Fact label="Spray by" value={new Date(job.sprayDeadline * 1000).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} />
-                <Fact label="Product" value={describeJob(job, session).product} />
-                <Fact label="Target" value={`${litersPerHa(job.targetRateMlPerHa)} ± ${job.toleranceBps / 100}%`} />
+                <Fact label="Spray by" value={new Date(current.sprayDeadline * 1000).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })} />
+                <Fact label="Product" value={describeJob(current, session).product} />
+                <Fact label="Target" value={`${litersPerHa(current.targetRateMlPerHa)} ± ${current.toleranceBps / 100}%`} />
               </FactGrid>
             </Card>
-          ))}
+          )}
         </View>
       </TwoUp>
 
-      {accepted.map((job) => (
-        <View key={job.id} style={styles.group}>
-          <Text style={type.heading}>Proofs to check, job {jobRef(job.id, session)}</Text>
-          {pending ? (
-            <>
-              <Text style={type.small}>
-                The operator sent the record &ldquo;{recordTitle(pending.key)}&rdquo; (Demo: simulated drone flight). Approve it with 2 of the 3 seats; the 2nd approval submits the proof on chain, co-signed by both validators.
-              </Text>
-              <View style={styles.proofs}>
-                <View style={styles.proofCell}>
-                  <ProofCard
-                    locked={locked}
-                    job={job}
-                    sampleKey={pending.key as SampleKey}
-                    seat={seat}
-                    validators={VALIDATORS}
-                    signed={pending.approvals}
-                    refusal={pending.refusal}
-                    onSign={() => sign(job.id, pending.key as SampleKey)}
-                    onRefuse={(reason) => refuse(job.id, pending.key as SampleKey, reason)}
-                  />
-                </View>
+      <BotVerdicts session={session} job={current} />
+      <StakeCards locked={locked} />
+
+      {current && (spotKey || accepted.length > 0) ? (
+        <View style={styles.group}>
+          <Button testID="spot-toggle" small kind="secondary" label={spot ? "Hide the spot-check view" : "Spot-check the record (checklist, flight vs field)"} onPress={() => setSpot(!spot)} />
+          {spot && spotKey ? (
+            <View style={styles.proofs}>
+              <View style={styles.proofCell}>
+                <ProofCard job={current} sampleKey={spotKey} note="Read-only: the bots already ran these checks. Use this view to spot-check the flight against the field." />
               </View>
-            </>
-          ) : (
+            </View>
+          ) : null}
+          {spot && !spotKey ? (
             <Card>
-              <Text style={type.body}>The operator has not sent a record yet. When they press &ldquo;Send the record to the validators&rdquo; it appears here.</Text>
+              <Text style={type.body}>No record to look at yet.</Text>
             </Card>
-          )}
-          <Button
-            testID="practice-toggle"
-            small
-            kind="secondary"
-            label={practice ? "Hide practice records" : "Show practice records (not on chain)"}
-            onPress={() => setPractice(!practice)}
-          />
+          ) : null}
+        </View>
+      ) : null}
+      {current && current.state === "Accepted" ? (
+        <View style={styles.group}>
+          <Button testID="practice-toggle" small kind="secondary" label={practice ? "Hide practice records" : "Show practice records (not on chain)"} onPress={() => setPractice(!practice)} />
           {practice ? (
             <View style={styles.practice}>
               <Text style={type.subheading}>Practice records (not on chain)</Text>
-              <Text style={type.small}>Four sample records to learn the checklist. Approving or refusing here changes nothing on the chain and does not affect the job.</Text>
+              <Text style={type.small}>Four sample records to learn the checklist. Nothing here touches the chain.</Text>
               <View style={styles.proofs}>
                 {KEYS.map((key) => (
                   <View key={key} style={styles.proofCell}>
-                    <ProofCard
-                    locked={locked}
-                      job={job}
-                      sampleKey={key}
-                      seat={seat}
-                      validators={VALIDATORS}
-                      signed={sigs[`practice:${key}`] ?? []}
-                      refusal={refusals[`practice:${key}`]}
-                      onSign={() => practiceSign(job.id, key)}
-                      onRefuse={(reason) => {
-                        setRefusals({ ...refusals, [`practice:${key}`]: reason });
-                        setNotice(`Practice refusal (${recordTitle(key)}). Nothing was sent to the chain.`);
-                      }}
-                    />
+                    <ProofCard job={current} sampleKey={key} />
                   </View>
                 ))}
               </View>
             </View>
           ) : null}
         </View>
-      ))}
+      ) : null}
 
       {jobs.filter((j) => j.proof || j.payout).map((j) => (
         <View key={`done-${j.id}`} style={{ gap: 16 }}>
@@ -267,7 +200,7 @@ export default function ValidatorScreen() {
 
       {challenged.length > 0 && <Text style={type.heading}>Challenges</Text>}
       {challenged.map((job) => (
-        <ChallengeCard key={job.id} job={job} config={state.config} votes={votes[job.id] ?? {}} onVote={(v, u) => vote(job.id, v, u)} />
+        <ChallengeCard key={job.id} job={job} config={state.config} votes={votes[job.id] ?? {}} onVote={(v, u) => vote(job.id, v, u)} upholdOff={devnet ? "Switched off in the public demo: upholding would slash the shared demo validators' stakes. Slashing is proven by the program tests." : undefined} />
       ))}
         </>
       )}

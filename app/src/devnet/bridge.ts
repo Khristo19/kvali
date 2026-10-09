@@ -3,6 +3,7 @@
 import { lsKey } from "@/env";
 import { recordFor, sampleJob, sampleRecords, DEMO_DEADLINE_SECS, SAMPLE_AMOUNT, VALIDATORS, WALLETS, DRONE, PANEL_SIGNERS, PROOF_SIGNERS } from "@/engine/scenario";
 import { vaultOf } from "@/engine/engine";
+import { BotRefused, fullVerdict, runBotChecks, failReason } from "@/engine/bots";
 import type { Engine } from "@/engine/engine";
 import { sha256Hex } from "@/geo/sha256";
 import deploy from "./deploy.json";
@@ -295,12 +296,42 @@ export async function pollChain(engine: Engine) {
   await syncChain(engine);
 }
 
+let releasing = false;
+/**
+ * After the job is settled (Released): free every co-signer's stake lock with release_cosign (permissionless, the bank pays),
+ * so the stakes can be withdrawn later. Safe from any tab: validators with nothing to release are skipped, errors are ignored.
+ */
+export async function releaseCosigns(): Promise<void> {
+  const s = getSession();
+  if (!s || s.released || releasing) return;
+  releasing = true;
+  try {
+    const ids = VALIDATORS.map((v) => v.id);
+    const stakes = await chain.readStakes(ids);
+    const done: Record<string, string> = {};
+    let failed = false;
+    for (const id of ids) {
+      if (!stakes[id] || stakes[id]!.openCosigns === 0) continue;
+      try {
+        done[id] = await chain.releaseCosign(s.chainJobId, id);
+      } catch (e) {
+        // NothingToRelease = this validator did not co-sign this job (or another tab already freed it): fine. Anything else: try again later.
+        if (!(e instanceof chain.ChainError) || e.code !== "NothingToRelease") failed = true;
+      }
+    }
+    if (!failed && getSession()?.chainJobId === s.chainJobId) patchSession({ released: done });
+  } finally {
+    releasing = false;
+  }
+}
+
 export interface DevActions {
   postJob(jobId: number, field?: { hash: string; areaCha: number; name?: string; crop?: string; product?: string; farmerName?: string }): Promise<void>;
   /** After the spray-by deadline: return payment and bond (program: reclaim_expired). */
   reclaimExpired(jobId: number): Promise<void>;
   acceptJob(jobId: number): Promise<void>;
-  submitRecord(which: keyof typeof sampleRecords, jobId: number, signers?: string[]): Promise<void>;
+  /** The checker bots run the verdict on the record; if it passes, 2 staked bots co-sign and the proof goes on chain. Throws BotRefused if not. */
+  submitRecord(which: keyof typeof sampleRecords, jobId: number): Promise<void>;
   settle(caller: string, jobId: number): Promise<void>;
   challenge(farmer: string, jobId: number): Promise<void>;
   resolveChallenge(signers: string[], jobId: number, upheld: boolean): Promise<void>;
@@ -312,6 +343,9 @@ export interface DevActions {
   /** Forget the finished job so a new one can be posted. */
   newJob(jobId: number): Promise<void>;
 }
+
+/** The bot run in progress in this tab (shared by every caller, so a click and the resume effect never double-send). */
+let botRun: Promise<void> | null = null;
 
 export function devnetActions(engine: Engine): DevActions {
   lastEngine = engine;
@@ -337,6 +371,61 @@ export function devnetActions(engine: Engine): DevActions {
       await syncChain(engine);
     } catch {
       /* the transaction is already confirmed; the next refresh will catch up */
+    }
+  };
+
+  /** True if the chain already holds a proof for this job (another tab or browser got there first); then the mirror is rebuilt from the chain. */
+  const alreadySubmitted = async () => {
+    const cj = await chain.readJob(chainId(), getSession()?.farmer).catch(() => null);
+    if (!cj || cj.state === "Accepted") return false;
+    await restoreSession(engine);
+    setPending(null);
+    await refresh();
+    return true;
+  };
+  const runBots = async (which: keyof typeof sampleRecords, jobId: number) => {
+    const j = engine.getState().jobs[jobId];
+    if (!j) throw new Error("No job to check yet.");
+    if (j.state !== "Accepted") throw new Error(`The job is ${j.state}; a spray record can only be submitted once, right after it is accepted.`);
+    const refuse = (reason: string) => {
+      patchSession({ bots: runBotChecks(j, which, [], reason) });
+      setPending({ key: which, approvals: [], refusal: `Bots refused: ${reason}` });
+      throw new BotRefused(`The checker bots refused this record (${reason}). Nothing was signed and nothing was paid.`);
+    };
+    // 1. every bot runs the same checks
+    const v = fullVerdict(j, which);
+    if (!v.pass) return refuse(failReason(v.checks));
+    // 2. only checkers with an active stake (>= the minimum) may co-sign; 2 of 3 are needed
+    const ids = VALIDATORS.map((x) => x.id);
+    const [params, stakes] = await Promise.all([chain.readStakingParams(), chain.readStakes(ids)]);
+    const eligible = ids.filter((id) => {
+      const s = stakes[id];
+      if (params.minStake > 0n) return !!s && !s.slashed && s.unstakeRequestedAt === 0 && s.amount >= params.minStake;
+      return !s?.slashed;
+    });
+    const need = engine.getState().config.proofThreshold;
+    if (eligible.length < need) return refuse(`only ${eligible.length} of 3 checkers have an active stake, ${need} are needed`);
+    eligible.sort((a, b) => Number(!!stakes[b]) - Number(!!stakes[a]));
+    const signers = eligible.slice(0, need);
+    // 3. idempotent: if the proof is already on chain, do not send it again
+    if (await alreadySubmitted()) return;
+    try {
+      await track("Submit proof", async () => {
+        const r = recordFor(which, j.areaCha);
+        // The proof hash commits to the field outline hash and the whole spray record.
+        const proofHashHex = sha256Hex(JSON.stringify({ job: jobId, field_hash: j.fieldHash, record: r.raw }));
+        const sig = await chain.submitProof(chainId(), { proofHashHex, litersMl: r.litersMl, areaCoveredCha: r.areaCoveredCha, validatorIds: signers });
+        engine.submitProof(WALLETS.operator, jobId, { proofHash: proofHashHex, litersMl: r.litersMl, areaCoveredCha: r.areaCoveredCha, validatorSigners: signers });
+        patchSession({ recordKey: which, signers, bots: { ...runBotChecks(j, which, signers), sig } });
+        setPending(null);
+        retag("submitProof", jobId, sig, await blockTime(sig));
+        await refresh();
+        return { sig, value: undefined };
+      }, "operator");
+    } catch (e) {
+      // "Already submitted" by another tab that won the race: not an error, just adopt the chain state.
+      if (await alreadySubmitted()) return;
+      throw e;
     }
   };
 
@@ -374,20 +463,13 @@ export function devnetActions(engine: Engine): DevActions {
         return { sig, value: undefined };
       }, "operator");
     },
-    async submitRecord(which, jobId, signers = PROOF_SIGNERS) {
-      await track("Submit proof", async () => {
-        const j = engine.getState().jobs[jobId];
-        const r = recordFor(which, j.areaCha);
-        // The proof hash commits to the field outline hash and the whole spray record.
-        const proofHashHex = sha256Hex(JSON.stringify({ job: jobId, field_hash: j.fieldHash, record: r.raw }));
-        const sig = await chain.submitProof(chainId(), { proofHashHex, litersMl: r.litersMl, areaCoveredCha: r.areaCoveredCha, validatorIds: signers });
-        engine.submitProof(WALLETS.operator, jobId, { proofHash: proofHashHex, litersMl: r.litersMl, areaCoveredCha: r.areaCoveredCha, validatorSigners: signers });
-        patchSession({ recordKey: which, signers });
-        setPending(null);
-        retag("submitProof", jobId, sig, await blockTime(sig));
-        await refresh();
-        return { sig, value: undefined };
-      }, "operator");
+    submitRecord(which, jobId) {
+      // One bot run at a time per tab; the chain state check inside makes other tabs / browsers harmless too.
+      if (botRun) return botRun;
+      botRun = runBots(which, jobId).finally(() => {
+        botRun = null;
+      });
+      return botRun;
     },
     async settle(_caller, jobId) {
       await track("Settle", async () => {
@@ -412,6 +494,7 @@ export function devnetActions(engine: Engine): DevActions {
       }, "farmer");
     },
     async resolveChallenge(signers, jobId, upheld) {
+      if (upheld) throw new Error("Upholding a challenge would slash the shared demo validators on devnet, so it is switched off in the public demo. Slashing is proven by the program tests.");
       await track(upheld ? "Resolve challenge (upheld)" : "Resolve challenge (rejected)", async () => {
         const ids = signers.filter((s) => VALIDATORS.some((v) => v.id === s));
         const sig = await chain.resolveChallenge(chainId(), { validatorIds: ids.length ? ids : PANEL_SIGNERS, upheld, reportText: `panel-report-${jobId}-${upheld}` });

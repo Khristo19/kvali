@@ -42,6 +42,8 @@ export const pdas = {
   cert: (operator: PublicKey, drone: Uint8Array) => pda([te.encode("cert"), operator.toBytes(), drone]),
   job: (farmer: PublicKey, id: number | bigint) => pda([te.encode("job"), farmer.toBytes(), u64le(id)]),
   vault: (job: PublicKey) => pda([te.encode("vault"), job.toBytes()]),
+  stake: (validator: PublicKey) => pda([te.encode("stake"), validator.toBytes()]),
+  stakeVault: () => pda([te.encode("stake_vault")]),
 };
 const ata = (owner: PublicKey) => getAssociatedTokenAddressSync(MINT, owner);
 
@@ -51,6 +53,7 @@ export const hash32 = (text: string) => hexToBytes(sha256Hex(text));
 export const DRONE_SERIAL = "drone-serial-001";
 const DRONE_HASH = Uint8Array.from(hash32(DRONE_SERIAL));
 export const CHEMICAL_CODE = 7;
+const ALL_VALIDATORS = ["validator-operator-side", "validator-farmer-side", "validator-neutral"];
 
 // ---- errors ---------------------------------------------------------------
 export class ChainError extends Error {
@@ -283,6 +286,76 @@ async function settleAccounts(chainJobId: number, caller: PublicKey) {
   };
 }
 const signerMetas = (ks: Keypair[]) => ks.map((s) => ({ pubkey: s.publicKey, isSigner: true, isWritable: false }));
+const stakeMeta = (validator: PublicKey) => ({ pubkey: pdas.stake(validator), isSigner: false, isWritable: true });
+/** Stake accounts (writable) of the validators that have staked, in the order given; validators without a stake are skipped. */
+async function stakeMetasFor(ks: Keypair[]) {
+  const have = await Promise.all(ks.map((k) => accountNs.validatorStake.fetchNullable(pdas.stake(k.publicKey))));
+  return ks.filter((_, i) => !!have[i]).map((k) => stakeMeta(k.publicKey));
+}
+
+// ---- validator staking (D16) ------------------------------------------------
+export interface StakeInfo {
+  validator: string;
+  stakePda: string;
+  amount: bigint;
+  slashed: boolean;
+  /** Unix seconds when unstaking was requested, 0 = not requested. */
+  unstakeRequestedAt: number;
+  openCosigns: number;
+  proofsCosigned: number;
+}
+export interface StakingParams {
+  minStake: bigint;
+  cooldownSecs: number;
+  slashBps: number;
+}
+export async function readStakingParams(): Promise<StakingParams> {
+  const c = await accountNs.config.fetch(CONFIG);
+  return { minStake: BigInt(c.minValidatorStake.toString()), cooldownSecs: Number(c.unstakeCooldownSecs.toString()), slashBps: c.slashBps };
+}
+/** Stake of each validator id (null = never staked). */
+export async function readStakes(ids: string[]): Promise<Record<string, StakeInfo | null>> {
+  const rows = await Promise.all(
+    ids.map(async (id) => {
+      const v = keyFor(id).publicKey;
+      const s = await accountNs.validatorStake.fetchNullable(pdas.stake(v));
+      const info: StakeInfo | null = s
+        ? {
+            validator: v.toBase58(),
+            stakePda: pdas.stake(v).toBase58(),
+            amount: BigInt(s.amount.toString()),
+            slashed: !!s.slashed,
+            unstakeRequestedAt: Number(s.unstakeRequestedAt.toString()),
+            openCosigns: s.openCosigns,
+            proofsCosigned: s.proofsCosigned,
+          }
+        : null;
+      return [id, info] as const;
+    }),
+  );
+  return Object.fromEntries(rows);
+}
+/** Add test USDC to a demo validator's stake (the public bank tops up its token account first). The bank pays the fee. */
+export async function stakeMore(validatorId: string, amount: bigint) {
+  const v = keyFor(validatorId);
+  const tok = ata(v.publicKey);
+  const have = await tokenBalance(tok);
+  const ixs: TransactionInstruction[] = [createAssociatedTokenAccountIdempotentInstruction(keys.bank.publicKey, tok, v.publicKey, MINT)];
+  if (have < amount) ixs.push(createTransferInstruction(ata(keys.bank.publicKey), tok, keys.bank.publicKey, amount - have));
+  ixs.push(
+    await M.stakeValidator(new BN(amount.toString())).accountsStrict({
+      validator: v.publicKey, config: CONFIG, stake: pdas.stake(v.publicKey), stakeVault: pdas.stakeVault(), usdcMint: MINT,
+      validatorToken: tok, tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
+    }).instruction(),
+  );
+  return send(ixs, keys.bank, [v]);
+}
+/** Permissionless, after the job is Released: frees one co-signer's lock on its stake. Throws NothingToRelease if already freed. */
+export async function releaseCosign(chainJobId: number, validatorId: string) {
+  const key = pdas.job(farmerOf(), chainJobId);
+  const ix = await M.releaseCosign().accountsStrict({ caller: keys.bank.publicKey, job: key, stake: pdas.stake(keyFor(validatorId).publicKey) }).instruction();
+  return send([ix], keys.bank);
+}
 
 /** Farmer posts a job and locks `amount` (USDC base units) in the vault. Returns the on-chain job id. */
 export async function postJob(p: { amount: bigint; fieldHashHex: string; areaCha: number; targetRateMlPerHa: number; toleranceBps: number; sprayDeadline: number }) {
@@ -331,8 +404,9 @@ export async function acceptJob(chainJobId: number, bond: bigint) {
 export async function submitProof(chainJobId: number, p: { proofHashHex: string; litersMl: number; areaCoveredCha: number; validatorIds: string[] }) {
   const job = pdas.job(farmerOf(), chainJobId);
   const cos = p.validatorIds.map(keyFor);
+  // Co-signers' stake accounts (writable) follow the signers; with a minimum stake set the program requires them.
   const ix = await M.submitProof(hexToBytes(p.proofHashHex), new BN(p.litersMl), p.areaCoveredCha)
-    .accountsStrict({ authority: keys.operator.publicKey, config: CONFIG, job }).remainingAccounts(signerMetas(cos)).instruction();
+    .accountsStrict({ authority: keys.operator.publicKey, config: CONFIG, job }).remainingAccounts([...signerMetas(cos), ...(await stakeMetasFor(cos))]).instruction();
   return send([ix], keys.operator, cos, true);
 }
 
@@ -363,7 +437,10 @@ export async function challenge(chainJobId: number, evidenceText: string) {
 
 export async function resolveChallenge(chainJobId: number, p: { validatorIds: string[]; upheld: boolean; reportText: string }) {
   const panel = p.validatorIds.map(keyFor);
-  const ix = await M.resolveChallenge(p.upheld, hash32(p.reportText)).accountsStrict(await settleAccounts(chainJobId, panel[0].publicKey)).remainingAccounts(signerMetas(panel)).instruction();
+  // Every demo validator's stake account + the stake vault: rejected rulings release the proof's co-signers, upheld ones would slash them.
+  const stakes = await stakeMetasFor(ALL_VALIDATORS.map(keyFor));
+  const extra = stakes.length ? [...stakes, { pubkey: pdas.stakeVault(), isSigner: false, isWritable: true }] : [];
+  const ix = await M.resolveChallenge(p.upheld, hash32(p.reportText)).accountsStrict(await settleAccounts(chainJobId, panel[0].publicKey)).remainingAccounts([...signerMetas(panel), ...extra]).instruction();
   return send([ix], panel[0], panel);
 }
 
@@ -423,6 +500,8 @@ export async function jobTxs(jobPda: string): Promise<{ action: string; sig: str
 const sizeOf = (name: string) => ((program.account as any)[name]?.size as number | undefined) ?? 200;
 const rent = (bytes: number) => connection.getMinimumBalanceForRentExemption(bytes);
 export const TOKEN_ACCOUNT_BYTES = 165;
+/** Extra bytes after the Anchor Job fields: the co-signer record (1 + 7 x 33). */
+const JOB_RECORD_BYTES = 232;
 
 export async function walletState(owner: PublicKey) {
   const [sol, usdc, opAcct] = await Promise.all([connection.getBalance(owner), tokenBalance(ata(owner)), accountNs.operator.fetchNullable(pdas.operator(owner))]);
@@ -431,7 +510,7 @@ export async function walletState(owner: PublicKey) {
 
 /** Lamports one farmer / operator needs. Farmer: token account + profile + (job + vault) per job. Operator: token account + operator account. */
 export async function lamportsNeeded() {
-  const [tok, job, profile, operator] = await Promise.all([rent(TOKEN_ACCOUNT_BYTES), rent(8 + sizeOf("job")), rent(8 + sizeOf("farmerProfile")), rent(8 + sizeOf("operator"))]);
+  const [tok, job, profile, operator] = await Promise.all([rent(TOKEN_ACCOUNT_BYTES), rent(8 + sizeOf("job") + JOB_RECORD_BYTES), rent(8 + sizeOf("farmerProfile")), rent(8 + sizeOf("operator"))]);
   const fees = 50_000;
   return {
     farmerOneJob: tok + profile + job + tok + fees,

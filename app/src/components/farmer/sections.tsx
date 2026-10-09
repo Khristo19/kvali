@@ -151,7 +151,7 @@ function headline(job: Job, left: number): { title: string; text: string; done: 
         title: "Proof checked",
         text:
           left > 0
-            ? `Your field was sprayed and ${signed} of 3 agronomists confirmed it. Payment goes to the operator when the window closes.`
+            ? `Your field was sprayed and ${signed} of 3 checkers confirmed it. Payment goes to the operator when the window closes.`
             : "The window is closed. Payment goes to the operator now.",
         done: true,
       };
@@ -191,10 +191,10 @@ export function StatusCard() {
       </View>
       <Text style={type.body}>{h.text}</Text>
       {job.state === "Accepted" && pending?.refusal ? (
-        <Banner testID="refusal-banner" tone="error" text={`A validator refused the operator's record: ${pending.refusal}. The job stays open until the operator sends a new record.`} />
+        <Banner testID="refusal-banner" tone="error" text={`The operator's record was not accepted. ${pending.refusal}. Nothing was paid; the job stays open until the operator sends a new record.`} />
       ) : null}
       {job.state === "Accepted" && pending && !pending.refusal ? (
-        <Banner testID="record-pending-banner" tone="info" text={`The operator sent a record. Validators are checking it (${pending.approvals.length} of 2 approvals).`} />
+        <Banner testID="record-pending-banner" tone="info" text={`The operator sent a record. The checker bots are checking it and co-signing.`} />
       ) : null}
       {counting ? (
         <View style={styles.countdown}>
@@ -277,7 +277,7 @@ export function TimelineCard() {
       title: "Field sprayed",
       detail: p ? join(`${(p.areaCoveredCha / 100).toFixed(2)} ha`, litersPerHa(p.appliedRateMlPerHa), when("submitProof")) : "After the operator accepts",
     },
-    { title: "Proof checked", detail: p ? join(`${p.signers.length} of 3 agronomists approved`, when("submitProof")) : "Agronomists check the spray record" },
+    { title: "Proof checked", detail: p ? join(`${p.signers.length} of 3 checkers co-signed`, when("submitProof")) : "Checker bots check the spray record" },
     { title: win >= 3600 ? `${Math.round(win / 3600)}-hour window` : `${win}-second window`, detail: windowDetail },
     { title: lastTitle, detail: lastDetail },
   ];

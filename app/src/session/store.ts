@@ -5,6 +5,8 @@
 import { lsKey } from "@/env";
 import { useSyncExternalStore } from "react";
 
+import type { BotRun } from "@/engine/bots";
+
 export interface SessionTx {
   action: string;
   sig: string;
@@ -34,6 +36,10 @@ export interface Session {
   /** Record that was actually submitted on chain. */
   recordKey: string | null;
   signers: string[];
+  /** What the validator bots checked and signed for the latest record. */
+  bots?: BotRun;
+  /** Stake lock releases sent after settlement (validator id -> signature). */
+  released?: Record<string, string>;
   /** Panel used to resolve a challenge: [upheld?, ids]. */
   resolution: { upheld: boolean; ids: string[] } | null;
 }

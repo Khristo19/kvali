@@ -29,6 +29,7 @@ import { useDevnetState } from "@/devnet/mode";
 import { notify } from "@/components/ui/notice";
 import { setPending, usePending } from "@/session/store";
 import { useActions } from "@/engine/actions";
+import { BotRefused } from "@/engine/bots";
 import { useEngine } from "@/engine/useEngine";
 import { EngineError, type Job } from "@/engine/types";
 import { DRONE, WALLETS, recordFor, sampleRecords } from "@/engine/scenario";
@@ -258,17 +259,14 @@ export function UploadRecord({ job, onError }: { job: Job; onError: (m: string |
   const r = recordFor(key, job.areaCha);
   const rate = job.areaCha > 0 ? Math.round(r.litersMl / (job.areaCha / 100)) : 0;
   const cov = Math.round((r.areaCoveredCha / job.areaCha) * 100);
-  const stage = () => {
+  // The checker bots run in this browser as soon as the record is sent: pass -> 2 of 3 co-sign and the proof goes on chain; fail -> refused with the reason.
+  const stage = async () => {
     onError(null);
     setPending({ key, approvals: [] });
-    notify("ok", `Record "${recordTitle(key)}" sent to the validators. Open the Validator page and approve it with 2 of 3 seats.`);
-  };
-  const shortcut = async () => {
     try {
       await actions.submitRecord(key, job.id);
-      onError(null);
     } catch (e) {
-      onError(plainError(e));
+      if (!(e instanceof BotRefused)) onError(plainError(e));
     }
   };
   return (
@@ -285,8 +283,9 @@ export function UploadRecord({ job, onError }: { job: Job; onError: (m: string |
       <Row label="Area covered" value={`${hectares(r.areaCoveredCha)} (${cov}% of field)`} />
       <Row label="Rate" value={`${litersPerHa(rate * 1)} (target ${litersPerHa(job.targetRateMlPerHa)})`} />
       <Text style={type.body}>
-        How it works: the program only accepts a spray record when 2 of the 3 validators co-sign it in the same transaction. So this button hands the
-        record to the validators; they approve it on the Validator page, and then the proof is submitted on chain.
+        How it works: the program only accepts a spray record when 2 of the 3 validators co-sign it in the same transaction. Three checker bots (the
+        validator seats, each with its own USDC stake) run the checks on the record automatically. If it passes, two of them co-sign and the proof is
+        submitted on chain; if not, it is refused with the reason and nothing is paid.
       </Text>
       {pending ? (
         <Banner
@@ -294,14 +293,13 @@ export function UploadRecord({ job, onError }: { job: Job; onError: (m: string |
           tone={pending.refusal ? "error" : "info"}
           text={
             pending.refusal
-              ? `A validator refused the record "${recordTitle(pending.key)}": ${pending.refusal}. Pick another record and send it again, or release the job below.`
-              : `Waiting for validators: record "${recordTitle(pending.key)}", ${pending.approvals.length} of 2 approvals.`
+              ? `Record "${recordTitle(pending.key)}" not accepted. ${pending.refusal}. Nothing was signed or paid. Pick another record and send it again, or release the job below.`
+              : `Waiting for validators: the checker bots are checking the record "${recordTitle(pending.key)}" and co-signing.`
           }
         />
       ) : null}
-      <Button testID="send-record" label="Send the record to the validators" onPress={stage} />
-      {pending ? <Button testID="open-validator-page" label="Open the Validator page" kind="secondary" onPress={() => router.replace("/validator")} /> : null}
-      <Button testID="skip-validators" small kind="secondary" label="Presenter shortcut: skip the validators (co-sign automatically)" onPress={shortcut} />
+      <Button testID="send-record" label="Send the record to the validators" onPress={() => void stage()} />
+      {pending ? <Button testID="open-validator-page" label="See the bot verdicts" kind="secondary" onPress={() => router.replace("/validator")} /> : null}
       <ReleaseJob job={job} />
     </Card>
   );

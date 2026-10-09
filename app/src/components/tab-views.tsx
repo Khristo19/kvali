@@ -128,10 +128,10 @@ export function ValidatorReviewed() {
   return (
     <Card>
       <CardTitle>Reviewed</CardTitle>
-      {done.length === 0 ? <Text style={type.body}>Nothing reviewed yet. Approved records appear here once the proof is on chain.</Text> : null}
+      {done.length === 0 ? <Text style={type.body}>Nothing reviewed yet. Records the checker bots co-signed appear here once the proof is on chain.</Text> : null}
       {done.map((j) => (
         <View key={j.id} style={{ gap: 4 }}>
-          <Row label={`Job ${jobRef(j.id, session)}`} value={j.state} sub={`${j.proof!.signers.length} of 3 seats approved`} />
+          <Row label={`Job ${jobRef(j.id, session)}`} value={j.state} sub={`${j.proof!.signers.length} of 3 bots co-signed`} />
           <Row label="Applied rate" value={litersPerHa(j.proof!.appliedRateMlPerHa)} sub={`target ${litersPerHa(j.targetRateMlPerHa)}`} />
           <Row label="Coverage" value={`${(j.proof!.coverageBps / 100).toFixed(1)}%`} />
         </View>
@@ -166,7 +166,7 @@ export function ValidatorProfile() {
       {VALIDATORS.map((v) => (
         <Row key={v.id} label={v.label} value={`${v.seat} seat`} />
       ))}
-      <Text style={type.small}>A proof needs 2 of the 3 seats to approve. In this demo one person can act as each seat.</Text>
+      <Text style={type.small}>A proof needs 2 of the 3 checker seats to co-sign. The seats run as bots in this demo; each has its own USDC stake.</Text>
     </Card>
   );
 }
