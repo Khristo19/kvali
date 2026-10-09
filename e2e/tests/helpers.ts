@@ -75,3 +75,8 @@ export function warn(testInfo: TestInfo, description: string) {
   testInfo.annotations.push({ type: "warning", description });
   console.warn(`WARNING: ${description}`);
 }
+
+/** True when the tests run against the staging site (https://khristo19.github.io/kvali/staging/). */
+export const isStaging = (baseURL: string | undefined) => /\/staging\/?$/.test(baseURL ?? "");
+/** localStorage key as the app names it: staging prefixes every key with "stg." (live and staging share one origin). */
+export const lsKey = (baseURL: string | undefined, k: string) => (isStaging(baseURL) ? `stg.${k}` : k);

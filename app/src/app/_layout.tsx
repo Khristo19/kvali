@@ -3,6 +3,7 @@ import { Slot, Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { Platform, View } from "react-native";
 
+import { StagingBadge } from "@/components/ui/staging-badge";
 import { SessionEffects } from "@/components/session-effects";
 import { EngineProvider } from "@/engine/useEngine";
 import { colors } from "@/theme";
@@ -12,6 +13,7 @@ export default function RootLayout() {
     <EngineProvider>
       <StatusBar style="dark" />
       <SessionEffects />
+      <StagingBadge />
       {Platform.OS === "web" ? (
         // On the web only the active page exists in the document: no hidden previous screens that could take clicks
         // or show up in the accessibility tree. The browser history provides Back.

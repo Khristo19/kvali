@@ -8,10 +8,14 @@ import { recordFor } from "@/engine/scenario";
 import type { sampleRecords } from "@/engine/samples";
 import type { Job, Validator } from "@/engine/types";
 import { colors, space, type } from "@/theme";
-import { useState } from "react";
+import { Suspense, lazy, useState } from "react";
 import { recordTitle } from "@/components/records";
 import { CheckList } from "./check-list";
-import { FlightCard } from "./flight-card";
+import { Deferred, Skeleton, useAfterPaint } from "@/components/deferred";
+
+// The map and satellite pictures are the heaviest part of the page: load their code lazily and mount them one frame after the card.
+const FlightCard = lazy(() => import("./flight-card").then((m) => ({ default: m.FlightCard })));
+const FLIGHT_H = 640;
 
 export type SampleKey = keyof typeof sampleRecords;
 export { recordFor };
@@ -32,17 +36,7 @@ export function fullVerdict(job: Job, key: SampleKey) {
   );
 }
 
-export function ProofCard({
-  job,
-  sampleKey,
-  seat,
-  validators,
-  signed,
-  refusal,
-  onSign,
-  onRefuse,
-  locked,
-}: {
+type ProofCardProps = {
   job: Job;
   sampleKey: SampleKey;
   seat: Validator;
@@ -53,7 +47,25 @@ export function ProofCard({
   onRefuse: (reason: string) => void;
   /** Why the buttons are disabled (signed out). */
   locked?: string;
-}) {
+};
+
+/** The full verdict (hashing, checks) runs one frame after the card appears, so opening the page never blocks on it. */
+export function ProofCard(props: ProofCardProps) {
+  const ok = useAfterPaint();
+  return ok ? <ProofCardBody {...props} /> : <Skeleton height={460} testID="proof-skeleton" />;
+}
+
+function ProofCardBody({
+  job,
+  sampleKey,
+  seat,
+  validators,
+  signed,
+  refusal,
+  onSign,
+  onRefuse,
+  locked,
+}: ProofCardProps) {
   const r = recordFor(sampleKey, job.areaCha);
   const v = fullVerdict(job, sampleKey);
   const failing = v.checks.filter((c) => !c.pass);
@@ -85,7 +97,13 @@ export function ProofCard({
       </View>
       <CheckList checks={v.checks} />
       <Button testID="flight-toggle" small kind="secondary" label={flight ? "Hide flight vs field" : "See flight vs field"} onPress={() => setFlight(!flight)} />
-      {flight ? <FlightCard job={job} sampleKey={sampleKey} /> : null}
+      {flight ? (
+        <Deferred height={FLIGHT_H}>
+          <Suspense fallback={<Skeleton height={FLIGHT_H} />}>
+            <FlightCard job={job} sampleKey={sampleKey} />
+          </Suspense>
+        </Deferred>
+      ) : null}
       <Text accessibilityLabel={`Recommendation: ${v.pass ? "Sign" : "Refuse"}`} style={[type.subheading, { color: v.pass ? colors.green : colors.error }]}>
         Recommend: {v.pass ? "SIGN" : "REFUSE"}
       </Text>

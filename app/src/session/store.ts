@@ -2,6 +2,7 @@
 // In devnet mode the app re-reads the job from the chain on load (src/devnet/bridge.ts restoreSession) and rebuilds the
 // local mirror from it; this store only keeps what the chain does not hold: which job, the signatures to link to
 // Explorer, which sample record was used and which validator seats approved it.
+import { lsKey } from "@/env";
 import { useSyncExternalStore } from "react";
 
 export interface SessionTx {
@@ -37,7 +38,7 @@ export interface Session {
   resolution: { upheld: boolean; ids: string[] } | null;
 }
 
-const KEY = "kvali.session.v1";
+const KEY = lsKey("kvali.session.v1");
 let state: Session | null = null;
 let loaded = false;
 const listeners = new Set<() => void>();
@@ -98,7 +99,7 @@ export function useSession(): Session | null {
 }
 
 // ---- the record waiting for validators (works in both modes, so it has its own store) ----
-const PKEY = "kvali.pending.v1";
+const PKEY = lsKey("kvali.pending.v1");
 let pending: PendingRecord | null = null;
 let pendingLoaded = false;
 const pListeners = new Set<() => void>();
@@ -141,7 +142,7 @@ export function usePending(): PendingRecord | null {
 }
 
 // ---- finished jobs the user moved on from ("Start a new job"): not restored from the chain again ----
-const DKEY = "kvali.dismissed.v1";
+const DKEY = lsKey("kvali.dismissed.v1");
 export function isDismissed(id: number): boolean {
   try {
     return (JSON.parse(globalThis.localStorage?.getItem(DKEY) ?? "[]") as number[]).includes(id);
@@ -163,7 +164,7 @@ export function resetSessionStorage() {
   state = null;
   pending = null;
   try {
-    ["kvali.session.v1", "kvali.pending.v1", DKEY, "kvali.certsig.v1", "kvali.jobcache.v1"].forEach((k) => globalThis.localStorage?.removeItem(k));
+    [lsKey("kvali.session.v1"), lsKey("kvali.pending.v1"), DKEY, lsKey("kvali.certsig.v1"), lsKey("kvali.jobcache.v1")].forEach((k) => globalThis.localStorage?.removeItem(k));
   } catch {
     /* ignore */
   }

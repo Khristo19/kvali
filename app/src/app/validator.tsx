@@ -16,6 +16,7 @@ import { ProofCard, fullVerdict, type SampleKey } from "@/components/validator/p
 import { useAccount } from "@/account/store";
 import { ChainGate } from "@/components/chain-gate";
 import { ModeBanner } from "@/components/devnet/mode-banner";
+import { setSeat, useSeat } from "@/devnet/multi";
 import { useActions } from "@/engine/actions";
 import { useEngine } from "@/engine/useEngine";
 import { DRONE, VALIDATORS, sampleRecords } from "@/engine/scenario";
@@ -32,7 +33,8 @@ export default function ValidatorScreen() {
   const session = useSession();
   const validatorAcct = useAccount("validator");
   const locked = validatorAcct ? undefined : "Sign up as a validator first (home page) to approve or refuse.";
-  const [seatId, setSeatId] = useState(VALIDATORS[0].id);
+  const seatId = useSeat(); // persisted on staging (account switcher), starts at the first seat on live
+  const setSeatId = setSeat;
   const [sigs, setSigs] = useState<Record<string, string[]>>({});
   const [refusals, setRefusals] = useState<Record<string, string>>({});
   const [votes, setVotes] = useState<Record<number, Record<string, boolean>>>({});

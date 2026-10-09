@@ -1,6 +1,7 @@
 import { useEffect, useState, type ReactNode } from "react";
 import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
 
+import { useAfterPaint } from "@/components/deferred";
 import { useDevnetState } from "@/devnet/mode";
 import { SAMPLE_JOB_ID } from "@/engine/scenario";
 import { useEngineState } from "@/engine/useEngine";
@@ -17,6 +18,8 @@ export function ChainGate({ children }: { children: ReactNode }) {
   const session = useSession();
   const hasJob = !!useEngineState().jobs[SAMPLE_JOB_ID];
   const [waited, setWaited] = useState(0);
+  // Always paint the loader first, so a role switch answers at once and the page content mounts one frame later.
+  const painted = useAfterPaint();
   useEffect(() => {
     const a = setTimeout(() => setWaited(1), 8000);
     const b = setTimeout(() => setWaited(2), 40000);
@@ -27,7 +30,7 @@ export function ChainGate({ children }: { children: ReactNode }) {
   }, []);
   const savedJobPending = !!session && !hasJob;
   const ready = s.mode !== "devnet" || s.status === "ready" || s.cachedReady || waited === 2 || (waited === 1 && !savedJobPending);
-  if (ready) return <>{children}</>;
+  if (ready && painted) return <>{children}</>;
   return (
     <View style={styles.box} accessibilityLiveRegion="polite" testID="chain-gate">
       <ActivityIndicator color={colors.green} />

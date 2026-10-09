@@ -1,4 +1,4 @@
-# End-to-end tests (Playwright, chromium) against the LIVE web demo. Runs in the cloud only, never on the laptop.
+# End-to-end tests (Playwright, chromium) against the web demo: live (main) and staging (staging branch, /staging/). Runs in the cloud only, never on the laptop.
 # Primary check after every deploy; also runnable by hand (Actions > E2E (live demo) > Run workflow).
 name: E2E (live demo)
 
@@ -8,10 +8,16 @@ on:
     types: [completed]
   workflow_dispatch:
     inputs:
-      base_url:
-        description: "Site to test (default: the live GitHub Pages demo)"
+      target:
+        description: "Which site to test (ignored when base_url is set)"
         required: false
-        default: "https://khristo19.github.io/kvali/"
+        type: choice
+        options: [live, staging]
+        default: live
+      base_url:
+        description: "Site to test, overrides target (e.g. another deployment)"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -21,13 +27,39 @@ concurrency:
   group: e2e
   cancel-in-progress: false
 
-env:
-  E2E_BASE_URL: ${{ inputs.base_url || 'https://khristo19.github.io/kvali/' }}
-
 jobs:
+  # Which site does this run test? A deploy triggered by a push to `staging` tests the staging site; a deploy from `main` tests live.
+  plan:
+    name: Plan
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    outputs:
+      target: ${{ steps.p.outputs.target }}
+      url: ${{ steps.p.outputs.url }}
+      sha: ${{ steps.p.outputs.sha }}
+    steps:
+      - id: p
+        run: |
+          LIVE=https://khristo19.github.io/kvali/
+          STG=https://khristo19.github.io/kvali/staging/
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            T="${{ inputs.target }}"; URL="${{ inputs.base_url }}"
+            [ -z "$URL" ] && { [ "$T" = staging ] && URL=$STG || URL=$LIVE; }
+            [ -z "$T" ] && T=live
+            case "$URL" in */staging*) T=staging;; esac
+            SHA="${{ github.sha }}"
+          else
+            if [ "${{ github.event.workflow_run.head_branch }}" = staging ]; then T=staging; URL=$STG; else T=live; URL=$LIVE; fi
+            SHA="${{ github.event.workflow_run.head_sha }}"
+          fi
+          echo "target=$T" >> "$GITHUB_OUTPUT"; echo "url=$URL" >> "$GITHUB_OUTPUT"; echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          echo "Testing $T at $URL (tests from $SHA)"
+
   journey:
     name: Journey + refusal (devnet, serial)
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    needs: plan
+    env:
+      E2E_BASE_URL: ${{ needs.plan.outputs.url }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     defaults:
@@ -36,7 +68,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          ref: ${{ needs.plan.outputs.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -45,7 +77,7 @@ jobs:
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - name: Run journey + refusal specs (one worker)
-        run: npx playwright test journey.spec.ts refusal.spec.ts --project=desktop --workers=1
+        run: npx playwright test journey.spec.ts refusal.spec.ts switcher.spec.ts --project=desktop --workers=1
       - name: Summary
         if: always()
         run: node scripts/summary.mjs "Journey + refusal (devnet)" >> "$GITHUB_STEP_SUMMARY"
@@ -69,7 +101,9 @@ jobs:
 
   nav:
     name: Navigation + layout (desktop and 390 px)
-    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    needs: plan
+    env:
+      E2E_BASE_URL: ${{ needs.plan.outputs.url }}
     runs-on: ubuntu-latest
     timeout-minutes: 30
     defaults:
@@ -78,7 +112,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          ref: ${{ needs.plan.outputs.sha }}
       - uses: actions/setup-node@v4
         with:
           node-version: 22

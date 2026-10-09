@@ -1,10 +1,14 @@
 import type { Page } from "@playwright/test";
 import { test, expect } from "./fixtures";
-import { go, tid, visibleTid, type Role } from "./helpers";
+import { go, lsKey, tid, visibleTid, type Role } from "./helpers";
 
 test.describe.configure({ mode: "parallel" });
 
-const ACCOUNTS_KEY = "kvali.accounts.v2";
+const ACCOUNTS_BASE = "kvali.accounts.v2";
+let ACCOUNTS_KEY = ACCOUNTS_BASE;
+test.beforeEach(({}, testInfo) => {
+  ACCOUNTS_KEY = lsKey(testInfo.project.use.baseURL, ACCOUNTS_BASE);
+});
 
 /** Titles shown in the page header per role/tab. Signed-out operators always see "Jobs near you". */
 const TABS: Record<Role, { key: string; label: string; title: string; signedOutTitle?: string }[]> = {
@@ -174,3 +178,24 @@ for (const path of ["validator", "job", "farmer", "operator"] as const) {
     await expect(tid(page, "chain-gate")).toHaveCount(0, { timeout: 20_000 });
   });
 }
+
+// Loader: switching role must answer at once (role page + loader/skeleton in fixed-height slots), never freeze until the chain
+// data and the satellite map have loaded. Role-specific heading visible within 1 s of the click.
+const ROLE_TITLE: Record<Role, RegExp> = { farmer: /My jobs/, operator: /Jobs near you/, validator: /Proof review/ };
+test("Loader: switching role shows the role page within 1 s (loader or content, no freeze)", async ({ page }) => {
+  await seedAccounts(page, ROLES);
+  await go(page, "job");
+  await expect(tid(page, "job-open-validator")).toBeVisible({ timeout: 60_000 });
+  for (const role of ["validator", "farmer", "operator", "validator"] as const) {
+    await test.step(`switch to ${role}`, async () => {
+      await go(page, "job");
+      await tid(page, `job-open-${role}`).click();
+      await expect(page).toHaveURL(new RegExp(`/${role}/?$`), { timeout: 1_000 });
+      await expect(tid(page, "page-title")).toHaveText(ROLE_TITLE[role], { timeout: 1_000 });
+      // Either the loader is up or the content already is: something role-specific is on screen, and the main thread is alive.
+      await expect(tid(page, "chain-gate").or(tid(page, "signup-card")).or(page.getByText(/Your seat|Nothing to check|No job to check|Jobs near you|My jobs/).first()).first()).toBeVisible({ timeout: 1_000 });
+      const alive = await page.evaluate(() => new Promise<number>((r) => { const t = performance.now(); setTimeout(() => r(performance.now() - t), 0); }));
+      expect(alive, "main thread must answer a timer within 1 s").toBeLessThan(1_000);
+    });
+  }
+});

@@ -1,8 +1,10 @@
 // Demo account: name + email + role, kept only in this browser (localStorage). No password, no network.
 // The role is bound to that role's PUBLIC devnet demo key (src/devnet/keys.ts), shown as the account address.
+import { SWITCHER, lsKey } from "@/env";
 import { useSyncExternalStore } from "react";
 
-import { keys } from "@/devnet/keys";
+import { keyFor, keys } from "@/devnet/keys";
+import { getSeat } from "@/devnet/multi";
 
 export type Role = "farmer" | "operator" | "validator";
 export interface Account {
@@ -11,7 +13,7 @@ export interface Account {
   role: Role;
 }
 
-const KEY = "kvali.accounts.v2";
+const KEY = lsKey("kvali.accounts.v2");
 // One account per role, so each role page shows its own person. `last` = the role signed in most recently.
 interface Accounts {
   farmer?: Account;
@@ -48,7 +50,7 @@ export function loadAccount() {
       state = next;
     } else {
       // v1 held a single account
-      const old = globalThis.localStorage?.getItem("kvali.account.v1");
+      const old = globalThis.localStorage?.getItem(lsKey("kvali.account.v1"));
       const a = old ? JSON.parse(old) : null;
       if (valid(a)) state = { [a.role]: a, last: a.role };
     }
@@ -97,7 +99,7 @@ export function useAccounts(): Accounts {
 
 /** Public devnet demo address bound to a role (validators: the neutral seat). */
 export function addressFor(role: Role): string {
-  const k = role === "farmer" ? keys.farmer : role === "operator" ? keys.operator : keys.vNeutral;
+  const k = role === "farmer" ? keys.farmer : role === "operator" ? keys.operator : SWITCHER ? keyFor(getSeat()) : keys.vNeutral;
   return k.publicKey.toBase58();
 }
 export const shortAddr = (a: string) => `${a.slice(0, 4)}...${a.slice(-4)}`;

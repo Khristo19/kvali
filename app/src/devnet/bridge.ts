@@ -1,5 +1,6 @@
 // Devnet mode: every action is first a REAL devnet transaction; the local Engine then mirrors it so all screens keep working,
 // and the mirror is overwritten with what is really on chain (balances, proof time, window end, signatures).
+import { lsKey } from "@/env";
 import { recordFor, sampleJob, sampleRecords, DEMO_DEADLINE_SECS, SAMPLE_AMOUNT, VALIDATORS, WALLETS, DRONE, PANEL_SIGNERS, PROOF_SIGNERS } from "@/engine/scenario";
 import { vaultOf } from "@/engine/engine";
 import type { Engine } from "@/engine/engine";
@@ -178,7 +179,7 @@ export async function adoptChainJob(engine: Engine, cj: chain.ChainJob) {
 /** Give the certificate step its real signature (saved when this browser's operator wallet was certified). */
 export function retagCertificate(engine: Engine) {
   try {
-    const sig = globalThis.localStorage?.getItem("kvali.certsig.v1");
+    const sig = globalThis.localStorage?.getItem(lsKey("kvali.certsig.v1"));
     if (sig) engine.chainRetag((e) => e.action === "issueCertificate", sig);
   } catch {
     /* ignore */
@@ -209,12 +210,13 @@ async function restoreSession(engine: Engine) {
   }
   setDevnetState({ chainJobId: s.chainJobId, restoreNote: null });
   const txs = await chainTxs(cj!, s);
+  await yieldMain();
   replay(engine, cj!, s, txs);
 }
 
 /** Probe devnet, restore this browser's job from the chain, then replace the seeded balances with real ones. */
 // ---- last known job, so a reload or role switch shows the job at once while the chain is read in the background ----
-const CACHE_KEY = "kvali.jobcache.v1";
+const CACHE_KEY = lsKey("kvali.jobcache.v1");
 const enc = (v: unknown) => JSON.stringify(v, (_k, x) => (typeof x === "bigint" ? { __b: x.toString() } : x));
 const dec = (t: string) => JSON.parse(t, (_k, x) => (x && typeof x === "object" && "__b" in x ? BigInt((x as { __b: string }).__b) : x));
 
@@ -245,11 +247,15 @@ function applyJobCache(engine: Engine): boolean {
 }
 
 let restoreOk = false;
+/** Give the main thread back to the browser (paint, input) between heavy steps. */
+export const yieldMain = () => new Promise<void>((r) => setTimeout(r, 0));
 const withTimeout = <T,>(p: Promise<T>, ms: number): Promise<T> => Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error("the node is slow to answer")), ms))]);
 
 /** Probe devnet, show the last known job at once, restore from the chain, then read balances. Never falls back to the simulation. */
 export async function bootDevnet(engine: Engine): Promise<boolean> {
   setDevnetState({ status: "connecting" });
+  // Let the page paint its loader before any of the heavier work below (cache replay, chain reads, account decoding).
+  await yieldMain();
   loadPending();
   engine.chainSetBalances({}); // never show the simulation's seeded $1,000 in devnet mode
   if (applyJobCache(engine)) setDevnetState({ cachedReady: true });

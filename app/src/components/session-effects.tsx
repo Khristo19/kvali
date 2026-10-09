@@ -3,9 +3,12 @@
 import { useEffect, useRef } from "react";
 
 import { loadAccount } from "@/account/store";
+import { consumeFresh, loadMulti } from "@/devnet/multi";
+import { ensureWallet } from "@/devnet/provision";
+import { SWITCHER } from "@/env";
 import { notify } from "@/components/ui/notice";
 import { useTick } from "@/components/ui/use-tick";
-import { useDevnetState , getDevnetState } from "@/devnet/mode";
+import { useDevnetState, getDevnetState, setDevnetState } from "@/devnet/mode";
 import { useActions } from "@/engine/actions";
 import { windowLeft } from "@/engine/engine";
 import { SAMPLE_JOB_ID, WALLETS } from "@/engine/scenario";
@@ -22,6 +25,15 @@ export function SessionEffects() {
 
   useEffect(() => {
     loadAccount();
+    if (SWITCHER) {
+      // Staging account switcher: read the saved accounts, and fund an account that was just created (same flow as the first sign-up).
+      loadMulti();
+      for (const role of consumeFresh()) {
+        if (getDevnetState().mode !== "devnet") continue;
+        setDevnetState({ walletNote: "Setting up your own devnet wallet: funding it with test SOL and test USDC...", walletOk: false });
+        void ensureWallet(role).catch((e: Error) => notify("error", e.message));
+      }
+    }
   }, []);
 
   // Devnet balances and the job window come from the chain: re-read every 30 s while the tab is visible (no polling in a hidden tab).

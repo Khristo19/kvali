@@ -47,7 +47,7 @@ export function ScreenHeader({
 
 const styles = StyleSheet.create({
   outer: { gap: 8 },
-  rightRow: { alignItems: "flex-end" },
+  rightRow: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 8, zIndex: 40 },
   row: { flexDirection: "row", alignItems: "center", gap: 12 },
   back: {
     width: 48,

@@ -6,6 +6,7 @@ import { DESKTOP_MAX_WIDTH, colors } from "@/theme";
 import { ScreenHeader } from "./header";
 import { useWide } from "./layout";
 import { AccountChip } from "./account-chip";
+import { AccountSwitcher } from "./account-switcher";
 import { ROLE_TABS, SideNav, TabBar, useTab, type Role } from "./nav";
 import { clearNotice } from "./notice";
 import { Toasts } from "./toasts";
@@ -45,7 +46,12 @@ export function RoleShell({
         {role && (web || wide) ? <SideNav role={role} active={idx} /> : null}
         <ScrollView style={styles.scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.column}>
-            <ScreenHeader title={title} subtitle={subtitle} onBack={onBack} right={<AccountChip role={role} />} />
+            <ScreenHeader title={title} subtitle={subtitle} onBack={onBack} right={
+                <>
+                  <AccountSwitcher role={role} />
+                  <AccountChip role={role} />
+                </>
+              } />
             {children}
           </View>
         </ScrollView>

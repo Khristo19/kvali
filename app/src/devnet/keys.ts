@@ -3,6 +3,7 @@
 //  - Farmer and operator: a BURNER keypair generated in THIS browser (localStorage "kvali.burners.v1"), so visitors never share
 //    a key (the program allows one active job per operator). It is funded by the public demo BANK key. Devnet only.
 //  - Bank: PUBLIC key (bank-key.json) holding devnet SOL and test USDC; hands them to new burners.
+import { lsKey } from "@/env";
 import "./polyfill";
 import { Keypair } from "@solana/web3.js";
 
@@ -19,7 +20,7 @@ const kp = (role: Role) => {
 };
 
 // ---- burners ----
-const BKEY = "kvali.burners.v1";
+export const BKEY = lsKey("kvali.burners.v1");
 type BurnerRole = "farmer" | "operator";
 const cache: Partial<Record<BurnerRole, Keypair>> = {};
 let loadedFromStorage = false;

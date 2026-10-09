@@ -4,11 +4,13 @@ import { StyleSheet, Text, View } from "react-native";
 import { Pressable } from "@/components/ui/pressable";
 
 import { addressFor, roleLabel, shortAddr, signOut, useAccount, type Role } from "@/account/store";
+import { activeLabel, useMulti } from "@/devnet/multi";
 import { colors, fonts, radius } from "@/theme";
 
 /** Signed-in demo account (name, role, public devnet address) with "Sign out"; "Sign in" when there is none. */
 export function AccountChip({ role }: { role?: Role }) {
   const a = useAccount(role);
+  const multi = useMulti();
   if (!a) {
     return (
       <Pressable testID="chip-signup" accessibilityRole="link" onPress={() => router.replace((role ? `/?role=${role}` : "/") as Href)} style={styles.btn}>
@@ -30,7 +32,7 @@ export function AccountChip({ role }: { role?: Role }) {
           {a.name}
         </Text>
         <Text style={styles.sub} numberOfLines={1} {...({ dataSet: { kv: "chipsub" } } as object)}>
-          {roleLabel(a.role)} · {shortAddr(addressFor(a.role))}
+          {activeLabel(multi, a.role) ?? roleLabel(a.role)} · {shortAddr(addressFor(a.role))}
         </Text>
       </View>
       <Pressable

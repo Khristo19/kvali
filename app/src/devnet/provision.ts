@@ -1,5 +1,6 @@
 // Gives this browser's burner wallets what they need on devnet: SOL for fees and rent, test USDC, and (operator) the on-chain
 // operator account plus a calibration certificate. Everything comes from the public demo bank. Idempotent: checks first, sends only what is missing.
+import { lsKey } from "@/env";
 import { PublicKey } from "@solana/web3.js";
 
 import * as chain from "./client";
@@ -64,7 +65,7 @@ async function provision(role: Role) {
     step();
     const sig = await chain.registerAndCertify();
     try {
-      globalThis.localStorage?.setItem("kvali.certsig.v1", sig);
+      globalThis.localStorage?.setItem(lsKey("kvali.certsig.v1"), sig);
     } catch {
       /* ignore */
     }

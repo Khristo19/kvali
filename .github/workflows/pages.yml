@@ -1,9 +1,12 @@
-# Build the Expo web app and publish it to GitHub Pages (https://khristo19.github.io/kvali/).
+# Build the Expo web app and publish it to GitHub Pages. One Pages site per repo, so ONE deploy carries both sites:
+#   main     -> https://khristo19.github.io/kvali/          (baseUrl /kvali)
+#   staging  -> https://khristo19.github.io/kvali/staging/  (baseUrl /kvali/staging, STAGING marker, account switcher)
+# A push to either branch rebuilds both (main's last commit and staging's last commit), so neither site disappears.
 name: Deploy web demo
 
 on:
   push:
-    branches: [main]
+    branches: [main, staging]
     paths: ["app/**", "services/proof/src/**", ".github/workflows/pages.yml"]
   workflow_dispatch:
 
@@ -19,23 +22,54 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: app
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: live
+      - name: Check out staging (if the branch exists)
+        id: stg
+        run: |
+          if git ls-remote --exit-code --heads "https://github.com/${GITHUB_REPOSITORY}.git" staging >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+      - uses: actions/checkout@v4
+        if: steps.stg.outputs.exists == 'true'
+        with:
+          ref: staging
+          path: staging
       - uses: actions/setup-node@v4
         with:
           node-version: 22
           cache: npm
-          cache-dependency-path: app/package-lock.json
-      - run: npm ci
-      - run: npx expo export --platform web
-      # Keep the _expo folder (Jekyll would drop it) and serve the not-found page on unknown paths.
-      - run: touch dist/.nojekyll && cp "dist/+not-found.html" dist/404.html
+          cache-dependency-path: live/app/package-lock.json
+      - name: Build live (main)
+        working-directory: live/app
+        run: |
+          npm ci
+          npx expo export --platform web
+          # Keep the _expo folder (Jekyll would drop it) and serve the not-found page on unknown paths.
+          touch dist/.nojekyll && cp "dist/+not-found.html" dist/404.html
+      - name: Build staging
+        if: steps.stg.outputs.exists == 'true'
+        working-directory: staging/app
+        env:
+          EXPO_BASE_URL: /kvali/staging
+          EXPO_PUBLIC_KVALI_ENV: staging
+          EXPO_PUBLIC_ACCOUNT_SWITCHER: "1"
+        run: |
+          npm ci
+          npx expo export --platform web
+      - name: Combine
+        run: |
+          mkdir site
+          cp -a live/app/dist/. site/
+          if [ -d staging/app/dist ]; then mkdir site/staging && cp -a staging/app/dist/. site/staging/; fi
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: app/dist
+          path: site
 
   deploy:
     needs: build
