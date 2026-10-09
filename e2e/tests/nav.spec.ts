@@ -193,7 +193,7 @@ test("Loader: switching role shows the role page within 1 s (loader or content, 
       await expect(page).toHaveURL(new RegExp(`/${role}/?$`), { timeout: 1_000 });
       await expect(tid(page, "page-title")).toHaveText(ROLE_TITLE[role], { timeout: 1_000 });
       // Either the loader is up or the content already is: something role-specific is on screen, and the main thread is alive.
-      await expect(tid(page, "chain-gate").or(tid(page, "signup-card")).or(page.getByText(/Your seat|Nothing to check|No job to check|Jobs near you|My jobs/).first()).first()).toBeVisible({ timeout: 1_000 });
+      await expect(tid(page, "chain-gate").or(visibleTid(page, "nav-home")).first()).toBeVisible({ timeout: 1_000 });
       const alive = await page.evaluate(() => new Promise<number>((r) => { const t = performance.now(); setTimeout(() => r(performance.now() - t), 0); }));
       expect(alive, "main thread must answer a timer within 1 s").toBeLessThan(1_000);
     });
