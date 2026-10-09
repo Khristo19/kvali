@@ -37,46 +37,43 @@ export function ModeBanner() {
       : "Simulated demo: no real money and no chain. Switch to Devnet to send real test transactions.";
     if (s.fellBack) tone = "error";
   } else if (s.status === "connecting" || s.status === "idle") {
-    text = s.rpcBusy ? "Solana devnet is busy — retrying…" : "Connecting to Solana devnet…";
-  } else if (s.rpcBusy) {
-    text = "Solana devnet is busy — retrying. Showing the last known state.";
+    text = s.rpcBusy ? "Devnet is busy, retrying…" : "Connecting to Solana devnet…";
   } else {
-    text = "Devnet: real Solana transactions with test USDC. Demo keys are public.";
+    // Ready: a busy RPC only adds a quiet note; the last known state stays on screen.
+    text = s.rpcBusy ? "Real devnet transactions with test USDC · devnet busy, retrying…" : "Real Solana devnet transactions with test USDC.";
     tone = "ok";
   }
 
+  // One compact, fixed-height block: the mode switch and status on one row, one detail line under it.
   return (
     <View style={[styles.box, tone === "ok" && styles.ok, tone === "error" && styles.err]} accessibilityRole={tone === "error" ? "alert" : undefined}>
-      <View style={styles.segs} accessibilityRole="radiogroup">
-        <Seg label="Devnet (real)" on={s.mode === "devnet"} onPress={() => pick("devnet")} />
-        <Seg label="Simulated" on={s.mode === "sim"} onPress={() => pick("sim")} />
+      <View style={styles.row}>
+        <View style={styles.segs} accessibilityRole="radiogroup">
+          <Seg label="Devnet (real)" on={s.mode === "devnet"} onPress={() => pick("devnet")} />
+          <Seg label="Simulated" on={s.mode === "sim"} onPress={() => pick("sim")} />
+        </View>
+        <Text style={[type.small, styles.status, { color: tone === "error" ? colors.error : colors.body }]} numberOfLines={2}>
+          {text}
+        </Text>
       </View>
-      <Text style={[type.body, { color: tone === "error" ? colors.error : colors.body, minHeight: 46 }]}>{text}</Text>
       {s.mode === "devnet" ? (
-        <Text style={[type.small, { minHeight: 44 }]}>
-          {s.status === "ready" ? (
+        <Text style={[type.small, styles.detail, last && !last.ok && { color: colors.error }]} numberOfLines={1} selectable>
+          {last ? (
             <>
-              A devnet test key is kept in this browser (test funds only); validators use public demo keys.{" "}
+              {last.ok ? "Confirmed" : "Refused"}: {last.label}
+              {last.error ? ` (${last.error})` : ""}{" "}
+              {last.sig ? (
+                <ExtLink url={explorerTx(last.sig)} style={styles.link}>
+                  Open in Explorer
+                </ExtLink>
+              ) : null}
+            </>
+          ) : s.status === "ready" ? (
+            <>
+              Test key kept in this browser; validators use public demo keys ·{" "}
               <ExtLink url={explorerAddr(addresses.programId.toBase58())} style={styles.link}>
                 Program on Explorer
               </ExtLink>
-            </>
-          ) : (
-            " "
-          )}
-        </Text>
-      ) : null}
-      {s.mode === "devnet" ? (
-        <Text style={[type.small, { minHeight: 44 }, last && !last.ok && { color: colors.error }]} selectable>
-          {last ? (
-            <>
-          {last.ok ? "Confirmed" : "Refused"}: {last.label}
-          {last.error ? ` (${last.error})` : ""}{" "}
-          {last.sig ? (
-            <ExtLink url={explorerTx(last.sig)} style={styles.link}>
-              Open in Explorer
-            </ExtLink>
-          ) : null}
             </>
           ) : (
             " "
@@ -88,7 +85,10 @@ export function ModeBanner() {
 }
 
 const styles = StyleSheet.create({
-  box: { gap: 8, borderWidth: 1, borderColor: "transparent", borderRadius: radius.md, paddingVertical: 12, paddingHorizontal: 14, backgroundColor: "#EFE8D2" },
+  box: { gap: 6, borderWidth: 1, borderColor: "transparent", borderRadius: radius.md, paddingVertical: 8, paddingHorizontal: 12, backgroundColor: "#EFE8D2" },
+  row: { flexDirection: "row", alignItems: "center", gap: 12, flexWrap: "wrap", minHeight: 44 },
+  status: { flexShrink: 1, flexGrow: 1, flexBasis: 200, minHeight: 20 },
+  detail: { minHeight: 20 },
   ok: { backgroundColor: colors.softGreen },
   err: { borderColor: colors.error, backgroundColor: colors.card },
   segs: { flexDirection: "row", gap: 8, flexWrap: "wrap" },
