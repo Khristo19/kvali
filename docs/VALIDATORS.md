@@ -43,7 +43,7 @@ Nobody's word settles a job: not the farmer's, not the operator's, not Kvali's. 
 | Who | 3 invited seats: operator side (DJI distributor agronomist), farmer side (Farmers' Association / co-op), neutral (university agronomist or exporter QA) | Anyone who qualifies |
 | Qualification (field) | Agronomist, certified operator, or pesticide-application licence | Same, verified by attestation |
 | Training | Kvali protocol training and a short test | Same, online |
-| Stake | None (known organisations) | Lock USDC (not a token); amount set so the stake exceeds a typical bribe |
+| Stake | USDC on chain (`stake_validator`); required to co-sign once the admin sets a minimum (demo: $500 each, minimum still 0) | Lock USDC (not a token); amount set so the stake exceeds a typical bribe |
 | Assignment | By region, manually | Random (Switchboard randomness) after a job is accepted |
 | Conflict rules | Never in own village; never for operators or farmers they know | Enforced by region data |
 
@@ -53,4 +53,5 @@ Nobody's word settles a job: not the farmer's, not the operator's, not Kvali's. 
 - No validation in their own area
 - GPS- and time-stamped evidence only, through the app
 - Public record of every signature and vote
-- v2: stake slashed for signing proofs that spot checks disprove, voting against clear evidence, or missing assignments
+- Built (D16): a co-signer's stake is slashed to the farmer when the challenge panel rules against the proof they signed; unstaking has a cooldown and waits for their open proofs
+- v2: also slash for voting against clear evidence or missing assignments

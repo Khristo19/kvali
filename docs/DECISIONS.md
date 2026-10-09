@@ -81,3 +81,7 @@ A sealed flow-meter + GNSS add-on that signs readings on the device. Removes tru
 ## D15 — A revoked certificate is final
 
 *Decided 8 Oct 2026.* Once a 2-of-3 panel revokes an operator + drone certificate, that pair can never be certified again (`CertificateRevoked`). The way back is a new drone that passes the calibration test and gets its own certificate. A non-revoked certificate can still be renewed when it expires.
+
+## D16 — Validators stake USDC; only the challenge panel can slash
+
+*Decided 10 Oct 2026.* Validators lock USDC (not a token, D1) in a program vault. When the admin sets a minimum, only validators with an active stake at least that large can co-sign a proof. If a farmer's challenge is upheld, every staked validator who co-signed the losing proof is slashed (100% by default) and the money goes to the farmer, on top of the refund and the operator's bond (same reasoning as D4: paid to the counterparty, not a treasury). No admin can slash; only the panel's ruling does. Unstaking has a cooldown (7 days real, 60 s demo) and is blocked while any proof the validator signed is still open. Kept backward compatible: with minimum 0 nothing changes for existing clients.

@@ -8,7 +8,7 @@ Program: `programs/kvali/src/lib.rs` (compiles with `anchor build` as of k03; no
 
 | Field | Unit | Example |
 |---|---|---|
-| `amount`, `bond_amount`, `challenge_bond` | USDC base units (6 decimals) | 300 USDC = `300_000_000` |
+| `amount`, `bond_amount`, `challenge_bond`, stakes | USDC base units (6 decimals) | 300 USDC = `300_000_000` |
 | `area_cha`, `area_covered_cha` | hundredths of a hectare (100 m²) | 17 ha = `1700` |
 | `target_rate_ml_per_ha` | milliliters per hectare | 10 L/ha = `10_000` |
 | `tolerance_bps` | basis points | ±15% = `1500` |
@@ -29,15 +29,19 @@ Program: `programs/kvali/src/lib.rs` (compiles with `anchor build` as of k03; no
 | `PANEL_FEE_BPS` | 10% | Validator pool, taken from the loser's funds when a challenge is resolved |
 | `MAX_VALIDATORS` | 7 | v1 permissioned set size |
 | `MAX_METER_ERROR_BPS` | 5% | Max flow-meter error in the calibration test |
+| `DEFAULT_UNSTAKE_COOLDOWN_SECS` | 7 days | Default `Config.unstake_cooldown_secs` (60 s on the demo deployment); allowed 60 s – 365 days |
+| `DEFAULT_SLASH_BPS` | 100% | Default `Config.slash_bps`: share of a co-signer's stake slashed by an upheld challenge; allowed 1 – 10,000 bps |
 
 ## Accounts
 
 | PDA | Seeds | Holds |
 |---|---|---|
-| `Config` | `["config"]` | admin, USDC mint, treasury and validator-pool token accounts, validator set, `proof_threshold`, `panel_threshold`, `challenge_window_secs` |
+| `Config` | `["config"]` | admin, USDC mint, treasury and validator-pool token accounts, validator set, `proof_threshold`, `panel_threshold`, `challenge_window_secs`, then (staking) `min_validator_stake`, `unstake_cooldown_secs`, `slash_bps` |
+| `ValidatorStake` | `["stake", validator]` | amount, unstake_requested_at, slashed, open_cosigns, proofs_cosigned, times_slashed, total_staked, total_slashed |
+| Stake vault | `["stake_vault"]` | USDC token account owned by the Config PDA: all validator stakes |
 | `Operator` | `["operator", authority]` | jobs_completed, jobs_failed, active_job |
 | `FarmerProfile` | `["farmer", farmer]` | jobs_posted, challenges_won, challenges_lost (public, so operators can spot serial challengers) |
-| `Job` | `["job", farmer, job_id (u64 LE)]` | terms, proof, evidence and report hashes, state, deadlines. Kept open after settlement as the record |
+| `Job` | `["job", farmer, job_id (u64 LE)]` | terms, proof, evidence and report hashes, state, deadlines. Kept open after settlement as the record. Jobs posted after the staking upgrade carry a 232-byte **co-signer record** after the Anchor fields (count + up to 7 × validator key + flags `staked`/`released`); it is not part of the `Job` IDL type, so old jobs and old clients decode unchanged |
 | `Certificate` | `["cert", operator, drone_hash]` | meter error, operator passed, report hash, issued by, valid until, revoked (final: a revoked pair cannot be re-issued) |
 | Vault | `["vault", job]` | USDC token account owned by the Job PDA: payment + bond (+ challenge bond) |
 
@@ -65,13 +69,34 @@ Cancelled                ▼                          Challenged ──resolve_c
 | `issue_certificate(drone_hash, meter_error_bps, operator_passed, report_hash, valid_until)` | one field validator from the set | valid_until in future; certificate not revoked | creates or renews the calibration certificate |
 | `revoke_certificate` | ≥ panel_threshold validators (the certificate's operator does not count) | — | marks certificate revoked, permanently |
 | `accept_job(bond_amount)` | operator | valid, unrevoked certificate with meter error ≤ 5% and operator passed; Posted; operator ≠ farmer; bond ≥ amount; not busy; before deadline | deposits bond; records the certified `drone_hash` on the job |
-| `submit_proof(proof_hash, liters_ml, area_covered_cha)` | operator **+ ≥ proof_threshold data validators** (job's farmer/operator don't count) | Accepted; not after spray_deadline; 95% ≤ coverage ≤ 105% of posted area; liters/ha in band | stores proof; opens the challenge window (`Config.challenge_window_secs`) |
+| `submit_proof(proof_hash, liters_ml, area_covered_cha)` | operator **+ ≥ proof_threshold data validators** (job's farmer/operator don't count) | Accepted; not after spray_deadline; 95% ≤ coverage ≤ 105% of posted area; liters/ha in band; if `min_validator_stake` > 0 only co-signers with an active stake ≥ min count (`ValidatorStakeTooLow`) | stores proof; opens the challenge window (`Config.challenge_window_secs`); records co-signers, locks presented stakes |
 | `settle` | anyone | ProofSubmitted; window closed | operator gets vault − 5% |
 | `challenge(evidence_hash)` | farmer | ProofSubmitted; window open | locks 20% challenge bond → Challenged |
-| `resolve_challenge(upheld, report_hash)` | **≥ panel_threshold field validators** (job's farmer/operator don't count) | Challenged | upheld: farmer gets vault − 10% panel fee; rejected: operator gets vault − 5% − 10% |
+| `resolve_challenge(upheld, report_hash)` | **≥ panel_threshold field validators** (job's farmer/operator don't count) | Challenged; upheld with staked co-signers: all their stake PDAs + the stake vault passed | upheld: farmer gets vault − 10% panel fee **plus `slash_bps` of every staked co-signer's stake**; rejected: operator gets vault − 5% − 10%, passed stakes released |
+| `migrate_config` | admin | Config is the 372-byte pre-staking layout (no-op if already migrated) | grows Config, admin pays the rent; min 0, cooldown 7 days, slash 100% |
+| `set_staking_params(min_validator_stake, unstake_cooldown_secs, slash_bps)` | admin | cooldown 60 s – 365 days; slash 1 – 10,000 bps | sets the staking rules; min 0 = no stake needed to co-sign |
+| `stake_validator(amount)` | validator | amount > 0; not slashed; not unstaking | creates the stake PDA (and the stake vault) if needed; moves USDC into the vault |
+| `request_unstake` | validator | stake > 0; not already requested | starts the cooldown; the stake stops counting for co-signing |
+| `withdraw_stake` | validator | requested; cooldown passed; `open_cosigns` = 0 | returns the whole remaining stake |
+| `release_cosign` | anyone | job Released; validator has an unreleased staked entry | frees that job's lock on the stake (`open_cosigns` − 1) |
 | `reclaim_expired` | anyone | Accepted; spray_deadline passed | farmer gets payment + bond, no fees |
 
-Validator signers are passed as signer `remaining_accounts`; the program counts distinct keys from the configured set, skipping any key that is the job's farmer or operator (or, for `revoke_certificate`, the certificate's operator).
+Validator signers are passed as signer `remaining_accounts` (stake PDAs, writable, may follow them in `submit_proof` and `resolve_challenge`); the program counts distinct keys from the configured set, skipping any key that is the job's farmer or operator (or, for `revoke_certificate`, the certificate's operator).
+
+## Validator staking (k-stake, 10 Oct 2026)
+
+- **Off by default.** `min_validator_stake` = 0 keeps the pre-staking behaviour: old clients (no stake accounts) work unchanged. With min 0 a co-signer *may* still present its stake PDA; it is then recorded as slashable.
+- **Co-signing with min > 0.** The operator's transaction passes each co-signer's `ValidatorStake` PDA (writable) after the signers. Only stakes that are not slashed, not unstaking and ≥ min count. Each recorded stake gets `open_cosigns + 1`.
+- **Slashing only by the panel.** `resolve_challenge(upheld = true)` must be given every staked co-signer's stake PDA (`MissingStakeAccount`) and the stake vault (`MissingStakeVault`), so the panel cannot skip anyone. Each loses `slash_bps` of their stake (default 100%, never more than the stake), the USDC goes to the farmer on top of the refund and the operator's bond, and the stake is marked `slashed`: it can never co-sign or stake again. Removing the seat from the set is admin cleanup. There is no admin slash instruction.
+- **Withdrawal.** `request_unstake` → wait `unstake_cooldown_secs` → `withdraw_stake`. Blocked while `open_cosigns` > 0, i.e. while any proof the stake co-signed is in its window, challenged, or settled but not yet released (`release_cosign`, permissionless, after `settle`; `resolve_challenge` releases the passed stakes itself).
+- **Migration.** Config grew by 18 bytes. The devnet Config was migrated with `migrate_config` right after the upgrade (`scripts/devnet-stake.ts`). Jobs posted before the upgrade have no co-signer record: they work as before at min 0 and fail `submit_proof` with `JobPredatesStaking` at min > 0 (they can still be reclaimed after the spray deadline).
+- **Limits.** The panel's own votes are not staked; with min 0 a slashed validator can still co-sign without presenting the stake (the seat must be removed by the admin); stake PDAs are never closed.
+
+Devnet: `npx ts-node --transpile-only scripts/devnet-stake.ts` (migrate, 60 s cooldown, stake the 3 demo validators $500 each), `--set-min <usdc>` to flip the minimum, `--status` to read.
+
+## Errors added for staking
+
+`InvalidConfigAccount`, `InvalidStakingParams`, `StakeSlashed`, `UnstakePending`, `NothingStaked`, `UnstakeAlreadyRequested`, `UnstakeNotRequested`, `CooldownNotElapsed`, `StakeLockedByOpenJobs`, `ValidatorStakeTooLow`, `JobPredatesStaking`, `StakeAccountNotWritable`, `InvalidStakeAccount`, `MissingStakeAccount`, `MissingStakeVault`, `NothingToRelease` (appended after `MathOverflow`; existing codes unchanged). Events: `ConfigMigrated`, `StakingParamsSet`, `ValidatorStaked`, `UnstakeRequested`, `StakeWithdrawn`, `ProofCosigned`, `CosignReleased`, `ValidatorSlashed`.
 
 ## Errors added in k03
 
@@ -101,4 +126,4 @@ Validator signers are passed as signer `remaining_accounts`; the program counts 
 - `chemical_code` is a free number. Define a table (active ingredient → allowed rate band) off-chain, later on-chain.
 - Handler lifetimes around `remaining_accounts` and the optional operator accounts now compile (k02); they still need tests (k04).
 - `initialize_config` requires an upgradeable deployment (the default). If the program is ever deployed with `--final`, config can no longer be initialised.
-- **v2:** permissionless validators staking USDC; random assignment with Switchboard randomness; nobody validates their own region; slashing for votes against the majority; on-chain split of the validator pool; Solana Attestation Service credentials.
+- **v2:** permissionless validator joining (staking exists since 10 Oct, seats are still admin-set); random assignment with Switchboard randomness; nobody validates their own region; slashing for votes against the majority; on-chain split of the validator pool; Solana Attestation Service credentials.
