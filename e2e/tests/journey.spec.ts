@@ -4,6 +4,12 @@ import { go, operatorAccepts, operatorSendsRecord, signUp, tid, warn } from "./h
 
 test.describe.configure({ mode: "serial" });
 
+// Full-page screenshots of the real run, kept as the "e2e-shots" artifact (used for progress posts and the demo video).
+async function shot(page: import("@playwright/test").Page, name: string) {
+  await page.waitForTimeout(800);
+  await page.screenshot({ path: `shots/${name}.png`, fullPage: true }).catch(() => undefined);
+}
+
 test("Happy path: farmer posts, operator flies, validators approve, job settles and pays out", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "desktop only");
   let jobRef = "";
@@ -20,20 +26,25 @@ test("Happy path: farmer posts, operator flies, validators approve, job settles 
     await expect(tid(page, "job-status-title")).toHaveText("Waiting for an operator", { timeout: 180_000 });
     jobRef = ((await tid(page, "job-id").first().textContent()) ?? "").match(/…\d{5}|\d+/)?.[0] ?? "";
     expect(jobRef, "job id (last 5 digits of the on-chain id)").toMatch(/…\d{5}/);
+    await shot(page, "01-farmer-job-posted");
   });
 
   await test.step("3. Operator signs up, wallet + certificate set up, accepts the job (bond locked)", async () => {
     await operatorAccepts(page);
+    await shot(page, "02-operator-accepted");
   });
 
   await test.step("4. Demo control: simulate an honest drone flight and send the record to the validators", async () => {
     await operatorSendsRecord(page, "honest");
+    await shot(page, "03-operator-flight-sent");
   });
 
   await test.step("5. Validator signs up and sees the record in the queue", async () => {
     await signUp(page, "validator", "E2E Validator");
     await expect(page.getByText("Record: Honest flight")).toBeVisible({ timeout: 120_000 });
     await expect(page.getByText("Checks pass")).toBeVisible();
+    await tid(page, "flight-toggle").first().click().catch(() => undefined);
+    await shot(page, "04-validator-review");
   });
 
   await test.step("6. Validator approves as seat A (operator-side)", async () => {
@@ -47,6 +58,7 @@ test("Happy path: farmer posts, operator flies, validators approve, job settles 
     await expect(tid(page, "approve")).toBeEnabled();
     await tid(page, "approve").click();
     await expect(tid(page, "validator-job-banner")).toContainText("proof is on chain", { timeout: 180_000 });
+    await shot(page, "05-validator-proof-on-chain");
   });
 
   await test.step("8. Challenge window closes and the job settles (auto, up to 3 min)", async () => {
@@ -74,6 +86,7 @@ test("Happy path: farmer posts, operator flies, validators approve, job settles 
     await expect(tid(page, "payout-validators")).toContainText("$6.00");
     await expect(tid(page, "payout-farmer")).toContainText("$0.00");
     await expect(tid(page, "job-id").first()).toContainText(jobRef);
+    await shot(page, "06-farmer-paid");
   });
 
   await test.step("10. Operator sees earnings ($585 = $285 payment + $300 bond back, 1 job completed)", async () => {
@@ -81,6 +94,7 @@ test("Happy path: farmer posts, operator flies, validators approve, job settles 
     await expect(tid(page, "earnings-paid-out")).toContainText("$585.00", { timeout: 120_000 });
     await expect(tid(page, "earnings-completed")).toContainText("1");
     await expect(tid(page, "earnings-wallet")).toContainText("$1,285.00");
+    await shot(page, "07-operator-earnings");
   });
 
   let signatures: string[] = [];
@@ -93,6 +107,7 @@ test("Happy path: farmer posts, operator flies, validators approve, job settles 
     signatures = [...new Set(hrefs.map(signatureFromHref).filter((s): s is string => !!s))];
     expect(signatures.length, "distinct transaction signatures on the job story").toBeGreaterThanOrEqual(4);
     await expect(tid(page, "job-ref")).toContainText(jobRef);
+    await shot(page, "08-job-story");
   });
 
   await test.step("12. Every transaction is finalized on devnet with err null", async () => {
@@ -104,5 +119,9 @@ test("Happy path: farmer posts, operator flies, validators approve, job settles 
     await page.reload();
     await expect(tid(page, "job-state")).toContainText("Released", { timeout: 120_000 });
     await expect(tid(page, "adds-up")).toContainText("Adds up", { timeout: 60_000 });
+    await page.setViewportSize({ width: 390, height: 844 });
+    await shot(page, "09-phone-job-story");
+    await go(page, "farmer");
+    await shot(page, "10-phone-farmer");
   });
 });
