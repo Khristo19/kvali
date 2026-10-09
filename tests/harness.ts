@@ -81,6 +81,9 @@ export const pda = {
   },
   vault: (job: PublicKey) =>
     PublicKey.findProgramAddressSync([Buffer.from("vault"), job.toBuffer()], PROGRAM_ID)[0],
+  stake: (v: PublicKey) =>
+    PublicKey.findProgramAddressSync([Buffer.from("stake"), v.toBuffer()], PROGRAM_ID)[0],
+  stakeVault: () => PublicKey.findProgramAddressSync([Buffer.from("stake_vault")], PROGRAM_ID)[0],
   cert: (op: PublicKey, drone: number[]) =>
     PublicKey.findProgramAddressSync(
       [Buffer.from("cert"), op.toBuffer(), Buffer.from(drone)],
@@ -231,7 +234,7 @@ export class Env {
     return AccountLayout.decode(Buffer.from(a.data)).amount;
   }
 
-  fetch<T extends "config" | "job" | "operator" | "certificate" | "farmerProfile">(
+  fetch<T extends "config" | "job" | "operator" | "certificate" | "farmerProfile" | "validatorStake">(
     name: T,
     addr: PublicKey,
   ): any {
@@ -439,13 +442,16 @@ export class Env {
   async submitProof(
     job: PublicKey,
     signers: Keypair[],
-    opts: { liters?: bigint; area?: number; op?: Keypair } = {},
+    opts: { liters?: bigint; area?: number; op?: Keypair; stakes?: PublicKey[] } = {},
   ) {
     const op = opts.op ?? this.operator;
     const ix = await program.methods
       .submitProof(hash("proof-manifest"), bn(opts.liters ?? JOB.liters), opts.area ?? JOB.area)
       .accountsStrict({ authority: op.publicKey, config: pda.config(), job })
-      .remainingAccounts(signers.map((s) => ({ pubkey: s.publicKey, isSigner: true, isWritable: false })))
+      .remainingAccounts([
+        ...signers.map((s) => ({ pubkey: s.publicKey, isSigner: true, isWritable: false })),
+        ...(opts.stakes ?? []).map((v) => ({ pubkey: pda.stake(v), isSigner: false, isWritable: true })),
+      ])
       .instruction();
     const all = [op, ...signers.filter((s) => !s.publicKey.equals(op.publicKey))];
     return this.send([ix], all);
@@ -493,13 +499,101 @@ export class Env {
     return this.send([ix], [caller]);
   }
 
-  async resolveChallenge(job: PublicKey, upheld: boolean, panel: Keypair[]) {
+  async resolveChallenge(
+    job: PublicKey,
+    upheld: boolean,
+    panel: Keypair[],
+    opts: { stakes?: PublicKey[]; stakeVault?: boolean } = {},
+  ) {
     const ix = await program.methods
       .resolveChallenge(upheld, hash("inspection-report"))
       .accountsStrict(this.settleAccounts(job, panel[0].publicKey))
-      .remainingAccounts(panel.map((s) => ({ pubkey: s.publicKey, isSigner: true, isWritable: false })))
+      .remainingAccounts([
+        ...panel.map((s) => ({ pubkey: s.publicKey, isSigner: true, isWritable: false })),
+        ...(opts.stakes ?? []).map((v) => ({ pubkey: pda.stake(v), isSigner: false, isWritable: true })),
+        ...(opts.stakeVault ? [{ pubkey: pda.stakeVault(), isSigner: false, isWritable: true }] : []),
+      ])
       .instruction();
     return this.send([ix], panel);
+  }
+
+  // ---- staking -------------------------------------------------------------
+
+  /** Token accounts of the test validators, created on first use. */
+  validatorTokens = new Map<string, PublicKey>();
+  validatorToken(v: Keypair): PublicKey {
+    const k = v.publicKey.toBase58();
+    if (!this.validatorTokens.has(k)) this.validatorTokens.set(k, this.createTokenAccount(v.publicKey, START_BALANCE));
+    return this.validatorTokens.get(k)!;
+  }
+
+  async setStakingParams(signer: Keypair, minStake: bigint, cooldown = 60, slashBps = 10_000) {
+    const ix = await program.methods
+      .setStakingParams(bn(minStake), bn(cooldown), slashBps)
+      .accountsStrict({ admin: signer.publicKey, config: pda.config() })
+      .instruction();
+    return this.send([ix], [signer]);
+  }
+
+  async migrateConfig(signer: Keypair = this.admin) {
+    const ix = await program.methods
+      .migrateConfig()
+      .accountsStrict({ admin: signer.publicKey, config: pda.config(), systemProgram: SystemProgram.programId })
+      .instruction();
+    return this.send([ix], [signer]);
+  }
+
+  async stake(v: Keypair, amount: bigint) {
+    const ix = await program.methods
+      .stakeValidator(bn(amount))
+      .accountsStrict({
+        validator: v.publicKey,
+        config: pda.config(),
+        stake: pda.stake(v.publicKey),
+        stakeVault: pda.stakeVault(),
+        usdcMint: this.mint.publicKey,
+        validatorToken: this.validatorToken(v),
+        tokenProgram: TOKEN_PROGRAM_ID,
+        systemProgram: SystemProgram.programId,
+      })
+      .instruction();
+    return this.send([ix], [v]);
+  }
+
+  async requestUnstake(v: Keypair) {
+    const ix = await program.methods
+      .requestUnstake()
+      .accountsStrict({ validator: v.publicKey, config: pda.config(), stake: pda.stake(v.publicKey) })
+      .instruction();
+    return this.send([ix], [v]);
+  }
+
+  async withdrawStake(v: Keypair) {
+    const ix = await program.methods
+      .withdrawStake()
+      .accountsStrict({
+        validator: v.publicKey,
+        config: pda.config(),
+        stake: pda.stake(v.publicKey),
+        stakeVault: pda.stakeVault(),
+        usdcMint: this.mint.publicKey,
+        validatorToken: this.validatorToken(v),
+        tokenProgram: TOKEN_PROGRAM_ID,
+      })
+      .instruction();
+    return this.send([ix], [v]);
+  }
+
+  async releaseCosign(job: PublicKey, v: PublicKey, caller: Keypair = this.outsider) {
+    const ix = await program.methods
+      .releaseCosign()
+      .accountsStrict({ caller: caller.publicKey, job, stake: pda.stake(v) })
+      .instruction();
+    return this.send([ix], [caller]);
+  }
+
+  stakeOf(v: Keypair) {
+    return this.fetch("validatorStake", pda.stake(v.publicKey));
   }
 
   async reclaimExpired(job: PublicKey, caller: Keypair = this.outsider) {

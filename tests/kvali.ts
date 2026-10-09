@@ -605,4 +605,257 @@ describe("kvali", () => {
       );
     });
   });
+  // 14 ----------------------------------------------------------------------
+  describe("14. validator staking and slashing", () => {
+    const MIN = usdc(500);
+
+    /** Ready env; validators 0 and 1 stake `amounts`; min stake set to `min`. */
+    async function staked(min: bigint, amounts: bigint[] = [MIN, MIN], slashBps = 10_000) {
+      const env = new Env();
+      await env.ready();
+      for (let i = 0; i < amounts.length; i++) {
+        if (amounts[i] > 0n) expectOk(await env.stake(env.validators[i], amounts[i]), `stake v${i}`);
+      }
+      expectOk(await env.setStakingParams(env.admin, min, 60, slashBps), "set_staking_params");
+      return env;
+    }
+    const keys = (env: Env, idx: number[]) => idx.map((i) => env.validators[i].publicKey);
+
+    async function acceptedJob(env: Env) {
+      const j = await env.postJob();
+      expectOk(j.r, "post_job");
+      expectOk(await env.acceptJob(j.job), "accept_job");
+      return j;
+    }
+
+    it("new config defaults: min 0, 7-day cooldown, 100% slash; set_staking_params is admin-only and bounded", async () => {
+      const env = new Env();
+      await env.ready();
+      const c = env.fetch("config", pda.config());
+      expect(c.minValidatorStake.toString()).to.equal("0");
+      expect(c.unstakeCooldownSecs.toString()).to.equal(String(7 * 86_400));
+      expect(c.slashBps).to.equal(10_000);
+      expectErr(await env.setStakingParams(env.outsider, MIN), "Unauthorized");
+      expectErr(await env.setStakingParams(env.admin, MIN, 59), "InvalidStakingParams");
+      expectErr(await env.setStakingParams(env.admin, MIN, 60, 0), "InvalidStakingParams");
+      expectErr(await env.setStakingParams(env.admin, MIN, 60, 10_001), "InvalidStakingParams");
+      expectOk(await env.setStakingParams(env.admin, MIN, 60, 5_000));
+      const c2 = env.fetch("config", pda.config());
+      expect(c2.minValidatorStake.toString()).to.equal(MIN.toString());
+      expect(c2.slashBps).to.equal(5_000);
+    });
+
+    it("stake: USDC moves into the program stake vault and adds up", async () => {
+      const env = new Env();
+      await env.ready();
+      const v = env.validators[V0];
+      expectOk(await env.stake(v, usdc(300)));
+      expectOk(await env.stake(v, usdc(200)));
+      const s = env.stakeOf(v);
+      expect(s.amount.toString()).to.equal(MIN.toString());
+      expect(s.totalStaked.toString()).to.equal(MIN.toString());
+      expect(s.validator.equals(v.publicKey)).to.equal(true);
+      expect(env.balance(pda.stakeVault())).to.equal(MIN);
+      expect(env.balance(env.validatorToken(v))).to.equal(START_BALANCE - MIN);
+      expectErr(await env.stake(v, 0n), "InvalidAmount");
+    });
+
+    it("min = 0 keeps the old flow: unstaked co-signers, no stake accounts, settle as before", async () => {
+      const env = await staked(0n, [MIN, 0n]); // v0 staked, v1 not
+      const j = await acceptedJob(env);
+      expectOk(await env.submitProof(j.job, [env.validators[V0], env.validators[V1]]));
+      env.warp(61);
+      expectOk(await env.settle(j.job));
+      expect(env.balance(env.operatorToken)).to.equal(usdc(1285));
+      expect(env.stakeOf(env.validators[V0]).openCosigns).to.equal(0); // stake not presented: not locked
+    });
+
+    it("co-signing is blocked below the minimum stake and allowed at it", async () => {
+      const env = await staked(MIN, [MIN, MIN - 1n]);
+      const j = await acceptedJob(env);
+      const signers = [env.validators[V0], env.validators[V1]];
+      // Old clients (no stake accounts) can no longer co-sign once min > 0.
+      expectErr(await env.submitProof(j.job, signers), "ValidatorStakeTooLow");
+      // v1 is 1 base unit short.
+      expectErr(await env.submitProof(j.job, signers, { stakes: keys(env, [V0, V1]) }), "ValidatorStakeTooLow");
+      // v1 tops up the missing base unit.
+      expectOk(await env.stake(env.validators[V1], 1n));
+      // Not enough signers at all is still NotEnoughValidators.
+      expectErr(await env.submitProof(j.job, [env.validators[V0]], { stakes: keys(env, [V0]) }), "NotEnoughValidators");
+      expectOk(await env.submitProof(j.job, signers, { stakes: keys(env, [V0, V1]) }));
+      for (const i of [V0, V1]) {
+        const s = env.stakeOf(env.validators[i]);
+        expect(s.openCosigns).to.equal(1);
+        expect(s.proofsCosigned).to.equal(1);
+      }
+    });
+
+    it("cooldown is enforced; an unstaking validator can't co-sign", async () => {
+      const env = await staked(MIN, [MIN, MIN]);
+      const v = env.validators[V0];
+      expectErr(await env.withdrawStake(v), "UnstakeNotRequested");
+      expectOk(await env.requestUnstake(v));
+      expectErr(await env.requestUnstake(v), "UnstakeAlreadyRequested");
+      expectErr(await env.stake(v, 1n), "UnstakePending");
+
+      const j = await acceptedJob(env);
+      expectErr(
+        await env.submitProof(j.job, [v, env.validators[V1]], { stakes: keys(env, [V0, V1]) }),
+        "ValidatorStakeTooLow",
+      );
+
+      expectErr(await env.withdrawStake(v), "CooldownNotElapsed");
+      env.warp(59);
+      expectErr(await env.withdrawStake(v), "CooldownNotElapsed");
+      env.warp(1);
+      expectOk(await env.withdrawStake(v));
+      expect(env.balance(env.validatorToken(v))).to.equal(START_BALANCE);
+      expect(env.stakeOf(v).amount.toString()).to.equal("0");
+      expect(env.balance(pda.stakeVault())).to.equal(MIN); // v1's stake stays
+      expectErr(await env.requestUnstake(v), "NothingStaked");
+    });
+
+    it("withdrawal is locked while a co-signed proof is open, until released after settlement", async () => {
+      const env = await staked(MIN);
+      const j = await acceptedJob(env);
+      expectOk(await env.submitProof(j.job, [env.validators[V0], env.validators[V1]], { stakes: keys(env, [V0, V1]) }));
+      const v = env.validators[V0];
+      expectOk(await env.requestUnstake(v));
+      env.warp(61);
+      expectErr(await env.withdrawStake(v), "StakeLockedByOpenJobs");
+      expectErr(await env.releaseCosign(j.job, v.publicKey), "InvalidState"); // not settled yet
+      expectOk(await env.settle(j.job));
+      expectOk(await env.releaseCosign(j.job, v.publicKey)); // permissionless
+      expectErr(await env.releaseCosign(j.job, v.publicKey), "NothingToRelease");
+      expectErr(await env.releaseCosign(j.job, env.validators[V2].publicKey), "AccountNotInitialized");
+      expectOk(await env.withdrawStake(v));
+      expect(env.balance(env.validatorToken(v))).to.equal(START_BALANCE);
+    });
+
+    it("challenge upheld: every staked co-signer is slashed to the farmer and can't co-sign again", async () => {
+      const env = await staked(MIN);
+      expectOk(await env.stake(env.validators[V2], MIN));
+      const j = await acceptedJob(env);
+      expectOk(await env.submitProof(j.job, [env.validators[V0], env.validators[V1]], { stakes: keys(env, [V0, V1]) }));
+      expectOk(await env.challenge(j.job));
+      const panel = [env.validators[V1], env.validators[V2]];
+
+      // The panel can't skip slashing by leaving out a co-signer's stake or the vault.
+      expectErr(await env.resolveChallenge(j.job, true, panel, { stakes: keys(env, [V0]), stakeVault: true }), "MissingStakeAccount");
+      expectErr(await env.resolveChallenge(j.job, true, panel, { stakes: keys(env, [V0, V1]) }), "MissingStakeVault");
+      expectOk(await env.resolveChallenge(j.job, true, panel, { stakes: keys(env, [V0, V1]), stakeVault: true }));
+
+      const ref = settlementTs(JOB.amount, JOB.bond, "challenge-upheld");
+      // Farmer: refund + operator bond - panel fee, plus 2 x 500 slashed stake.
+      expect(env.balance(env.farmerToken)).to.equal(START_BALANCE - JOB.amount - usdc(60) + ref.farmer + 2n * MIN);
+      expect(env.balance(env.farmerToken)).to.equal(usdc(2270));
+      expect(env.balance(pda.stakeVault())).to.equal(MIN); // only v2's (non co-signer) stake left
+      for (const i of [V0, V1]) {
+        const s = env.stakeOf(env.validators[i]);
+        expect(s.slashed).to.equal(true);
+        expect(s.amount.toString()).to.equal("0");
+        expect(s.totalSlashed.toString()).to.equal(MIN.toString());
+        expect(s.timesSlashed).to.equal(1);
+        expect(s.openCosigns).to.equal(0);
+      }
+      expect(env.stakeOf(env.validators[V2]).slashed).to.equal(false);
+
+      // Slashed validators lose the right to co-sign, and can't re-stake.
+      expectErr(await env.stake(env.validators[V0], MIN), "StakeSlashed");
+      const j2 = await acceptedJob(env);
+      expectErr(
+        await env.submitProof(j2.job, [env.validators[V0], env.validators[V2]], { stakes: keys(env, [V0, V2]) }),
+        "ValidatorStakeTooLow",
+      );
+    });
+
+    it("partial slash (50%): the rest can be withdrawn after the cooldown", async () => {
+      const env = await staked(MIN, [MIN, MIN], 5_000);
+      const j = await acceptedJob(env);
+      expectOk(await env.submitProof(j.job, [env.validators[V0], env.validators[V1]], { stakes: keys(env, [V0, V1]) }));
+      expectOk(await env.challenge(j.job));
+      expectOk(await env.resolveChallenge(j.job, true, [env.validators[V1], env.validators[V2]], { stakes: keys(env, [V0, V1]), stakeVault: true }));
+      expect(env.balance(env.farmerToken)).to.equal(usdc(1770)); // 1270 + 2 x 250
+      const v = env.validators[V0];
+      expect(env.stakeOf(v).amount.toString()).to.equal(usdc(250).toString());
+      expectOk(await env.requestUnstake(v));
+      env.warp(60);
+      expectOk(await env.withdrawStake(v));
+      expect(env.balance(env.validatorToken(v))).to.equal(START_BALANCE - usdc(250));
+    });
+
+    it("challenge rejected (proof upheld): no slash, stake locks released", async () => {
+      const env = await staked(MIN);
+      const j = await acceptedJob(env);
+      expectOk(await env.submitProof(j.job, [env.validators[V0], env.validators[V1]], { stakes: keys(env, [V0, V1]) }));
+      expectOk(await env.challenge(j.job));
+      expectOk(await env.resolveChallenge(j.job, false, [env.validators[V1], env.validators[V2]], { stakes: keys(env, [V0, V1]) }));
+      expect(env.balance(env.operatorToken)).to.equal(usdc(1315)); // 1000 - 300 + 615
+      expect(env.balance(pda.stakeVault())).to.equal(2n * MIN);
+      for (const i of [V0, V1]) {
+        const s = env.stakeOf(env.validators[i]);
+        expect(s.slashed).to.equal(false);
+        expect(s.amount.toString()).to.equal(MIN.toString());
+        expect(s.openCosigns).to.equal(0);
+      }
+    });
+
+    it("challenge upheld on a proof signed without stakes (min 0): old flow, nothing slashed", async () => {
+      const env = await staked(0n);
+      const j = await env.provenJob(); // no stake accounts presented
+      expectOk(await env.challenge(j.job));
+      expectOk(await env.resolveChallenge(j.job, true, [env.validators[V1], env.validators[V2]]));
+      expect(env.balance(env.farmerToken)).to.equal(usdc(1270));
+      expect(env.stakeOf(env.validators[V0]).slashed).to.equal(false);
+    });
+
+    it("migrate_config grows a pre-staking Config (372 bytes); admin only; idempotent", async () => {
+      const env = new Env();
+      await env.ready();
+      const cfg = pda.config();
+      const acc = env.svm.getAccount(cfg)!;
+      const oldData = Buffer.from(acc.data).subarray(0, 372);
+      env.svm.setAccount(cfg, { ...acc, data: oldData, lamports: Number(env.svm.minimumBalanceForRentExemption(372n)) });
+      expect(env.svm.getAccount(cfg)!.data.length).to.equal(372);
+      // Unmigrated config can't be used by the new layout.
+      expect((await env.postJob()).r.constructor.name).to.equal("FailedTransactionMetadata");
+      expectErr(await env.migrateConfig(env.outsider), "Unauthorized");
+      expectOk(await env.migrateConfig());
+      const after = env.svm.getAccount(cfg)!;
+      expect(after.data.length).to.be.greaterThan(372);
+      expect(BigInt(after.lamports) >= env.svm.minimumBalanceForRentExemption(BigInt(after.data.length))).to.equal(true);
+      const c = env.fetch("config", cfg);
+      expect(c.minValidatorStake.toString()).to.equal("0");
+      expect(c.slashBps).to.equal(10_000);
+      expect(c.validatorCount).to.equal(3);
+      expect(c.challengeWindowSecs.toString()).to.equal("60");
+      expectOk(await env.migrateConfig()); // no-op
+      const j = await env.provenJob();
+      env.warp(61);
+      expectOk(await env.settle(j.job));
+    });
+
+    it("a job posted before the upgrade (no co-signer record) works at min 0, refuses co-signing at min > 0", async () => {
+      const env = await staked(0n);
+      const shrink = (job: any) => {
+        const a = env.svm.getAccount(job)!;
+        const base = a.data.length - 232; // drop the co-signer record
+        env.svm.setAccount(job, { ...a, data: Buffer.from(a.data).subarray(0, base) });
+      };
+      const j = await acceptedJob(env);
+      shrink(j.job);
+      expectOk(await env.submitProof(j.job, [env.validators[V0], env.validators[V1]], { stakes: keys(env, [V0, V1]) }));
+      expect(env.stakeOf(env.validators[V0]).openCosigns).to.equal(0); // nothing to record into
+      expectOk(await env.challenge(j.job));
+      expectOk(await env.resolveChallenge(j.job, true, [env.validators[V1], env.validators[V2]]));
+
+      expectOk(await env.setStakingParams(env.admin, MIN));
+      const j2 = await acceptedJob(env);
+      shrink(j2.job);
+      expectErr(
+        await env.submitProof(j2.job, [env.validators[V0], env.validators[V1]], { stakes: keys(env, [V0, V1]) }),
+        "JobPredatesStaking",
+      );
+    });
+  });
 });

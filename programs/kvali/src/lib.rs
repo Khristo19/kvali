@@ -9,8 +9,11 @@
 //! The job's USDC vault holds the farmer's payment, the operator's bond and,
 //! if challenged, the farmer's challenge bond. The winner receives all of it.
 //!
-//! v1: the validator set is permissioned (set by admin). v2: validators join by
-//! staking USDC and are assigned at random. See docs/DECISIONS.md.
+//! v1: the validator set is permissioned (set by admin). Validators can stake
+//! USDC; when `Config::min_validator_stake` > 0 only staked validators count
+//! as proof co-signers, and a panel ruling against a proof slashes its staked
+//! co-signers to the farmer. v2: permissionless joining, random assignment.
+//! See docs/DECISIONS.md (D16).
 //!
 //! Compiles with `anchor build` (k02, rules tightened in k03) but is not yet
 //! covered by tests (k04):
@@ -48,6 +51,30 @@ pub const PANEL_FEE_BPS: u64 = 1_000;
 /// A drone's flow meter may disagree with the weighed tank by at most 5%
 /// in its calibration test (docs/CALIBRATION.md).
 pub const MAX_METER_ERROR_BPS: u16 = 500;
+/// Default unstake cooldown for real deployments (7 days). The live value is
+/// `Config::unstake_cooldown_secs` (60 s on the demo deployment).
+pub const DEFAULT_UNSTAKE_COOLDOWN_SECS: i64 = 7 * 24 * 60 * 60;
+/// Allowed range for the unstake cooldown: 1 minute (demo) to 365 days.
+pub const MIN_UNSTAKE_COOLDOWN_SECS: i64 = 60;
+pub const MAX_UNSTAKE_COOLDOWN_SECS: i64 = 365 * 24 * 60 * 60;
+/// Default share of a co-signer's stake slashed when a panel rules against
+/// the proof they signed (100%).
+pub const DEFAULT_SLASH_BPS: u16 = 10_000;
+/// Byte length of the Config account before staking was added (k-stake
+/// migration): 8-byte discriminator + the original fields.
+pub const CONFIG_V1_LEN: usize = 372;
+/// Byte length of a Job account's Anchor-serialised fields.
+pub const JOB_BASE_LEN: usize = 8 + Job::INIT_SPACE;
+/// Co-signer record appended after the Job fields (jobs posted after the
+/// staking upgrade): count (u8) + MAX_VALIDATORS x (validator pubkey, flags).
+/// Kept outside the `Job` struct so jobs posted before the upgrade (and
+/// clients using the old IDL) still decode unchanged.
+pub const COSIGN_ENTRY_LEN: usize = 33;
+pub const JOB_RECORD_SPACE: usize = 1 + MAX_VALIDATORS * COSIGN_ENTRY_LEN;
+/// Record flag: the co-signer presented an active stake (slashable).
+pub const COSIGN_STAKED: u8 = 1;
+/// Record flag: the stake lock for this job is released (job finished or slashed).
+pub const COSIGN_RELEASED: u8 = 2;
 
 #[program]
 pub mod kvali {
@@ -68,7 +95,202 @@ pub mod kvali {
         config.treasury = ctx.accounts.treasury.key();
         config.validator_pool = ctx.accounts.validator_pool.key();
         config.bump = ctx.bumps.config;
+        config.min_validator_stake = 0;
+        config.unstake_cooldown_secs = DEFAULT_UNSTAKE_COOLDOWN_SECS;
+        config.slash_bps = DEFAULT_SLASH_BPS;
         apply_validator_set(config, validators, proof_threshold, panel_threshold)
+    }
+
+    /// One-off migration for a Config created before validator staking
+    /// existed (372 bytes): grows the account to the current size and sets
+    /// the staking defaults (min stake 0 = staking off, 7-day cooldown, 100%
+    /// slash). Admin only; the admin pays the extra rent. A no-op on an
+    /// already migrated Config. Every other instruction needs the migrated
+    /// layout, so run this right after the program upgrade.
+    pub fn migrate_config(ctx: Context<MigrateConfig>) -> Result<()> {
+        let info = ctx.accounts.config.to_account_info();
+        require_keys_eq!(*info.owner, crate::ID, KvaliError::InvalidConfigAccount);
+        let new_len = 8 + Config::INIT_SPACE;
+        let old_len = info.data_len();
+        if old_len >= new_len {
+            return Ok(());
+        }
+        require!(old_len == CONFIG_V1_LEN, KvaliError::InvalidConfigAccount);
+        {
+            let data = info.try_borrow_data()?;
+            require!(
+                &data[..8] == Config::DISCRIMINATOR,
+                KvaliError::InvalidConfigAccount
+            );
+            let admin = Pubkey::try_from(&data[8..40]).unwrap();
+            require_keys_eq!(admin, ctx.accounts.admin.key(), KvaliError::Unauthorized);
+        }
+        let need = Rent::get()?
+            .minimum_balance(new_len)
+            .saturating_sub(info.lamports());
+        if need > 0 {
+            anchor_lang::system_program::transfer(
+                CpiContext::new(
+                    ctx.accounts.system_program.to_account_info(),
+                    anchor_lang::system_program::Transfer {
+                        from: ctx.accounts.admin.to_account_info(),
+                        to: info.clone(),
+                    },
+                ),
+                need,
+            )?;
+        }
+        info.resize(new_len)?;
+        let mut data = info.try_borrow_mut_data()?;
+        let mut config = Config::try_deserialize(&mut &data[..])?;
+        config.min_validator_stake = 0;
+        config.unstake_cooldown_secs = DEFAULT_UNSTAKE_COOLDOWN_SECS;
+        config.slash_bps = DEFAULT_SLASH_BPS;
+        config.try_serialize(&mut &mut data[..])?;
+        emit!(ConfigMigrated { old_len: old_len as u32, new_len: new_len as u32 });
+        Ok(())
+    }
+
+    /// Admin sets the validator staking rules. `min_validator_stake` 0 turns
+    /// the stake requirement for co-signing off (the pre-staking behaviour).
+    /// `slash_bps` is the share of a co-signer's stake slashed when a panel
+    /// rules against the proof (1..=10_000).
+    pub fn set_staking_params(
+        ctx: Context<SetValidators>,
+        min_validator_stake: u64,
+        unstake_cooldown_secs: i64,
+        slash_bps: u16,
+    ) -> Result<()> {
+        require!(
+            (MIN_UNSTAKE_COOLDOWN_SECS..=MAX_UNSTAKE_COOLDOWN_SECS).contains(&unstake_cooldown_secs),
+            KvaliError::InvalidStakingParams
+        );
+        require!(
+            slash_bps >= 1 && (slash_bps as u64) <= BPS,
+            KvaliError::InvalidStakingParams
+        );
+        let config = &mut ctx.accounts.config;
+        config.min_validator_stake = min_validator_stake;
+        config.unstake_cooldown_secs = unstake_cooldown_secs;
+        config.slash_bps = slash_bps;
+        emit!(StakingParamsSet { min_validator_stake, unstake_cooldown_secs, slash_bps });
+        Ok(())
+    }
+
+    /// A validator locks `amount` USDC in the program's stake vault (adds to
+    /// an existing stake). Not allowed once slashed or while unstaking.
+    pub fn stake_validator(ctx: Context<StakeValidator>, amount: u64) -> Result<()> {
+        require!(amount > 0, KvaliError::InvalidAmount);
+        let now = Clock::get()?.unix_timestamp;
+        let stake = &mut ctx.accounts.stake;
+        if stake.validator == Pubkey::default() {
+            stake.validator = ctx.accounts.validator.key();
+            stake.created_at = now;
+            stake.bump = ctx.bumps.stake;
+        }
+        require!(!stake.slashed, KvaliError::StakeSlashed);
+        require!(stake.unstake_requested_at == 0, KvaliError::UnstakePending);
+        stake.amount = stake.amount.checked_add(amount).ok_or(KvaliError::MathOverflow)?;
+        stake.total_staked = stake
+            .total_staked
+            .checked_add(amount)
+            .ok_or(KvaliError::MathOverflow)?;
+        let total = stake.amount;
+
+        token_interface::transfer_checked(
+            CpiContext::new(
+                ctx.accounts.token_program.to_account_info(),
+                TransferChecked {
+                    from: ctx.accounts.validator_token.to_account_info(),
+                    mint: ctx.accounts.usdc_mint.to_account_info(),
+                    to: ctx.accounts.stake_vault.to_account_info(),
+                    authority: ctx.accounts.validator.to_account_info(),
+                },
+            ),
+            amount,
+            ctx.accounts.usdc_mint.decimals,
+        )?;
+        emit!(ValidatorStaked { validator: ctx.accounts.validator.key(), amount, total });
+        Ok(())
+    }
+
+    /// Starts the unstake cooldown. From now on the stake no longer counts
+    /// for co-signing; `withdraw_stake` works once the cooldown has passed.
+    pub fn request_unstake(ctx: Context<RequestUnstake>) -> Result<()> {
+        let now = Clock::get()?.unix_timestamp;
+        let stake = &mut ctx.accounts.stake;
+        require!(stake.amount > 0, KvaliError::NothingStaked);
+        require!(stake.unstake_requested_at == 0, KvaliError::UnstakeAlreadyRequested);
+        stake.unstake_requested_at = now;
+        let available_at = now
+            .checked_add(ctx.accounts.config.unstake_cooldown_secs)
+            .ok_or(KvaliError::MathOverflow)?;
+        emit!(UnstakeRequested { validator: stake.validator, amount: stake.amount, available_at });
+        Ok(())
+    }
+
+    /// Withdraws the whole remaining stake after the cooldown. Blocked while
+    /// any proof this stake co-signed is not finally settled (open challenge
+    /// window, open challenge, or a settled job whose lock was not yet
+    /// released with `release_cosign`).
+    pub fn withdraw_stake(ctx: Context<WithdrawStake>) -> Result<()> {
+        let now = Clock::get()?.unix_timestamp;
+        let stake = &ctx.accounts.stake;
+        require!(stake.unstake_requested_at != 0, KvaliError::UnstakeNotRequested);
+        let ready_at = stake
+            .unstake_requested_at
+            .checked_add(ctx.accounts.config.unstake_cooldown_secs)
+            .ok_or(KvaliError::MathOverflow)?;
+        require!(now >= ready_at, KvaliError::CooldownNotElapsed);
+        require!(stake.open_cosigns == 0, KvaliError::StakeLockedByOpenJobs);
+        let amount = stake.amount;
+
+        if amount > 0 {
+            let seeds: &[&[u8]] = &[b"config", &[ctx.accounts.config.bump]];
+            token_interface::transfer_checked(
+                CpiContext::new_with_signer(
+                    ctx.accounts.token_program.to_account_info(),
+                    TransferChecked {
+                        from: ctx.accounts.stake_vault.to_account_info(),
+                        mint: ctx.accounts.usdc_mint.to_account_info(),
+                        to: ctx.accounts.validator_token.to_account_info(),
+                        authority: ctx.accounts.config.to_account_info(),
+                    },
+                    &[seeds],
+                ),
+                amount,
+                ctx.accounts.usdc_mint.decimals,
+            )?;
+        }
+        let stake = &mut ctx.accounts.stake;
+        stake.amount = 0;
+        stake.unstake_requested_at = 0;
+        emit!(StakeWithdrawn { validator: stake.validator, amount });
+        Ok(())
+    }
+
+    /// Permissionless: once a job is finally settled in the operator's
+    /// favour (Released), frees one co-signer's stake lock for it so they
+    /// can later withdraw. Jobs lost by the operator release (and slash)
+    /// their co-signers inside `resolve_challenge`.
+    pub fn release_cosign(ctx: Context<ReleaseCosign>) -> Result<()> {
+        require!(
+            ctx.accounts.job.state == JobState::Released,
+            KvaliError::InvalidState
+        );
+        let job_info = ctx.accounts.job.to_account_info();
+        let mut record = read_cosign_record(&job_info)?;
+        let v = ctx.accounts.stake.validator;
+        let entry = record
+            .iter_mut()
+            .find(|(k, f)| *k == v && f & COSIGN_STAKED != 0 && f & COSIGN_RELEASED == 0)
+            .ok_or(KvaliError::NothingToRelease)?;
+        entry.1 |= COSIGN_RELEASED;
+        write_cosign_record(&job_info, &record)?;
+        let stake = &mut ctx.accounts.stake;
+        stake.open_cosigns = stake.open_cosigns.saturating_sub(1);
+        emit!(CosignReleased { validator: v, job: ctx.accounts.job.key() });
+        Ok(())
     }
 
     /// v1 governance: admin replaces the validator set. Move admin to a
@@ -303,6 +525,13 @@ pub mod kvali {
     /// re-checks the liters-per-hectare band and coverage. Validators who
     /// are the job's farmer or operator do not count. Must land no later than
     /// the spray deadline (after it, only `reclaim_expired` applies).
+    ///
+    /// Staking: each co-signer may also pass its ValidatorStake PDA
+    /// (writable) in the remaining accounts. If `min_validator_stake` > 0 only
+    /// co-signers with an active stake (not slashed, not unstaking, amount ≥
+    /// min) count. Every co-signer that presented an active stake is recorded
+    /// on the job as slashable and its stake stays locked until the job is
+    /// finally settled.
     pub fn submit_proof(
         ctx: Context<SubmitProof>,
         proof_hash: [u8; 32],
@@ -311,15 +540,53 @@ pub mod kvali {
     ) -> Result<()> {
         let now = Clock::get()?.unix_timestamp;
         let window = ctx.accounts.config.challenge_window_secs;
-        let signers = count_validator_signers(
+        let threshold = ctx.accounts.config.proof_threshold as usize;
+        let signers = validator_signers(
             &ctx.accounts.config,
             ctx.remaining_accounts,
             &[ctx.accounts.job.farmer, ctx.accounts.job.operator],
         );
-        require!(
-            signers >= ctx.accounts.config.proof_threshold as usize,
-            KvaliError::NotEnoughValidators
-        );
+        require!(signers.len() >= threshold, KvaliError::NotEnoughValidators);
+
+        // Stake check and co-signer record.
+        let min = ctx.accounts.config.min_validator_stake;
+        let job_key = ctx.accounts.job.key();
+        let job_info = ctx.accounts.job.to_account_info();
+        let has_record = job_info.data_len() >= JOB_BASE_LEN + JOB_RECORD_SPACE;
+        let mut record: Vec<(Pubkey, u8)> = Vec::with_capacity(signers.len());
+        let mut staked: Vec<(&AccountInfo, ValidatorStake)> = Vec::new();
+        for v in &signers {
+            let found = find_stake(ctx.remaining_accounts, v)?;
+            let active = match &found {
+                Some((_, s)) => stake_is_active(s, min),
+                None => false,
+            };
+            if min > 0 && !active {
+                continue;
+            }
+            let mut flag = 0u8;
+            if active && has_record {
+                if let Some((acc, s)) = found {
+                    require!(acc.is_writable, KvaliError::StakeAccountNotWritable);
+                    flag = COSIGN_STAKED;
+                    staked.push((acc, s));
+                }
+            }
+            record.push((*v, flag));
+        }
+        if min > 0 {
+            require!(has_record, KvaliError::JobPredatesStaking);
+            require!(record.len() >= threshold, KvaliError::ValidatorStakeTooLow);
+        }
+        for (acc, mut s) in staked {
+            s.open_cosigns = s.open_cosigns.checked_add(1).ok_or(KvaliError::MathOverflow)?;
+            s.proofs_cosigned = s.proofs_cosigned.checked_add(1).ok_or(KvaliError::MathOverflow)?;
+            save_stake(acc, &s)?;
+            emit!(ProofCosigned { validator: s.validator, job: job_key, stake: s.amount });
+        }
+        if has_record {
+            write_cosign_record(&job_info, &record)?;
+        }
 
         let job = &mut ctx.accounts.job;
         require!(job.state == JobState::Accepted, KvaliError::InvalidState);
@@ -434,6 +701,76 @@ pub mod kvali {
         );
         ctx.accounts.job.report_hash = report_hash;
 
+        // Staked co-signers of the proof (see submit_proof). Upheld: each is
+        // slashed (`Config::slash_bps` of their stake) and the USDC goes to
+        // the farmer; their stake accounts and the stake vault must be passed
+        // in the remaining accounts. Rejected: passed stakes are released.
+        let job_info = ctx.accounts.job.to_account_info();
+        let mut record = read_cosign_record(&job_info)?;
+        let mut slashed_total: u64 = 0;
+        let mut changed = false;
+        for entry in record.iter_mut() {
+            if entry.1 & COSIGN_STAKED == 0 || entry.1 & COSIGN_RELEASED != 0 {
+                continue;
+            }
+            let found = find_stake(ctx.remaining_accounts, &entry.0)?;
+            let (acc, mut s) = match found {
+                Some(x) => x,
+                None if upheld => return err!(KvaliError::MissingStakeAccount),
+                None => continue,
+            };
+            require!(acc.is_writable, KvaliError::StakeAccountNotWritable);
+            if upheld {
+                let cut = ((s.amount as u128) * (ctx.accounts.config.slash_bps as u128)
+                    / (BPS as u128)) as u64;
+                let cut = cut.min(s.amount);
+                s.amount -= cut;
+                s.slashed = true;
+                s.times_slashed = s.times_slashed.checked_add(1).ok_or(KvaliError::MathOverflow)?;
+                s.total_slashed = s.total_slashed.checked_add(cut).ok_or(KvaliError::MathOverflow)?;
+                slashed_total = slashed_total.checked_add(cut).ok_or(KvaliError::MathOverflow)?;
+                emit!(ValidatorSlashed {
+                    validator: s.validator,
+                    job: ctx.accounts.job.key(),
+                    farmer: ctx.accounts.job.farmer,
+                    amount: cut,
+                    remaining: s.amount,
+                });
+            } else {
+                emit!(CosignReleased { validator: s.validator, job: ctx.accounts.job.key() });
+            }
+            s.open_cosigns = s.open_cosigns.saturating_sub(1);
+            save_stake(acc, &s)?;
+            entry.1 |= COSIGN_RELEASED;
+            changed = true;
+        }
+        if changed {
+            write_cosign_record(&job_info, &record)?;
+        }
+        if slashed_total > 0 {
+            let (vault_key, _) = Pubkey::find_program_address(&[b"stake_vault"], &crate::ID);
+            let stake_vault = ctx
+                .remaining_accounts
+                .iter()
+                .find(|a| a.key == &vault_key)
+                .ok_or(KvaliError::MissingStakeVault)?;
+            let seeds: &[&[u8]] = &[b"config", &[ctx.accounts.config.bump]];
+            token_interface::transfer_checked(
+                CpiContext::new_with_signer(
+                    ctx.accounts.token_program.to_account_info(),
+                    TransferChecked {
+                        from: stake_vault.clone(),
+                        mint: ctx.accounts.usdc_mint.to_account_info(),
+                        to: ctx.accounts.farmer_token.to_account_info(),
+                        authority: ctx.accounts.config.to_account_info(),
+                    },
+                    &[seeds],
+                ),
+                slashed_total,
+                ctx.accounts.usdc_mint.decimals,
+            )?;
+        }
+
         if upheld {
             let p = &mut ctx.accounts.farmer_profile;
             p.challenges_won = p.challenges_won.checked_add(1).ok_or(KvaliError::MathOverflow)?;
@@ -505,7 +842,7 @@ fn check_challenge_window(secs: i64) -> Result<()> {
 /// Distinct validators from the configured set that signed this transaction.
 /// Keys in `excluded` (the job's farmer and operator: conflict of interest)
 /// never count, even if they are in the set.
-fn count_validator_signers(config: &Config, accounts: &[AccountInfo], excluded: &[Pubkey]) -> usize {
+fn validator_signers(config: &Config, accounts: &[AccountInfo], excluded: &[Pubkey]) -> Vec<Pubkey> {
     let set = &config.validators[..config.validator_count as usize];
     let mut seen: Vec<Pubkey> = Vec::with_capacity(set.len());
     for acc in accounts {
@@ -517,7 +854,80 @@ fn count_validator_signers(config: &Config, accounts: &[AccountInfo], excluded: 
             seen.push(*acc.key);
         }
     }
-    seen.len()
+    seen
+}
+
+fn count_validator_signers(config: &Config, accounts: &[AccountInfo], excluded: &[Pubkey]) -> usize {
+    validator_signers(config, accounts, excluded).len()
+}
+
+/// Active stake: not slashed, not unstaking, non-zero and at least `min`.
+fn stake_is_active(s: &ValidatorStake, min: u64) -> bool {
+    !s.slashed && s.unstake_requested_at == 0 && s.amount > 0 && s.amount >= min
+}
+
+/// Finds `validator`'s ValidatorStake among `accounts` (owned by this
+/// program, Anchor discriminator checked, `validator` field matching, and at
+/// the canonical PDA address).
+fn find_stake<'a, 'info>(
+    accounts: &'a [AccountInfo<'info>],
+    validator: &Pubkey,
+) -> Result<Option<(&'a AccountInfo<'info>, ValidatorStake)>> {
+    for acc in accounts {
+        if acc.owner != &crate::ID || acc.data_len() != 8 + ValidatorStake::INIT_SPACE {
+            continue;
+        }
+        let data = acc.try_borrow_data()?;
+        let Ok(s) = ValidatorStake::try_deserialize(&mut &data[..]) else {
+            continue;
+        };
+        if &s.validator != validator {
+            continue;
+        }
+        let pda = Pubkey::create_program_address(
+            &[b"stake", validator.as_ref(), &[s.bump]],
+            &crate::ID,
+        )
+        .map_err(|_| KvaliError::InvalidStakeAccount)?;
+        require_keys_eq!(pda, *acc.key, KvaliError::InvalidStakeAccount);
+        drop(data);
+        return Ok(Some((acc, s)));
+    }
+    Ok(None)
+}
+
+fn save_stake(acc: &AccountInfo, s: &ValidatorStake) -> Result<()> {
+    let mut data = acc.try_borrow_mut_data()?;
+    s.try_serialize(&mut &mut data[..])
+}
+
+/// Reads the co-signer record appended after the Job fields. Jobs posted
+/// before the staking upgrade have no record (empty list).
+fn read_cosign_record(job: &AccountInfo) -> Result<Vec<(Pubkey, u8)>> {
+    if job.data_len() < JOB_BASE_LEN + JOB_RECORD_SPACE {
+        return Ok(Vec::new());
+    }
+    let data = job.try_borrow_data()?;
+    let n = (data[JOB_BASE_LEN] as usize).min(MAX_VALIDATORS);
+    let mut out = Vec::with_capacity(n);
+    for i in 0..n {
+        let o = JOB_BASE_LEN + 1 + i * COSIGN_ENTRY_LEN;
+        let key = Pubkey::try_from(&data[o..o + 32]).unwrap();
+        out.push((key, data[o + 32]));
+    }
+    Ok(out)
+}
+
+fn write_cosign_record(job: &AccountInfo, record: &[(Pubkey, u8)]) -> Result<()> {
+    require!(record.len() <= MAX_VALIDATORS, KvaliError::InvalidValidatorSet);
+    let mut data = job.try_borrow_mut_data()?;
+    data[JOB_BASE_LEN] = record.len() as u8;
+    for (i, (k, f)) in record.iter().enumerate() {
+        let o = JOB_BASE_LEN + 1 + i * COSIGN_ENTRY_LEN;
+        data[o..o + 32].copy_from_slice(k.as_ref());
+        data[o + 32] = *f;
+    }
+    Ok(())
 }
 
 #[derive(Clone, Copy, PartialEq)]
@@ -651,6 +1061,40 @@ pub struct Config {
     /// 60 s demo). Bounded by MIN/MAX_CHALLENGE_WINDOW_SECS.
     pub challenge_window_secs: i64,
     pub bump: u8,
+    // ---- staking (added by `migrate_config` on pre-staking deployments) ----
+    /// Minimum active stake (USDC base units) a validator needs to co-sign a
+    /// proof. 0 = no stake required (pre-staking behaviour).
+    pub min_validator_stake: u64,
+    /// Seconds between `request_unstake` and `withdraw_stake` (7 days real,
+    /// 60 s demo).
+    pub unstake_cooldown_secs: i64,
+    /// Share of a co-signer's stake slashed when a panel rules against the
+    /// proof (basis points, 1..=10_000).
+    pub slash_bps: u16,
+}
+
+/// A validator's USDC stake, held in the program's stake vault
+/// (`["stake_vault"]`, owned by the Config PDA).
+#[account]
+#[derive(InitSpace)]
+pub struct ValidatorStake {
+    pub validator: Pubkey,
+    /// USDC base units currently staked (after any slashing).
+    pub amount: u64,
+    /// 0 = not unstaking; otherwise when `request_unstake` was called.
+    pub unstake_requested_at: i64,
+    /// Set by a panel ruling against a proof this validator co-signed. A
+    /// slashed stake never counts for co-signing again.
+    pub slashed: bool,
+    /// Co-signed proofs not yet finally settled; withdrawal needs 0.
+    pub open_cosigns: u16,
+    pub proofs_cosigned: u32,
+    pub times_slashed: u32,
+    /// Lifetime deposits and lifetime slashed amount (USDC base units).
+    pub total_staked: u64,
+    pub total_slashed: u64,
+    pub created_at: i64,
+    pub bump: u8,
 }
 
 #[account]
@@ -774,6 +1218,83 @@ pub struct SetValidators<'info> {
 }
 
 #[derive(Accounts)]
+pub struct MigrateConfig<'info> {
+    #[account(mut)]
+    pub admin: Signer<'info>,
+    /// CHECK: the pre-staking Config cannot be deserialised with the current
+    /// layout; owner, discriminator, size and admin are checked by hand.
+    #[account(mut, seeds = [b"config"], bump)]
+    pub config: UncheckedAccount<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct StakeValidator<'info> {
+    #[account(mut)]
+    pub validator: Signer<'info>,
+    #[account(seeds = [b"config"], bump = config.bump)]
+    pub config: Box<Account<'info, Config>>,
+    #[account(
+        init_if_needed, payer = validator, space = 8 + ValidatorStake::INIT_SPACE,
+        seeds = [b"stake", validator.key().as_ref()], bump
+    )]
+    pub stake: Box<Account<'info, ValidatorStake>>,
+    #[account(
+        init_if_needed, payer = validator,
+        token::mint = usdc_mint, token::authority = config, token::token_program = token_program,
+        seeds = [b"stake_vault"], bump
+    )]
+    pub stake_vault: Box<InterfaceAccount<'info, TokenAccount>>,
+    #[account(address = config.usdc_mint)]
+    pub usdc_mint: Box<InterfaceAccount<'info, Mint>>,
+    #[account(mut, token::mint = usdc_mint, token::authority = validator)]
+    pub validator_token: Box<InterfaceAccount<'info, TokenAccount>>,
+    pub token_program: Interface<'info, TokenInterface>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
+pub struct RequestUnstake<'info> {
+    pub validator: Signer<'info>,
+    #[account(seeds = [b"config"], bump = config.bump)]
+    pub config: Account<'info, Config>,
+    #[account(
+        mut, seeds = [b"stake", validator.key().as_ref()], bump = stake.bump,
+        has_one = validator @ KvaliError::Unauthorized
+    )]
+    pub stake: Account<'info, ValidatorStake>,
+}
+
+#[derive(Accounts)]
+pub struct WithdrawStake<'info> {
+    pub validator: Signer<'info>,
+    #[account(seeds = [b"config"], bump = config.bump)]
+    pub config: Box<Account<'info, Config>>,
+    #[account(
+        mut, seeds = [b"stake", validator.key().as_ref()], bump = stake.bump,
+        has_one = validator @ KvaliError::Unauthorized
+    )]
+    pub stake: Box<Account<'info, ValidatorStake>>,
+    #[account(mut, seeds = [b"stake_vault"], bump)]
+    pub stake_vault: Box<InterfaceAccount<'info, TokenAccount>>,
+    #[account(address = config.usdc_mint)]
+    pub usdc_mint: Box<InterfaceAccount<'info, Mint>>,
+    #[account(mut, token::mint = usdc_mint, token::authority = validator)]
+    pub validator_token: Box<InterfaceAccount<'info, TokenAccount>>,
+    pub token_program: Interface<'info, TokenInterface>,
+}
+
+/// Permissionless: anyone may release a finished job's stake lock.
+#[derive(Accounts)]
+pub struct ReleaseCosign<'info> {
+    pub caller: Signer<'info>,
+    #[account(mut)]
+    pub job: Account<'info, Job>,
+    #[account(mut, seeds = [b"stake", stake.validator.as_ref()], bump = stake.bump)]
+    pub stake: Account<'info, ValidatorStake>,
+}
+
+#[derive(Accounts)]
 pub struct RegisterOperator<'info> {
     #[account(mut)]
     pub authority: Signer<'info>,
@@ -802,7 +1323,7 @@ pub struct PostJob<'info> {
     )]
     pub farmer_profile: Account<'info, FarmerProfile>,
     #[account(
-        init, payer = farmer, space = 8 + Job::INIT_SPACE,
+        init, payer = farmer, space = JOB_BASE_LEN + JOB_RECORD_SPACE,
         seeds = [b"job", farmer.key().as_ref(), &job_id.to_le_bytes()], bump
     )]
     pub job: Account<'info, Job>,
@@ -870,7 +1391,9 @@ pub struct AcceptJob<'info> {
     pub token_program: Interface<'info, TokenInterface>,
 }
 
-/// Remaining accounts: the co-signing data validators (as signers).
+/// Remaining accounts: the co-signing data validators (as signers), plus
+/// optionally each one's ValidatorStake PDA (writable; required when
+/// `min_validator_stake` > 0).
 #[derive(Accounts)]
 pub struct SubmitProof<'info> {
     pub authority: Signer<'info>,
@@ -898,7 +1421,9 @@ pub struct Challenge<'info> {
 
 /// Shared by every instruction that empties the vault. Who may call is
 /// checked inside each handler; where the money may go is fixed here.
-/// Remaining accounts (resolve_challenge only): the ruling field validators.
+/// Remaining accounts (resolve_challenge only): the ruling field validators
+/// (signers); if the proof had staked co-signers, their ValidatorStake PDAs
+/// (writable) and, when the challenge is upheld, the stake vault (writable).
 #[derive(Accounts)]
 pub struct Settle<'info> {
     pub caller: Signer<'info>,
@@ -925,6 +1450,65 @@ pub struct Settle<'info> {
     #[account(mut, address = config.validator_pool)]
     pub validator_pool_token: InterfaceAccount<'info, TokenAccount>,
     pub token_program: Interface<'info, TokenInterface>,
+}
+
+// ---------------------------------------------------------------------------
+// Events
+// ---------------------------------------------------------------------------
+
+#[event]
+pub struct ConfigMigrated {
+    pub old_len: u32,
+    pub new_len: u32,
+}
+
+#[event]
+pub struct StakingParamsSet {
+    pub min_validator_stake: u64,
+    pub unstake_cooldown_secs: i64,
+    pub slash_bps: u16,
+}
+
+#[event]
+pub struct ValidatorStaked {
+    pub validator: Pubkey,
+    pub amount: u64,
+    pub total: u64,
+}
+
+#[event]
+pub struct UnstakeRequested {
+    pub validator: Pubkey,
+    pub amount: u64,
+    pub available_at: i64,
+}
+
+#[event]
+pub struct StakeWithdrawn {
+    pub validator: Pubkey,
+    pub amount: u64,
+}
+
+#[event]
+pub struct ProofCosigned {
+    pub validator: Pubkey,
+    pub job: Pubkey,
+    pub stake: u64,
+}
+
+#[event]
+pub struct CosignReleased {
+    pub validator: Pubkey,
+    pub job: Pubkey,
+}
+
+#[event]
+pub struct ValidatorSlashed {
+    pub validator: Pubkey,
+    pub job: Pubkey,
+    pub farmer: Pubkey,
+    pub amount: u64,
+    pub remaining: u64,
 }
 
 #[error_code]
@@ -979,4 +1563,37 @@ pub enum KvaliError {
     OperatorIsFarmer,
     #[msg("Arithmetic overflow")]
     MathOverflow,
+    // ---- staking (appended: existing error codes are unchanged) ----
+    #[msg("Config account is not a pre-staking Config of this program")]
+    InvalidConfigAccount,
+    #[msg("Unstake cooldown must be 60 s - 365 days and slash share 1 - 10000 bps")]
+    InvalidStakingParams,
+    #[msg("This validator's stake was slashed; it can no longer stake or co-sign")]
+    StakeSlashed,
+    #[msg("Unstaking is in progress; withdraw first")]
+    UnstakePending,
+    #[msg("Nothing is staked")]
+    NothingStaked,
+    #[msg("Unstake was already requested")]
+    UnstakeAlreadyRequested,
+    #[msg("Request unstake first")]
+    UnstakeNotRequested,
+    #[msg("Unstake cooldown has not passed yet")]
+    CooldownNotElapsed,
+    #[msg("Stake is locked by co-signed proofs that are not finally settled")]
+    StakeLockedByOpenJobs,
+    #[msg("Not enough co-signers with an active stake of at least the minimum")]
+    ValidatorStakeTooLow,
+    #[msg("Job was posted before staking and cannot record co-signers; staking is required")]
+    JobPredatesStaking,
+    #[msg("Validator stake account must be writable")]
+    StakeAccountNotWritable,
+    #[msg("Account is not this validator's stake PDA")]
+    InvalidStakeAccount,
+    #[msg("A staked co-signer's stake account is missing")]
+    MissingStakeAccount,
+    #[msg("The stake vault account is missing")]
+    MissingStakeVault,
+    #[msg("No open stake lock for this validator on this job")]
+    NothingToRelease,
 }
