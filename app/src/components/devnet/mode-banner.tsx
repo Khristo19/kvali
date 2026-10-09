@@ -37,7 +37,9 @@ export function ModeBanner() {
       : "Simulated demo: no real money and no chain. Switch to Devnet to send real test transactions.";
     if (s.fellBack) tone = "error";
   } else if (s.status === "connecting" || s.status === "idle") {
-    text = "Connecting to Solana devnet…";
+    text = s.rpcBusy ? "Solana devnet is busy — retrying…" : "Connecting to Solana devnet…";
+  } else if (s.rpcBusy) {
+    text = "Solana devnet is busy — retrying. Showing the last known state.";
   } else {
     text = "Devnet: real Solana transactions with test USDC. Demo keys are public.";
     tone = "ok";

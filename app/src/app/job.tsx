@@ -1,6 +1,7 @@
 import { router, useLocalSearchParams } from "expo-router";
 
 import { LiveLeft } from "@/components/live-clock";
+import { friendlyMessage } from "@/devnet/rpc";
 import { ChainGate } from "@/components/chain-gate";
 
 import { describeJob, jobRef } from "@/session/info";
@@ -69,7 +70,7 @@ export default function JobStory() {
       setError(null);
       await fn();
     } catch (e) {
-      setError(e instanceof Error ? e.message : "Something went wrong.");
+      setError(friendlyMessage(e instanceof Error ? e.message : "Something went wrong."));
     }
   };
 

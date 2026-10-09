@@ -121,7 +121,7 @@ export function ProofCard({
               kind="danger"
               disabled={text.trim().length < 3}
               onPress={() => {
-                onRefuse(text.trim());
+                onRefuse(v.pass ? `Reason: ${text.trim()}` : `Auto-check: ${failing.map((c) => c.name).join(", ")} failed · Reason: ${text.trim()}`);
                 setAsking(false);
                 setText("");
               }}
@@ -134,7 +134,7 @@ export function ProofCard({
             kind="danger"
             disabled={!!locked}
             onPress={() => {
-              setText(v.pass ? "" : failing.map((c) => c.name).join(", ") + " failed");
+              setText("");
               setAsking(true);
             }}
           />

@@ -22,6 +22,7 @@ import {
 } from "@/components/ui";
 import { SettleNow } from "@/components/settle-now";
 import { LiveLeft } from "@/components/live-clock";
+import { friendlyMessage } from "@/devnet/rpc";
 import { refreshOpenJobs } from "@/devnet/bridge";
 import type { ChainJob } from "@/devnet/client";
 import { useDevnetState } from "@/devnet/mode";
@@ -111,7 +112,7 @@ function plainError(e: unknown): string {
     };
     return rules[e.code] ?? `The program refused this step (${e.code}): ${e.message}`;
   }
-  if (e instanceof Error && e.name === "ChainError") return e.message;
+  if (e instanceof Error) return friendlyMessage(e.message);
   return "Something went wrong. Try again.";
 }
 

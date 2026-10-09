@@ -163,7 +163,7 @@ export function resetSessionStorage() {
   state = null;
   pending = null;
   try {
-    ["kvali.session.v1", "kvali.pending.v1", DKEY, "kvali.certsig.v1"].forEach((k) => globalThis.localStorage?.removeItem(k));
+    ["kvali.session.v1", "kvali.pending.v1", DKEY, "kvali.certsig.v1", "kvali.jobcache.v1"].forEach((k) => globalThis.localStorage?.removeItem(k));
   } catch {
     /* ignore */
   }

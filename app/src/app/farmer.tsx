@@ -42,7 +42,7 @@ export default function Farmer() {
     <RoleShell
       role="farmer"
       title={TITLES[tab]}
-      subtitle={tab === "" ? `${fieldsText}${job ? ` · Job: ${job.state}` : " · no job yet"}` : tab === "post" ? fieldsText : undefined}
+      subtitle={tab === "" ? `${fieldsText}${account ? (job ? ` · Job: ${job.state}` : " · no job yet") : ""}` : tab === "post" ? fieldsText : undefined}
     >
       <SimBanner />
       <ChainGate>

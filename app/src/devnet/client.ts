@@ -9,9 +9,10 @@ import { sha256Hex } from "@/geo/sha256";
 import deploy from "./deploy.json";
 import idl from "./idl.json";
 import { keyFor, keys } from "./keys";
+import { friendlyMessage, rpcFetch } from "./rpc";
 
 export const RPC_URL = "https://api.devnet.solana.com";
-export const connection = new Connection(RPC_URL, "confirmed");
+export const connection = new Connection(RPC_URL, { commitment: "confirmed", fetch: rpcFetch as unknown as typeof fetch, disableRetryOnRateLimit: true });
 export const explorerTx = (sig: string) => `https://explorer.solana.com/tx/${sig}?cluster=devnet`;
 export const explorerAddr = (a: string) => `https://explorer.solana.com/address/${a}?cluster=devnet`;
 
@@ -68,21 +69,29 @@ function toChainError(e: unknown, logs?: string[] | null, sig: string | null = n
   const m = text.match(ERR_RE);
   if (m) return new ChainError(m[1], `${m[1]}: ${m[3].replace(/\.$/, "")}`, sig);
   if (/insufficient funds|0x1\b/i.test(text)) return new ChainError("InsufficientFunds", "Not enough funds for this step (devnet SOL or test USDC).", sig);
-  return new ChainError("rpc", (e as Error)?.message ?? "Devnet request failed.", sig);
+  return new ChainError("rpc", friendlyMessage((e as Error)?.message ?? "Devnet request failed."), sig);
 }
 
 // ---- sending --------------------------------------------------------------
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
 async function confirm(sig: string, lastValid: number) {
+  let polls = 0;
+  const giveUp = Date.now() + 150_000;
   for (;;) {
-    const st = (await connection.getSignatureStatuses([sig], { searchTransactionHistory: false })).value[0];
-    if (st) {
-      if (st.err) return st.err;
-      if (st.confirmationStatus === "confirmed" || st.confirmationStatus === "finalized") return null;
+    try {
+      const st = (await connection.getSignatureStatuses([sig], { searchTransactionHistory: false })).value[0];
+      if (st) {
+        if (st.err) return st.err;
+        if (st.confirmationStatus === "confirmed" || st.confirmationStatus === "finalized") return null;
+      }
+      if (++polls % 4 === 0 && (await connection.getBlockHeight("confirmed")) > lastValid) throw new ChainError("expired", "The transaction was not confirmed in time. Try again.", sig);
+    } catch (e) {
+      if (e instanceof ChainError) throw e;
+      // the node is rate-limiting us: the transaction may well have landed, keep asking for a while
+      if (Date.now() > giveUp) throw new ChainError("rpc", friendlyMessage((e as Error).message), sig);
     }
-    if ((await connection.getBlockHeight("confirmed")) > lastValid) throw new ChainError("expired", "The transaction was not confirmed in time. Try again.", sig);
-    await sleep(700);
+    await sleep(1200);
   }
 }
 
@@ -239,7 +248,7 @@ export async function readSnapshot(chainJobId: number | bigint | null): Promise<
 }
 
 /** Quick reachability probe for the mode switch. */
-export async function probe(timeoutMs = 6000): Promise<boolean> {
+export async function probe(timeoutMs = 30000): Promise<boolean> {
   try {
     await Promise.race([connection.getLatestBlockhash("confirmed"), sleep(timeoutMs).then(() => Promise.reject(new Error("timeout")))]);
     return true;

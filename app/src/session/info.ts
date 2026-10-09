@@ -19,9 +19,11 @@ export function jobRef(id: number, session: Session | null): string {
 }
 
 export function describeJob(j: JobLike, session: Session | null) {
-  const sess = session && session.fieldHash === j.fieldHash ? session : null;
+  // Only the session job gets the session's details: another visitor's job on the same field is not "mine".
+  const isSession = !!session && (j.id === SAMPLE_JOB_ID || j.id === session.chainJobId);
+  const sess = isSession ? session : null;
   const f = fieldByHash(j.fieldHash);
-  const mine = !!sess || j.id === SAMPLE_JOB_ID;
+  const mine = isSession;
   return {
     ref: jobRef(j.id, session),
     field: f?.name ?? sess?.fieldName ?? "Field",

@@ -36,6 +36,10 @@ export interface DevnetState {
   restoreNote: string | null;
   /** Progress of the burner-wallet setup (null when idle). */
   walletNote: string | null;
+  /** The RPC layer is waiting out a rate limit (HTTP 429) and retrying. */
+  rpcBusy: boolean;
+  /** The last known job was shown from local storage while the chain is being read. */
+  cachedReady: boolean;
   /** True for a few seconds after the wallet was funded (shows the check mark). */
   walletOk: boolean;
   walletReadyAt: number;
@@ -54,6 +58,8 @@ let state: DevnetState = {
   heldJob: null,
   restoreNote: null,
   walletNote: null,
+  rpcBusy: false,
+  cachedReady: false,
   walletOk: false,
   walletReadyAt: 0,
 };

@@ -8,6 +8,7 @@ import deploy from "./deploy.json";
 import * as chain from "./client";
 import { ensureWallet } from "./provision";
 import { keys } from "./keys";
+import { friendlyMessage } from "./rpc";
 import { getDevnetState, setDevnetState } from "./mode";
 import { addSessionTx, getSession, dismissJob, isDismissed, loadPending, loadSession, newSession, patchSession, setPending, setSession, type Session } from "@/session/store";
 
@@ -27,10 +28,12 @@ async function track<T>(label: string, fn: () => Promise<{ sig: string; value: T
     setDevnetState({ last: { label, sig, ok: true, at: Date.now() } });
     return value;
   } catch (e) {
-    if (e instanceof chain.ChainError) {
+    if (e instanceof chain.ChainError && e.code !== "rpc" && e.code !== "expired") {
       setDevnetState({ last: { label, sig: e.sig, ok: false, error: e.message, at: Date.now() } });
       if (e.sig) e.message = `The program refused it (${e.message}). Transaction: ${chain.explorerTx(e.sig)}`;
       else e.message = `The program refused it (${e.message}).`;
+    } else if (e instanceof Error) {
+      e.message = friendlyMessage(e.message); // rate limits and network trouble: plain words, never JSON
     }
     throw e;
   } finally {
@@ -57,6 +60,7 @@ export async function syncChain(engine: Engine) {
     engine.chainPatchJob(jobId, { proof: { windowEndsAt: snap.job.challengeDeadline, submittedAt: snap.job.challengeDeadline - win } });
   }
   setDevnetState({ snapshot: snap });
+  saveJobCache(snap, balances);
   return snap;
 }
 
@@ -130,6 +134,12 @@ async function chainTxs(cj: chain.ChainJob, s: Session) {
   return merged;
 }
 
+/** Take a job out of the visible open list at once (it was just accepted); the next read confirms it. */
+function dropOpenJob(chainJobId: number | null) {
+  const cur = getDevnetState().openJobs;
+  if (chainJobId !== null && cur) setDevnetState({ openJobs: cur.filter((j) => j.chainJobId !== chainJobId) });
+}
+
 /** Read the open jobs on chain and the job the operator still holds. */
 export async function refreshOpenJobs() {
   try {
@@ -153,8 +163,6 @@ export async function adoptChainJob(engine: Engine, cj: chain.ChainJob) {
   const txs = await chainTxs(cj, getSession()!);
   replay(engine, cj, getSession()!, txs);
 }
-
-const withTimeout = <T,>(p: Promise<T>, ms: number): Promise<T> => Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error("The devnet node is slow to answer.")), ms))]);
 
 /** Give the certificate step its real signature (saved when this browser's operator wallet was certified). */
 export function retagCertificate(engine: Engine) {
@@ -194,27 +202,78 @@ async function restoreSession(engine: Engine) {
 }
 
 /** Probe devnet, restore this browser's job from the chain, then replace the seeded balances with real ones. */
-export async function bootDevnet(engine: Engine): Promise<boolean> {
-  setDevnetState({ status: "connecting" });
-  const ok = await chain.probe();
-  if (!ok) {
-    setDevnetState({ status: "unreachable", fellBack: true, mode: "sim" });
+// ---- last known job, so a reload or role switch shows the job at once while the chain is read in the background ----
+const CACHE_KEY = "kvali.jobcache.v1";
+const enc = (v: unknown) => JSON.stringify(v, (_k, x) => (typeof x === "bigint" ? { __b: x.toString() } : x));
+const dec = (t: string) => JSON.parse(t, (_k, x) => (x && typeof x === "object" && "__b" in x ? BigInt((x as { __b: string }).__b) : x));
+
+function saveJobCache(snap: chain.ChainSnapshot, balances: Record<string, bigint>) {
+  try {
+    if (snap.job) globalThis.localStorage?.setItem(CACHE_KEY, enc({ job: snap.job, balances }));
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Rebuild the mirror from the cache without any network. Returns true if a job was shown. */
+function applyJobCache(engine: Engine): boolean {
+  try {
+    const s = loadSession();
+    const raw = globalThis.localStorage?.getItem(CACHE_KEY);
+    if (!s || !raw) return false;
+    const c = dec(raw) as { job: chain.ChainJob; balances: Record<string, bigint> };
+    if (c.job.chainJobId !== s.chainJobId) return false;
+    chain.setJobFarmer(s.farmer);
+    setDevnetState({ chainJobId: s.chainJobId });
+    replay(engine, c.job, s, s.txs);
+    engine.chainSetBalances(c.balances);
+    return true;
+  } catch {
     return false;
   }
+}
+
+let restoreOk = false;
+
+/** Probe devnet, show the last known job at once, restore from the chain, then read balances. Never falls back to the simulation. */
+export async function bootDevnet(engine: Engine): Promise<boolean> {
+  setDevnetState({ status: "connecting" });
+  loadPending();
+  if (applyJobCache(engine)) setDevnetState({ cachedReady: true });
+  // A rate-limited or slow node is not "unreachable": keep trying quietly (the RPC layer shows "devnet is busy").
+  for (;;) {
+    if (await chain.probe()) break;
+    await new Promise((r) => setTimeout(r, 6000));
+  }
   try {
-    await withTimeout(restoreSession(engine), 25000);
+    await restoreSession(engine);
+    restoreOk = true;
   } catch (e) {
-    setDevnetState({ restoreNote: `Could not read your job from the chain yet (${(e as Error).message}). Reload the page to try again.` });
+    setDevnetState({ restoreNote: `Still reading your job from the chain (${friendlyMessage((e as Error).message)}).` });
   }
   retagCertificate(engine);
   try {
-    await withTimeout(syncChain(engine), 10000);
+    await syncChain(engine);
   } catch {
-    // Never leave the seeded (simulated) balances on screen in devnet mode: show zeros until the chain answers (re-read every 20 s).
-    engine.chainSetBalances({});
+    // Never leave the seeded (simulated) balances on screen in devnet mode; the poll below keeps trying.
+    if (!getDevnetState().cachedReady) engine.chainSetBalances({});
   }
-  setDevnetState({ status: "ready", fellBack: false });
+  setDevnetState({ status: "ready", fellBack: false, cachedReady: false });
   return true;
+}
+
+/** Periodic refresh: finish a restore that failed earlier, then re-read balances and the job. Safe to call while the node is busy. */
+export async function pollChain(engine: Engine) {
+  if (!restoreOk) {
+    try {
+      await restoreSession(engine);
+      restoreOk = true;
+      setDevnetState({ restoreNote: null });
+    } catch {
+      return;
+    }
+  }
+  await syncChain(engine);
 }
 
 export interface DevActions {
@@ -290,6 +349,7 @@ export function devnetActions(engine: Engine): DevActions {
         const j = engine.getState().jobs[jobId];
         const sig = await chain.acceptJob(chainId(), j.amount);
         engine.acceptJob(WALLETS.operator, jobId, DRONE.hash, j.amount);
+        dropOpenJob(getDevnetState().chainJobId);
         retag("acceptJob", jobId, sig, await blockTime(sig));
         await refresh();
         return { sig, value: undefined };
@@ -384,6 +444,11 @@ export function devnetActions(engine: Engine): DevActions {
       if (cur) dismissJob(cur.chainJobId);
       setSession(null);
       setPending(null);
+      try {
+        globalThis.localStorage?.removeItem(CACHE_KEY);
+      } catch {
+        /* ignore */
+      }
       engine.chainResetJob(jobId);
       setDevnetState({ chainJobId: null });
       await refresh();

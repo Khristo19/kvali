@@ -7,7 +7,7 @@ import { colors, radius, type } from "@/theme";
 /** In devnet mode, show a fixed-height placeholder until the chain has been read, so no simulated balances, certificates or jobs flash on screen. */
 export function ChainGate({ children }: { children: ReactNode }) {
   const s = useDevnetState();
-  const ready = s.mode !== "devnet" || s.status === "ready";
+  const ready = s.mode !== "devnet" || s.status === "ready" || s.cachedReady;
   if (ready) return <>{children}</>;
   return (
     <View style={styles.box} accessibilityLiveRegion="polite">

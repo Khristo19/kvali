@@ -4,6 +4,7 @@
 import { useMemo } from "react";
 
 import { notify } from "@/components/ui/notice";
+import { friendlyMessage } from "@/devnet/rpc";
 import { devnetActions, type DevActions } from "@/devnet/bridge";
 import { useMode } from "@/devnet/mode";
 import type { Engine } from "./engine";
@@ -35,7 +36,7 @@ function simActions(e: Engine): Actions {
 
 function plain(e: unknown): string {
   if (e instanceof EngineError) return `The program refused it (${e.code}): ${e.message}`;
-  return e instanceof Error ? e.message : "Something went wrong. Try again.";
+  return friendlyMessage(e instanceof Error ? e.message : "Something went wrong. Try again.");
 }
 
 const OK: Record<keyof Actions, string> = {
