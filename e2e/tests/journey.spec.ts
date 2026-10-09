@@ -134,7 +134,7 @@ test("Happy path: farmer posts, operator flies, the bots co-sign by themselves, 
     const released = await page.evaluate((k) => Object.values(JSON.parse(localStorage.getItem(k) ?? "{}").released ?? {}) as string[], key);
     await expectFinalized(released);
     await go(page, "validator");
-    for (const seat of ["operator-side", "neutral"]) await expect(tid(page, `stake-cosigned-${seat}`)).toContainText(/Proofs co-signed: [1-9]/, { timeout: 60_000 });
+    for (const seat of ["operator-side", "farmer-side"]) await expect(tid(page, `stake-cosigned-${seat}`)).toContainText(/Proofs co-signed: [1-9]/, { timeout: 60_000 });
   });
 
   await test.step("13. State survives a reload", async () => {

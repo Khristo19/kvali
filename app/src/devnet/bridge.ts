@@ -311,7 +311,7 @@ export async function releaseCosigns(): Promise<void> {
     const done: Record<string, string> = {};
     let failed = false;
     for (const id of ids) {
-      if (!stakes[id] || stakes[id]!.openCosigns === 0) continue;
+      if (!stakes[id]) continue; // no stake account = never co-signed with a stake
       try {
         done[id] = await chain.releaseCosign(s.chainJobId, id);
       } catch (e) {
