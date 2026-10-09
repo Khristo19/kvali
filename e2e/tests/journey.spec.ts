@@ -129,12 +129,15 @@ test("Happy path: farmer posts, operator flies, the bots co-sign by themselves, 
   await test.step("12b. After settle the app freed the co-signers' stake locks (release_cosign)", async () => {
     const key = lsKey(baseURL, "kvali.session.v1");
     await expect
-      .poll(async () => page.evaluate((k) => Object.keys((JSON.parse(localStorage.getItem(k) ?? "{}").released ?? {}) as object).length, key), { timeout: 180_000, intervals: [3000] })
-      .toBeGreaterThanOrEqual(2);
+      .poll(async () => page.evaluate((k) => { const r = JSON.parse(localStorage.getItem(k) ?? "{}").released; return r ? Object.keys(r as object).length : -1; }, key), { timeout: 180_000, intervals: [3000] })
+      .toBeGreaterThanOrEqual(0); // a page reload can interrupt the releases half way: the next page finishes them, so only the total on chain counts
     const released = await page.evaluate((k) => Object.values(JSON.parse(localStorage.getItem(k) ?? "{}").released ?? {}) as string[], key);
     await expectFinalized(released);
     await go(page, "validator");
-    for (const seat of ["operator-side", "farmer-side"]) await expect(tid(page, `stake-cosigned-${seat}`)).toContainText(/Proofs co-signed: [1-9]/, { timeout: 60_000 });
+    for (const seat of ["operator-side", "farmer-side"]) {
+      await expect(tid(page, `stake-cosigned-${seat}`)).toContainText(/Proofs co-signed: [1-9]/, { timeout: 60_000 });
+      await expect(tid(page, `stake-open-${seat}`)).toHaveText("Open co-signs: 0", { timeout: 120_000 });
+    }
   });
 
   await test.step("13. State survives a reload", async () => {
