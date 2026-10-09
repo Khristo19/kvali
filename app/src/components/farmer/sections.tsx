@@ -70,7 +70,7 @@ export function PostJobCard() {
     return (
       <Card>
         <CardTitle>Your current job</CardTitle>
-        <Row label="Job" value={d.ref} sub={job.state} />
+        <Row testID="job-id" label="Job" value={d.ref} sub={job.state} />
         <Row label="Field" value={d.field} sub={`${haText(job.areaCha / 100)}${d.crop ? ` · ${d.crop}` : ""}`} />
         <Row label="Product" value={d.product} />
         <Row label="Target" value={litersPerHa(job.targetRateMlPerHa)} />
@@ -79,9 +79,9 @@ export function PostJobCard() {
           {job.payout ? `This job is finished (${job.state}).` : `${usdc(job.amount)} is held safely.`}
         </Text>
         {job.payout ? (
-          <Button label="Start a new job" onPress={() => void actions.newJob(JOB_ID).catch(() => undefined)} />
+          <Button testID="new-job" label="Start a new job" onPress={() => void actions.newJob(JOB_ID).catch(() => undefined)} />
         ) : job.state === "Posted" ? (
-          <Button label="Cancel this job and take the money back" kind="secondary" onPress={() => void actions.cancelJob(JOB_ID).catch(() => undefined)} />
+          <Button testID="cancel-job" label="Cancel this job and take the money back" kind="secondary" onPress={() => void actions.cancelJob(JOB_ID).catch(() => undefined)} />
         ) : job.state === "Accepted" ? (
           <>
             <LiveLeft
@@ -94,7 +94,7 @@ export function PostJobCard() {
                 </Text>
               )}
             />
-            <Button label="Release this job (after the deadline)" kind="secondary" disabled={!expired} hint="Available once the spray-by deadline has passed" onPress={() => void actions.reclaimExpired(JOB_ID).catch(() => undefined)} />
+            <Button testID="release-job" label="Release this job (after the deadline)" kind="secondary" disabled={!expired} hint="Available once the spray-by deadline has passed" onPress={() => void actions.reclaimExpired(JOB_ID).catch(() => undefined)} />
           </>
         ) : null}
         <ErrorText message={err} />
@@ -111,11 +111,11 @@ export function PostJobCard() {
       <Row label="Target" value={litersPerHa(sampleJob.targetRateMlPerHa)} />
       <Row label="Spray by" value={`${DEMO_DEADLINE_SECS / 60} minutes after posting (demo)`} />
       <Text style={type.body}>Your {usdc(SAMPLE_AMOUNT)} is held safely until the spraying is checked.</Text>
-      <Button label={`Post job and hold ${usdc(SAMPLE_AMOUNT)}`} onPress={post} disabled={!farmer} hint={farmer ? undefined : "Sign up as a farmer first"} />
+      <Button testID="post-job" label={`Post job and hold ${usdc(SAMPLE_AMOUNT)}`} onPress={post} disabled={!farmer} hint={farmer ? undefined : "Sign up as a farmer first"} />
       {farmer ? null : (
         <>
           <Text style={[type.body, { color: colors.accent, fontWeight: "600" }]}>Sign up as a farmer first: you need your own demo wallet to post a job.</Text>
-          <Button small kind="secondary" label="Sign up as a farmer" onPress={() => router.replace("/?role=farmer" as Href)} />
+          <Button testID="farmer-signup" small kind="secondary" label="Sign up as a farmer" onPress={() => router.replace("/?role=farmer" as Href)} />
         </>
       )}
       <ErrorText message={err} />
@@ -182,19 +182,19 @@ export function StatusCard() {
   const h = headline(job, ended ? 0 : 1);
   const counting = job.state === "ProofSubmitted" && !ended;
   return (
-    <Card>
+    <Card testID="job-status">
       <View style={styles.titleRow}>
         <View style={[styles.badge, !h.done && styles.badgeOpen]}>
           {h.done ? <Icon name="check" color={colors.card} size={18} /> : <View style={styles.badgeDot} />}
         </View>
-        <Text style={styles.statusTitle}>{h.title}</Text>
+        <Text testID="job-status-title" style={styles.statusTitle}>{h.title}</Text>
       </View>
       <Text style={type.body}>{h.text}</Text>
       {job.state === "Accepted" && pending?.refusal ? (
-        <Banner tone="error" text={`A validator refused the operator's record: ${pending.refusal}. The job stays open until the operator sends a new record.`} />
+        <Banner testID="refusal-banner" tone="error" text={`A validator refused the operator's record: ${pending.refusal}. The job stays open until the operator sends a new record.`} />
       ) : null}
       {job.state === "Accepted" && pending && !pending.refusal ? (
-        <Banner tone="info" text={`The operator sent a record. Validators are checking it (${pending.approvals.length} of 2 approvals).`} />
+        <Banner testID="record-pending-banner" tone="info" text={`The operator sent a record. Validators are checking it (${pending.approvals.length} of 2 approvals).`} />
       ) : null}
       {counting ? (
         <View style={styles.countdown}>
@@ -213,7 +213,7 @@ export function MoneyCard() {
     const bondBack = p.operator < job.bond ? p.operator : job.bond;
     const pay = p.operator - bondBack;
     return (
-      <Card style={styles.moneyCard}>
+      <Card testID="money-card" style={styles.moneyCard}>
         <BigNumber caption="Paid to the operator" value={usdc(pay)} sub={`${lari(pay)} · plus the operator's own ${usdc(bondBack)} bond returned`} />
         <View style={styles.lockTile}>
           <Icon name="lock" color={colors.green} size={26} />
@@ -320,7 +320,7 @@ export function ActionsCard() {
 
   return (
     <View style={styles.actions}>
-      {job.proof ? <Button label="See the proof" onPress={() => router.push("/job?from=farmer" as Href)} /> : null}
+      {job.proof ? <Button testID="see-proof" label="See the proof" onPress={() => router.push("/job?from=farmer" as Href)} /> : null}
       {job.state === "Challenged" ? (
         <Banner text={`You challenged this job and put up ${usdc(job.challenge?.bond ?? bond)} (${lariAmount(job.challenge?.bond ?? bond)}). A panel will decide.`} />
       ) : open && !confirm ? (
@@ -408,11 +408,11 @@ export function PayoutCard() {
     ["Validators", p.validators],
   ];
   return (
-    <Card>
+    <Card testID="payout-card">
       <CardTitle>{title}</CardTitle>
-      <Row label="Back to you (farmer)" value={usdc(p.farmer)} sub={p.farmer === 0n ? "paid in full: nothing to return" : lari(p.farmer)} />
-      {rows.map(([l, v]) => (
-        <Row key={l} label={l} value={usdc(v)} sub={lari(v)} />
+      <Row testID="payout-farmer" label="Back to you (farmer)" value={usdc(p.farmer)} sub={p.farmer === 0n ? "paid in full: nothing to return" : lari(p.farmer)} />
+      {rows.map(([l, v], i) => (
+        <Row key={l} testID={`payout-${["operator", "bond", "kvali", "validators"][i]}`} label={l} value={usdc(v)} sub={lari(v)} />
       ))}
     </Card>
   );
@@ -439,6 +439,7 @@ export function DemoControls() {
     <Card>
       <Pressable
         accessibilityRole="button"
+        testID="demo-controls-toggle"
         accessibilityLabel="Demo controls, presenter only"
         accessibilityState={{ expanded: open }}
         onPress={() => setOpen(!open)}
@@ -453,11 +454,11 @@ export function DemoControls() {
             (&ldquo;Demo: simulate the drone flight&rdquo;) and the Validator page. Not part of the real app.
           </Text>
           {!job ? <Text style={type.body}>Post a job first: these buttons need a job.</Text> : null}
-          <Button small label="Operator accepts the job" kind="secondary" disabled={!job || job.state !== "Posted"} onPress={() => run(() => actions.acceptJob(JOB_ID))} />
+          <Button testID="demo-accept" small label="Operator accepts the job" kind="secondary" disabled={!job || job.state !== "Posted"} onPress={() => run(() => actions.acceptJob(JOB_ID))} />
           {records.map((k) => (
-            <Button small key={k} label={`Operator submits record: ${k} (validators co-sign automatically)`} kind="secondary" disabled={!job || job.state !== "Accepted"} onPress={() => run(() => actions.submitRecord(k, JOB_ID))} />
+            <Button testID={`demo-submit-${k}`} small key={k} label={`Operator submits record: ${k} (validators co-sign automatically)`} kind="secondary" disabled={!job || job.state !== "Accepted"} onPress={() => run(() => actions.submitRecord(k, JOB_ID))} />
           ))}
-          <Button small label="Settle after window" kind="secondary" disabled={!job || job.state !== "ProofSubmitted"} onPress={() => run(() => actions.settle(WALLETS.farmer, JOB_ID))} />
+          <Button testID="demo-settle" small label="Settle after window" kind="secondary" disabled={!job || job.state !== "ProofSubmitted"} onPress={() => run(() => actions.settle(WALLETS.farmer, JOB_ID))} />
           <ErrorText message={err} />
         </>
       ) : null}

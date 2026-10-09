@@ -86,6 +86,7 @@ export default function Home() {
               return (
                 <Pressable
                   key={r.id}
+                  testID={`role-${r.id}`}
                   accessibilityRole="radio"
                   accessibilityState={{ selected: on, checked: on }}
                   accessibilityLabel={`${r.title}. ${r.desc}`}
@@ -109,7 +110,7 @@ export default function Home() {
           </View>
 
           {form ? (
-            <View style={styles.form} accessibilityLabel="Create demo account">
+            <View testID="signup-form" style={styles.form} accessibilityLabel="Create demo account">
               <Text style={styles.who}>Create your demo account</Text>
               <Text style={type.small}>
                 Role: {role.title}. Saved only in this browser, no password. {picked === "validator" ? "Validators use the public demo validator keys." : "A devnet wallet with test money is created in this browser for you."}
@@ -121,6 +122,7 @@ export default function Home() {
                 placeholder="e.g. Nino"
                 autoComplete="name"
                 accessibilityLabel="Your name"
+                testID="signup-name"
                 style={styles.input}
               />
               <Text style={type.label}>Email</Text>
@@ -132,6 +134,7 @@ export default function Home() {
                 autoCapitalize="none"
                 autoComplete="email"
                 accessibilityLabel="Email"
+                testID="signup-email"
                 onSubmitEditing={create}
                 style={styles.input}
               />
@@ -140,13 +143,14 @@ export default function Home() {
                   {err}
                 </Text>
               ) : null}
-              <Button label={`Create account and open ${role.title.toLowerCase()} page`} onPress={create} />
-              <Button label="Cancel" kind="secondary" small onPress={() => setForm(false)} />
+              <Button testID="signup-submit" label={`Create account and open ${role.title.toLowerCase()} page`} onPress={create} />
+              <Button testID="signup-cancel" label="Cancel" kind="secondary" small onPress={() => setForm(false)} />
             </View>
           ) : (
             <View style={styles.actions}>
-              <Button label="Continue with email" onPress={openForm} />
+              <Button testID="continue-email" label="Continue with email" onPress={openForm} />
               <Button
+                testID="connect-phantom"
                 label={phantom ? "Phantom: coming soon" : "Connect Phantom"}
                 kind="secondary"
                 disabled={phantom}
@@ -154,7 +158,7 @@ export default function Home() {
               />
               <View style={styles.slot}>
                 {phantom ? (
-                  <View style={styles.soonBox} accessibilityRole="alert">
+                  <View testID="phantom-soon" style={styles.soonBox} accessibilityRole="alert">
                     <Text style={[type.body, styles.soon]}>
                       Coming soon: Phantom wallet sign-in is not available yet. Please use &ldquo;Continue with email&rdquo;; it creates a demo wallet on Solana devnet for you.
                     </Text>
@@ -167,16 +171,16 @@ export default function Home() {
           )}
 
           <View style={styles.links}>
-            <Pressable accessibilityRole="link" onPress={() => router.push("/how-it-works")} style={styles.link}>
+            <Pressable testID="link-how-it-works" accessibilityRole="link" onPress={() => router.push("/how-it-works")} style={styles.link}>
               <Text style={styles.linkText}>How it works</Text>
             </Pressable>
-            <Pressable accessibilityRole="link" onPress={() => router.push("/job")} style={styles.link}>
+            <Pressable testID="link-job-story" accessibilityRole="link" onPress={() => router.push("/job")} style={styles.link}>
               <Text style={styles.linkText}>Job story</Text>
             </Pressable>
           </View>
 
           {accountList.length > 0 ? (
-            <View style={styles.signedIn}>
+            <View testID="signed-in-box" style={styles.signedIn}>
               <Text style={type.body}>
                 Signed in as: {accountList.map((a) => `${roleLabel(a.role)} ${a.name}`).join(" · ")}
               </Text>
@@ -185,8 +189,8 @@ export default function Home() {
                   <Text style={type.small}>
                     {roleLabel(account.role)}: {account.name}, address {shortAddr(addressFor(account.role))}
                   </Text>
-                  <Button label={`Open my ${roleLabel(account.role).toLowerCase()} page`} kind="secondary" small onPress={() => router.replace(roleHome(account.role) as Href)} />
-                  <Button label="Sign out (all roles)" kind="secondary" small onPress={() => signOut()} />
+                  <Button testID="open-my-page" label={`Open my ${roleLabel(account.role).toLowerCase()} page`} kind="secondary" small onPress={() => router.replace(roleHome(account.role) as Href)} />
+                  <Button testID="signout-all" label="Sign out (all roles)" kind="secondary" small onPress={() => signOut()} />
                 </>
               ) : (
                 <Text style={type.small}>Not signed in as {roleLabel(picked)} yet: continue with email below.</Text>

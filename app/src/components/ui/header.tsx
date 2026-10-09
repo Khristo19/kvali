@@ -29,15 +29,15 @@ export function ScreenHeader({
     <View style={styles.outer}>
     <View style={styles.row}>
       {onBack ? (
-        <Pressable accessibilityRole="button" accessibilityLabel="Back" onPress={onBack} style={styles.back}>
+        <Pressable testID="back" accessibilityRole="button" accessibilityLabel="Back" onPress={onBack} style={styles.back}>
           <Icon name="back" color={colors.ink} size={24} />
         </Pressable>
       ) : null}
       <View style={styles.titles}>
-        <Text accessibilityRole="header" numberOfLines={2} style={styles.title}>
+        <Text testID="page-title" accessibilityRole="header" numberOfLines={2} style={styles.title}>
           {title}
         </Text>
-        {subtitle ? <Text numberOfLines={2} style={styles.subtitle}>{subtitle}</Text> : null}
+        {subtitle ? <Text testID="page-subtitle" numberOfLines={2} style={styles.subtitle}>{subtitle}</Text> : null}
       </View>
     </View>
     {right ? <View style={styles.rightRow}>{right}</View> : null}

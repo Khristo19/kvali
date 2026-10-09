@@ -16,13 +16,13 @@ export function Toasts() {
         {s.walletNote ? (
           <View style={[styles.box, s.walletOk && styles.ok]}>
             {s.walletOk ? null : <ActivityIndicator color={colors.accent} />}
-            <Text style={[type.body, styles.text, s.walletOk && { color: colors.green }]}>{s.walletNote}</Text>
+            <Text testID="wallet-note" style={[type.body, styles.text, s.walletOk && { color: colors.green }]}>{s.walletNote}</Text>
           </View>
         ) : null}
         {s.busy ? (
           <View style={styles.box}>
             <ActivityIndicator color={colors.accent} />
-            <Text style={[type.body, styles.text]}>Sending to devnet: {s.busy}… (a few seconds)</Text>
+            <Text testID="busy-note" style={[type.body, styles.text]}>Sending to devnet: {s.busy}… (a few seconds)</Text>
           </View>
         ) : null}
         <NoticeBar />

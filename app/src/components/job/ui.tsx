@@ -9,8 +9,8 @@ import { explorerUrl, isSimulated, shortTx } from "./helpers";
 export { Button } from "@/components/ui/button";
 export { useTick } from "@/components/ui/use-tick";
 
-export function Chip({ label, tone = "green" }: { label: string; tone?: ChipTone }) {
-  return <StatusChip label={label} tone={tone} />;
+export function Chip({ label, tone = "green", testID }: { label: string; tone?: ChipTone; testID?: string }) {
+  return <StatusChip label={label} tone={tone} testID={testID} />;
 }
 
 /** Simulated ids are plain muted text; real signatures link to the devnet explorer. */
@@ -23,7 +23,7 @@ export function TxId({ tx }: { tx: string }) {
     );
   }
   return (
-    <ExtLink url={explorerUrl(tx)} label="Open transaction in Solana Explorer" style={[styles.tx, styles.link]}>
+    <ExtLink testID="tx-link" url={explorerUrl(tx)} label="Open transaction in Solana Explorer" style={[styles.tx, styles.link]}>
       {shortTx(tx)} (Explorer)
     </ExtLink>
   );

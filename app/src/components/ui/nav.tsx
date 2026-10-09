@@ -75,6 +75,7 @@ export function TabBar({ role, active }: { role: Role; active: number }) {
         return (
           <Pressable
             key={t.label}
+            testID={`nav-${t.key || "home"}`}
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
             accessibilityLabel={t.label}
@@ -113,6 +114,7 @@ export function SideNav({ role, active }: { role: Role; active: number }) {
         return (
           <Pressable
             key={t.label}
+            testID={`nav-${t.key || "home"}`}
             accessibilityRole="tab"
             accessibilityState={{ selected: on }}
             onPress={() => go(t.key)}
@@ -124,7 +126,7 @@ export function SideNav({ role, active }: { role: Role; active: number }) {
         );
       })}
       <View style={{ flex: 1 }} />
-      <Pressable accessibilityRole="link" onPress={() => router.replace("/")} style={styles.sideItem}>
+      <Pressable testID="nav-change-role" accessibilityRole="link" onPress={() => router.replace("/")} style={styles.sideItem}>
         <Icon name="back" color={colors.muted} size={22} />
         <Text style={[styles.sideText, { color: colors.muted }]}>Change role</Text>
       </Pressable>

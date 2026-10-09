@@ -3,8 +3,8 @@ import { StyleSheet, Text, View, type StyleProp, type ViewStyle } from "react-na
 
 import { colors, fonts, radius, space, type } from "@/theme";
 
-export function Card({ children, style }: { children: ReactNode; style?: StyleProp<ViewStyle> }) {
-  return <View style={[styles.card, style]}>{children}</View>;
+export function Card({ children, style, testID }: { children: ReactNode; style?: StyleProp<ViewStyle>; testID?: string }) {
+  return <View testID={testID} style={[styles.card, style]}>{children}</View>;
 }
 
 /** Card heading (Space Grotesk 18). */
@@ -17,9 +17,9 @@ export function CardTitle({ children }: { children: ReactNode }) {
 }
 
 /** Label on the left, value on the right; both wrap. `sub` is a smaller line under the value. */
-export function Row({ label, value, sub, bold }: { label: string; value: string; sub?: string; bold?: boolean }) {
+export function Row({ label, value, sub, bold, testID }: { label: string; value: string; sub?: string; bold?: boolean; testID?: string }) {
   return (
-    <View style={styles.row}>
+    <View style={styles.row} testID={testID}>
       <Text style={[styles.rowLabel, { flexShrink: 1 }]}>{label}</Text>
       <View style={styles.rowValueBox}>
         <Text style={[styles.rowValue, bold && styles.rowValueBold]}>{value}</Text>
@@ -85,19 +85,20 @@ export function BigNumber({
 export type ChipTone = "green" | "orange" | "muted" | "red";
 
 /** Rounded status badge. */
-export function StatusChip({ label, tone = "green" }: { label: string; tone?: ChipTone }) {
+export function StatusChip({ label, tone = "green", testID }: { label: string; tone?: ChipTone; testID?: string }) {
   const c = tone === "orange" ? colors.accent : tone === "muted" ? colors.muted : tone === "red" ? colors.error : colors.green;
   return (
-    <View style={[styles.chip, tone === "green" && { backgroundColor: colors.softGreen }]} accessibilityLabel={`State: ${label}`}>
+    <View testID={testID} style={[styles.chip, tone === "green" && { backgroundColor: colors.softGreen }]} accessibilityLabel={`State: ${label}`}>
       <Text style={[styles.chipText, { color: c }]}>{label}</Text>
     </View>
   );
 }
 
-export function Banner({ text, tone = "info" }: { text: string; tone?: "info" | "error" | "ok" }) {
+export function Banner({ text, tone = "info", testID }: { text: string; tone?: "info" | "error" | "ok"; testID?: string }) {
   const c = tone === "error" ? colors.error : tone === "ok" ? colors.green : colors.body;
   return (
     <View
+      testID={testID}
       accessibilityRole={tone === "error" ? "alert" : undefined}
       style={[styles.banner, tone === "info" && { backgroundColor: "#EFE8D2" }, tone === "ok" && { backgroundColor: colors.softGreen }, tone === "error" && { borderColor: colors.error, backgroundColor: colors.card }]}
     >

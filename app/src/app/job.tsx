@@ -43,7 +43,7 @@ function RoleLinks() {
       <View style={styles.linkRow}>
         {([["Farmer", "/farmer"], ["Drone operator", "/operator"], ["Validator", "/validator"], ["Home", "/"]] as const).map(([label, href]) => (
           <View key={label} style={{ flexGrow: 1, flexBasis: 140 }}>
-            <Button small kind="secondary" label={label} onPress={() => router.replace(href)} />
+            <Button testID={`job-open-${label === "Drone operator" ? "operator" : label.toLowerCase()}`} small kind="secondary" label={label} onPress={() => router.replace(href)} />
           </View>
         ))}
       </View>
@@ -116,8 +116,8 @@ export default function JobStory() {
       <ChainGate>
       <Card>
         <View style={styles.head}>
-          <Text style={type.heading}>Job {jobRef(job.id, session)}</Text>
-          <Chip label={job.state} tone={STATE_TONE[job.state]} />
+          <Text testID="job-ref" style={type.heading}>Job {jobRef(job.id, session)}</Text>
+          <Chip testID="job-state" label={job.state} tone={STATE_TONE[job.state]} />
         </View>
         <Row left="Field" right={`${describeJob(job, session).field}, ${hectares(job.areaCha)}`} />
         <Row left="Product" right={describeJob(job, session).product} />
@@ -130,7 +130,7 @@ export default function JobStory() {
       )}
       <SettleNow job={job} />
       {!ended && (job.state === "Posted" || job.state === "Accepted") && (
-        <Button label="Presenter: run the rest of the job automatically" onPress={runDemo} />
+        <Button testID="presenter-run-rest" label="Presenter: run the rest of the job automatically" onPress={runDemo} />
       )}
       {error && <Text style={styles.error}>{error}</Text>}
 

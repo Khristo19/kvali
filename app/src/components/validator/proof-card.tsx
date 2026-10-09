@@ -84,17 +84,18 @@ export function ProofCard({
         </Text>
       </View>
       <CheckList checks={v.checks} />
-      <Button small kind="secondary" label={flight ? "Hide flight vs field" : "See flight vs field"} onPress={() => setFlight(!flight)} />
+      <Button testID="flight-toggle" small kind="secondary" label={flight ? "Hide flight vs field" : "See flight vs field"} onPress={() => setFlight(!flight)} />
       {flight ? <FlightCard job={job} sampleKey={sampleKey} /> : null}
       <Text accessibilityLabel={`Recommendation: ${v.pass ? "Sign" : "Refuse"}`} style={[type.subheading, { color: v.pass ? colors.green : colors.error }]}>
         Recommend: {v.pass ? "SIGN" : "REFUSE"}
       </Text>
       {!v.pass && <Text style={type.body}>Do not sign: {failing.map((c) => c.name).join(", ")} failed.</Text>}
       <Text style={type.small}>2 of 3 signatures needed. Signed: {signed.length} of 3{names.length ? ` (${names.join(", ")})` : ""}</Text>
-      {refusal && <Text style={[type.body, { color: colors.error }]}>Refusal recorded ({seat.seat} seat): {refusal}</Text>}
+      {refusal && <Text testID="refusal-text" style={[type.body, { color: colors.error }]}>Refusal recorded ({seat.seat} seat): {refusal}</Text>}
       {locked ? <Text style={[type.body, { color: colors.accent, fontWeight: "600" }]}>{locked}</Text> : null}
       <View style={styles.actions}>
         <Button
+          testID="approve"
           label={mine ? "Signed by this seat" : "Approve — proof is good"}
           disabled={mine || !v.pass || !!locked}
           hint={locked ?? (!v.pass ? "Disabled because the full verdict fails" : undefined)}
@@ -105,7 +106,7 @@ export function ProofCard({
             <Text style={type.subheading}>Why do you refuse?</Text>
             <View style={styles.picks}>
               {QUICK_REASONS.map((q) => (
-                <Button small key={q} kind={text === q ? "primary" : "secondary"} label={q} onPress={() => setText(q)} />
+                <Button testID="refuse-quick" small key={q} kind={text === q ? "primary" : "secondary"} label={q} onPress={() => setText(q)} />
               ))}
             </View>
             <TextInput
@@ -113,10 +114,12 @@ export function ProofCard({
               onChangeText={setText}
               placeholder="Write the reason (a few words)"
               accessibilityLabel="Reason for refusing"
+              testID="refuse-reason"
               style={styles.input}
             />
             {!v.pass ? <Text style={type.small}>The checklist says: {reason}</Text> : null}
             <Button
+              testID="refuse-send"
               label="Send refusal"
               kind="danger"
               disabled={text.trim().length < 3}
@@ -130,6 +133,7 @@ export function ProofCard({
           </View>
         ) : (
           <Button
+            testID="refuse-open"
             label="Refuse and give a reason"
             kind="danger"
             disabled={!!locked}

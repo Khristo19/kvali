@@ -137,6 +137,7 @@ export default function ValidatorScreen() {
           {VALIDATORS.map((v) => (
             <Pressable
               key={v.id}
+              testID={`seat-${v.seat}`}
               accessibilityRole="radio"
               accessibilityLabel={`${v.label}, ${v.seat} seat`}
               accessibilityState={{ selected: v.id === seatId }}
@@ -208,6 +209,7 @@ export default function ValidatorScreen() {
             </Card>
           )}
           <Button
+            testID="practice-toggle"
             small
             kind="secondary"
             label={practice ? "Hide practice records" : "Show practice records (not on chain)"}
@@ -245,6 +247,7 @@ export default function ValidatorScreen() {
       {jobs.filter((j) => j.proof || j.payout).map((j) => (
         <View key={`done-${j.id}`} style={{ gap: 16 }}>
           <Banner
+            testID="validator-job-banner"
             tone="ok"
             text={
               j.state === "ProofSubmitted"

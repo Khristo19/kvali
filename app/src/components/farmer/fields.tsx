@@ -43,9 +43,9 @@ export function FieldRow({ field, selected, many }: { field: Field; selected: bo
       {field.origin ? <Text style={type.small}>Outline: OpenStreetMap ({OSM_ATTRIBUTION}). Demo field.</Text> : null}
       {many ? (
         selected ? (
-          <Text style={[type.body, { color: colors.green, fontWeight: "600" }]}>Used for the next job</Text>
+          <Text testID={`field-selected-${field.id}`} style={[type.body, { color: colors.green, fontWeight: "600" }]}>Used for the next job</Text>
         ) : (
-          <Button small kind="secondary" label="Use for the next job" onPress={() => selectField(field.id)} />
+          <Button testID={`use-field-${field.id}`} small kind="secondary" label="Use for the next job" onPress={() => selectField(field.id)} />
         )
       ) : null}
     </Card>
@@ -60,7 +60,7 @@ export function MyFields() {
       {fields.map((f) => (
         <FieldRow key={f.id} field={f} selected={f.id === selectedId} many={fields.length > 1} />
       ))}
-      <Button kind="secondary" label="Mark or add a field" onPress={() => router.push("/mark-field" as never)} />
+      <Button testID="mark-field" kind="secondary" label="Mark or add a field" onPress={() => router.push("/mark-field" as never)} />
     </>
   );
 }

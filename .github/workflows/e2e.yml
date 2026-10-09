@@ -1,0 +1,98 @@
+# End-to-end tests (Playwright, chromium) against the LIVE web demo. Runs in the cloud only, never on the laptop.
+# Primary check after every deploy; also runnable by hand (Actions > E2E (live demo) > Run workflow).
+name: E2E (live demo)
+
+on:
+  workflow_run:
+    workflows: ["Deploy web demo"]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Site to test (default: the live GitHub Pages demo)"
+        required: false
+        default: "https://khristo19.github.io/kvali/"
+
+permissions:
+  contents: read
+
+# One E2E run at a time: the journey uses the shared public devnet.
+concurrency:
+  group: e2e
+  cancel-in-progress: false
+
+env:
+  E2E_BASE_URL: ${{ inputs.base_url || 'https://khristo19.github.io/kvali/' }}
+
+jobs:
+  journey:
+    name: Journey + refusal (devnet, serial)
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    defaults:
+      run:
+        working-directory: e2e
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Run journey + refusal specs (one worker)
+        run: npx playwright test journey.spec.ts refusal.spec.ts --project=desktop --workers=1
+      - name: Summary
+        if: always()
+        run: node scripts/summary.mjs "Journey + refusal (devnet)" >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload report and traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-journey-report
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
+            e2e/report-json/
+          retention-days: 14
+          if-no-files-found: ignore
+
+  nav:
+    name: Navigation + layout (desktop and 390 px)
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: e2e
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - name: Run nav spec (desktop + mobile projects, parallel)
+        run: npx playwright test nav.spec.ts --workers=2
+      - name: Summary
+        if: always()
+        run: node scripts/summary.mjs "Navigation + layout" >> "$GITHUB_STEP_SUMMARY"
+      - name: Upload report and traces
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: e2e-nav-report
+          path: |
+            e2e/playwright-report/
+            e2e/test-results/
+            e2e/report-json/
+          retention-days: 14
+          if-no-files-found: ignore

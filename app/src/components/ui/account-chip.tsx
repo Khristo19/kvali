@@ -11,7 +11,7 @@ export function AccountChip({ role }: { role?: Role }) {
   const a = useAccount(role);
   if (!a) {
     return (
-      <Pressable accessibilityRole="link" onPress={() => router.replace((role ? `/?role=${role}` : "/") as Href)} style={styles.btn}>
+      <Pressable testID="chip-signup" accessibilityRole="link" onPress={() => router.replace((role ? `/?role=${role}` : "/") as Href)} style={styles.btn}>
         <Text style={styles.btnText}>{role ? (
           <>
             <Text {...({ dataSet: { kv: "chipwide" } } as object)}>Sign up as {roleLabel(role).toLowerCase()}</Text>
@@ -26,7 +26,7 @@ export function AccountChip({ role }: { role?: Role }) {
   return (
     <View style={styles.box} {...({ dataSet: { kv: "chip" } } as object)}>
       <View style={styles.who} {...({ dataSet: { kv: "chipwho" } } as object)}>
-        <Text style={styles.name} numberOfLines={1} accessibilityLabel={`Signed in as ${a.name}`}>
+        <Text testID="account-name" style={styles.name} numberOfLines={1} accessibilityLabel={`Signed in as ${a.name}`}>
           {a.name}
         </Text>
         <Text style={styles.sub} numberOfLines={1} {...({ dataSet: { kv: "chipsub" } } as object)}>
@@ -34,6 +34,7 @@ export function AccountChip({ role }: { role?: Role }) {
         </Text>
       </View>
       <Pressable
+        testID="signout-all"
         accessibilityRole="button"
         accessibilityLabel="Sign out (all roles)"
         onPress={() => {

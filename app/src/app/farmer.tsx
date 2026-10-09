@@ -48,10 +48,10 @@ export default function Farmer() {
       <ChainGate>
       {signedOut ? (
         <>
-          <Card>
+          <Card testID="signup-card">
             <CardTitle>Sign up as a farmer</CardTitle>
             <Text style={type.body}>Create a demo account to get your own devnet wallet and post a spray job. Meanwhile you can look at the fields below.</Text>
-            <Button label="Sign up as a farmer" onPress={() => router.replace("/?role=farmer" as Href)} />
+            <Button testID="farmer-signup" label="Sign up as a farmer" onPress={() => router.replace("/?role=farmer" as Href)} />
           </Card>
           <TwoUp>
             <MyFields />

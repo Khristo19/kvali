@@ -118,7 +118,7 @@ export function MoneyWent({ job }: { job: Job }) {
         </View>
       ))}
       <Row left="Total" right={`${usdc(r.total)} · ${lari(r.total)}`} bold />
-      <Text style={[styles.small, { color: ok ? colors.green : colors.accent }]} accessibilityLabel={ok ? "Adds up" : "Does not add up"}>
+      <Text testID="adds-up" style={[styles.small, { color: ok ? colors.green : colors.accent }]} accessibilityLabel={ok ? "Adds up" : "Does not add up"}>
         {ok
           ? `Adds up ✓  (payment ${usdc(job.amount)} + bonds ${usdc(r.expected - job.amount)})`
           : `Does not add up: expected ${usdc(r.expected)}`}

@@ -17,7 +17,7 @@ export function SettleNow({ job }: { job: Job | undefined }) {
   if (!job || job.state !== "ProofSubmitted") return null;
   const left = closed ? 0 : 1;
   return (
-    <Card>
+    <Card testID="settlement-card">
       <CardTitle>Settlement</CardTitle>
       <LiveLeft endsAt={job.proof?.windowEndsAt ?? 0} render={(secs) => <Row label="Challenge window" value={secs > 0 ? `${clock(secs)} left` : "closed"} />} />
       <Text style={type.body}>
@@ -26,6 +26,7 @@ export function SettleNow({ job }: { job: Job | undefined }) {
           : "The window is closed and nobody challenged. Settle now to pay the operator (this page also does it by itself in a few seconds)."}
       </Text>
       <Button
+        testID="settle-now"
         label="Settle now"
         disabled={left > 0 || !!dev.busy}
         hint={left > 0 ? "Available when the challenge window closes" : undefined}

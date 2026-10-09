@@ -105,11 +105,11 @@ export function OperatorEarnings() {
     <>
       <Card>
         <CardTitle>Earnings</CardTitle>
-        <Row label="Wallet balance" value={usdc(bal)} sub={lari(bal)} />
-        <Row label="Paid out in this session" value={usdc(earned)} sub="payment after fees plus your bond back" />
-        <Row label="Jobs completed" value={String(op?.jobsCompleted ?? 0)} />
+        <Row testID="earnings-wallet" label="Wallet balance" value={usdc(bal)} sub={lari(bal)} />
+        <Row testID="earnings-paid-out" label="Paid out in this session" value={usdc(earned)} sub="payment after fees plus your bond back" />
+        <Row testID="earnings-completed" label="Jobs completed" value={String(op?.jobsCompleted ?? 0)} />
         <Row label="Jobs failed" value={String(op?.jobsFailed ?? 0)} />
-        {job?.payout ? <Row label="Last job: operator payout" value={usdc(job.payout.operator)} /> : null}
+        {job?.payout ? <Row testID="earnings-last-payout" label="Last job: operator payout" value={usdc(job.payout.operator)} /> : null}
       </Card>
       {job ? (
         <Card>
@@ -188,11 +188,11 @@ export function ResetDemo() {
       {ask ? (
         <>
           <Banner tone="error" text="This cannot be undone. Test money left in the old wallets is not recoverable from this page." />
-          <Button label="Yes, reset everything" kind="danger" onPress={doReset} />
+          <Button testID="reset-confirm" label="Yes, reset everything" kind="danger" onPress={doReset} />
           <Button label="Cancel" kind="secondary" small onPress={() => setAsk(false)} />
         </>
       ) : (
-        <Button label="Reset demo in this browser" kind="secondary" small onPress={() => setAsk(true)} />
+        <Button testID="reset-demo" label="Reset demo in this browser" kind="secondary" small onPress={() => setAsk(true)} />
       )}
     </Card>
   );

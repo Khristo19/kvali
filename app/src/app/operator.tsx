@@ -39,7 +39,7 @@ export default function Operator() {
       <ModeBanner />
       <ChainGate>
       {needsSetup ? (
-        <Card>
+        <Card testID="signup-card">
           <CardTitle>Get your operator wallet</CardTitle>
           <Text style={type.body}>
             {account
@@ -48,6 +48,7 @@ export default function Operator() {
           </Text>
           {account ? (
             <Button
+              testID="operator-setup"
               label="Set up my operator wallet"
               disabled={!!dev.walletNote}
               onPress={() => {
@@ -56,7 +57,7 @@ export default function Operator() {
               }}
             />
           ) : (
-            <Button label="Sign up as a drone operator" onPress={() => router.replace("/?role=operator" as Href)} />
+            <Button testID="operator-signup" label="Sign up as a drone operator" onPress={() => router.replace("/?role=operator" as Href)} />
           )}
         </Card>
       ) : null}

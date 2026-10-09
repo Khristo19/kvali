@@ -43,7 +43,7 @@ export function Wallet() {
   return (
     <Card>
       <Text style={type.label}>Your wallet</Text>
-      <View accessible accessibilityLabel={`Wallet balance ${usdc(b)}`}>
+      <View testID="operator-wallet" accessible accessibilityLabel={`Wallet balance ${usdc(b)}`}>
         <BigNumber value={usdc(b)} sub={`${lari(b)} · operator`} />
       </View>
     </Card>
@@ -147,7 +147,7 @@ function jobCard(j: Job, feeBps: bigint, onAccept: () => void, o: { onChain?: bo
         <Fact label="Price" value={usdc(j.amount)} />
       </FactGrid>
       <Text style={type.body}>You lock {usdc(j.amount)} as a bond; you get it back when the job is approved.</Text>
-      <Button label={`Accept job ${d.ref} and lock ${usdc(j.amount)} bond`} disabled={!!o.disabledReason} hint={o.disabledReason} onPress={onAccept} />
+      <Button testID="accept-job" label={`Accept job ${d.ref} and lock ${usdc(j.amount)} bond`} disabled={!!o.disabledReason} hint={o.disabledReason} onPress={onAccept} />
       {o.disabledReason ? <Text style={type.small}>{o.disabledReason}</Text> : null}
     </Card>
   );
@@ -272,13 +272,13 @@ export function UploadRecord({ job, onError }: { job: Job; onError: (m: string |
     }
   };
   return (
-    <Card>
+    <Card testID="simulate-flight">
       <CardTitle>Demo: simulate the drone flight</CardTitle>
       <Text style={type.body}>
         Presenter control. A real drone would upload its flight log after spraying {describeJob(job, session).field} (job {jobRef(job.id, session)}). Here you pick a sample record instead.
       </Text>
       {SAMPLE_INFO.map((s) => (
-        <Button small key={s.key} kind={s.key === key ? "primary" : "secondary"} label={s.title + (s.key === key ? " (selected)" : "")} onPress={() => setKey(s.key)} />
+        <Button testID={`record-${s.key}`} small key={s.key} kind={s.key === key ? "primary" : "secondary"} label={s.title + (s.key === key ? " (selected)" : "")} onPress={() => setKey(s.key)} />
       ))}
       <Text style={type.body}>{SAMPLE_INFO.find((s) => s.key === key)?.desc}</Text>
       <Row label="Liquid sprayed" value={`${(r.litersMl / 1000).toFixed(1)} L`} />
@@ -290,6 +290,7 @@ export function UploadRecord({ job, onError }: { job: Job; onError: (m: string |
       </Text>
       {pending ? (
         <Banner
+          testID={pending.refusal ? "refusal-banner" : "record-pending-banner"}
           tone={pending.refusal ? "error" : "info"}
           text={
             pending.refusal
@@ -298,9 +299,9 @@ export function UploadRecord({ job, onError }: { job: Job; onError: (m: string |
           }
         />
       ) : null}
-      <Button label="Send the record to the validators" onPress={stage} />
-      {pending ? <Button label="Open the Validator page" kind="secondary" onPress={() => router.replace("/validator")} /> : null}
-      <Button small kind="secondary" label="Presenter shortcut: skip the validators (co-sign automatically)" onPress={shortcut} />
+      <Button testID="send-record" label="Send the record to the validators" onPress={stage} />
+      {pending ? <Button testID="open-validator-page" label="Open the Validator page" kind="secondary" onPress={() => router.replace("/validator")} /> : null}
+      <Button testID="skip-validators" small kind="secondary" label="Presenter shortcut: skip the validators (co-sign automatically)" onPress={shortcut} />
       <ReleaseJob job={job} />
     </Card>
   );
@@ -325,7 +326,7 @@ export function ReleaseJob({ job }: { job: Job }) {
           </Text>
         )}
       />
-      <Button small kind="warn" label="Release this job (after the deadline)" disabled={!expired} hint="Available once the spray-by deadline has passed" onPress={() => void actions.reclaimExpired(job.id).catch(() => undefined)} />
+      <Button testID="release-job" small kind="warn" label="Release this job (after the deadline)" disabled={!expired} hint="Available once the spray-by deadline has passed" onPress={() => void actions.reclaimExpired(job.id).catch(() => undefined)} />
     </>
   );
 }
@@ -345,7 +346,7 @@ export function Verdict({ job }: { job: Job }) {
     <>
     <Card>
       <CardTitle>Verdict and earnings</CardTitle>
-      <Row label="Job state" value={job.state} />
+      <Row testID="operator-job-state" label="Job state" value={job.state} />
       {p && (
         <>
           <Row label="Recorded rate" value={`${litersPerHa(p.appliedRateMlPerHa)} (target ${litersPerHa(job.targetRateMlPerHa)})`} />
