@@ -43,8 +43,8 @@
     }
   },
   "staking": {
-    "date": "2026-10-09T21:50:34.737Z",
-    "note": "demo validators staked with test USDC; min_validator_stake 0 keeps the pre-staking flow",
+    "date": "2026-10-10T00:20:41.208Z",
+    "note": "demo validators staked with test USDC; min_validator_stake raised to $100 on 2026-10-10 once both web demos passed stake accounts",
     "stakeVault": "7KnN9XFCkoiKQj7jSpWpp7PKSTsVuushqBccKSheKXiB",
     "stakes": [
       {
@@ -80,7 +80,8 @@
       "set_staking_params (min $0.00, cooldown 60 s)": "5HHqg2LNWRiYR9dKSpS76tY6v62tbX4tkLip1dSVTHsqTdcHgs5uTNwzPwPTiJ4DWhrJvoDsMiWbxPtgW1NpMHPQ",
       "stake_validator operator-side ($500.00 test USDC)": "2V4PjPiNWkysXRF8SmdpsuYhEWpdFvtrSR766rtaEdPbrNx3H2wWsAPyVfB98H5VoeG721gRFyvrLQUdgwKgAh2M",
       "stake_validator farmer-side ($500.00 test USDC)": "VgJhSEjiN43yMuiVLKF3qGTCKizSPS8RWMiyRBFnboNYLJGU7wGdGokwBZxMA2W5QoCSJduvuqNkHUEfmWM91Fy",
-      "stake_validator neutral ($500.00 test USDC)": "atvM2XseeMFjMLgNM56g5fHANeb56D8ygpFyK1siAzr1c54H1Z5CbcpHLtsjixxCPch7vwrdSRy8qiKp4FD5Qic"
+      "stake_validator neutral ($500.00 test USDC)": "atvM2XseeMFjMLgNM56g5fHANeb56D8ygpFyK1siAzr1c54H1Z5CbcpHLtsjixxCPch7vwrdSRy8qiKp4FD5Qic",
+      "set_staking_params (min $100.00)": "z96mWctAieYLSS9nmCRv6UmN9oneW8mpEfmwroSmLyvJ9529ARQduKMN9HB4WkTqjG9kp7Lrj4Rtwt9sis5ncLE"
     }
   },
   "stakingUpgrade": {
