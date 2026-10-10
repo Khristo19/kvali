@@ -150,4 +150,14 @@ test("Happy path: farmer posts, operator flies, the bots co-sign by themselves, 
     await go(page, "farmer");
     await shot(page, "10-phone-farmer");
   });
+
+  await test.step("14. 'Start a new job' moves the finished job into the farmer's history", async () => {
+    await expect(tid(page, "history-row")).toHaveCount(1, { timeout: 60_000 }); // recorded as soon as the job ended
+    await tid(page, "new-job").click();
+    await expect(tid(page, "job-id")).toHaveCount(0, { timeout: 60_000 });
+    await expect(tid(page, "history-row")).toHaveCount(1);
+    await expect(tid(page, "history-row")).toContainText("Paid to operator");
+    await expect(tid(page, "history-row")).toContainText(jobRef);
+    await shot(page, "11-phone-farmer-history");
+  });
 });

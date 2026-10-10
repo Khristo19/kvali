@@ -38,6 +38,7 @@ export default function Operator() {
     <RoleShell role="operator" title={account ? TITLES[tab] : "Jobs near you"} subtitle={tab === "" && account ? openText : undefined}>
       <ModeBanner />
       <ChainGate>
+      {needsSetup ? <OpenJobs onError={setError} onDone={() => undefined} needsSetup /> : null}
       {needsSetup ? (
         <Card testID="signup-card">
           <CardTitle>Get your operator wallet</CardTitle>
@@ -61,21 +62,20 @@ export default function Operator() {
           )}
         </Card>
       ) : null}
-      {needsSetup ? <OpenJobs onError={setError} onDone={() => undefined} /> : <CertificateStrip />}
       {error && <Banner tone="error" text={error} />}
       {needsSetup ? null : tab === "" && (
-        <TwoUp>
-          <View style={{ gap: 16 }}>
-            <OpenJobs onError={setError} onDone={() => undefined} />
-            {active && active.state === "Accepted" && <UploadRecord job={active} onError={setError} />}
-            {current && current.state !== "Accepted" && <Verdict job={current} />}
-          </View>
-          <View style={{ gap: 16 }}>
+        <>
+          <OpenJobs onError={setError} onDone={() => undefined} />
+          {active && active.state === "Accepted" && <UploadRecord job={active} onError={setError} />}
+          {current && current.state !== "Accepted" && <Verdict job={current} />}
+          <CertificateStrip />
+          <TwoUp>
             <Wallet />
             <CertificateCard />
-          </View>
-        </TwoUp>
+          </TwoUp>
+        </>
       )}
+      {!needsSetup && tab !== "" && <CertificateStrip />}
       {!needsSetup && tab === "mine" && (
         <>
           {active && active.state === "Accepted" && <UploadRecord job={active} onError={setError} />}

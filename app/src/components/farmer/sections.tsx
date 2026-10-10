@@ -46,16 +46,12 @@ export function regionName(): string {
   return raw.region ? raw.region.split(",")[0] : "Georgia";
 }
 
-export function PostJobCard() {
-  const { state } = useEngine();
+/** Posts a job on the selected field (shared by the start card and the "Post a job" tab). */
+export function usePostJob() {
   const actions = useActions();
-  const job = state.jobs[JOB_ID];
-  const session = useSession();
   const field = selectedField(useFields());
   const farmer = useAccount("farmer");
   const [err, setErr] = useState<string | null>(null);
-  const expired = useReached(job?.sprayDeadline);
-
   const post = async () => {
     try {
       setErr(null);
@@ -64,43 +60,53 @@ export function PostJobCard() {
       setErr(errorMessage(e));
     }
   };
+  return { post, err, field, farmer };
+}
 
-  if (job) {
-    const d = describeJob(job, session);
-    return (
-      <Card>
-        <CardTitle>Your current job</CardTitle>
-        <Row testID="job-id" label="Job" value={d.ref} sub={job.state} />
-        <Row label="Field" value={d.field} sub={`${haText(job.areaCha / 100)}${d.crop ? ` · ${d.crop}` : ""}`} />
-        <Row label="Product" value={d.product} />
-        <Row label="Target" value={litersPerHa(job.targetRateMlPerHa)} />
-        <Row label="Spray by" value={whenText(job.sprayDeadline)} />
-        <Text style={[type.body, { color: colors.green, fontWeight: "600" }]}>
-          {job.payout ? `This job is finished (${job.state}).` : `${usdc(job.amount)} is held safely.`}
-        </Text>
-        {job.payout ? (
-          <Button testID="new-job" label="Start a new job" onPress={() => void actions.newJob(JOB_ID).catch(() => undefined)} />
-        ) : job.state === "Posted" ? (
-          <Button testID="cancel-job" label="Cancel this job and take the money back" kind="secondary" onPress={() => void actions.cancelJob(JOB_ID).catch(() => undefined)} />
-        ) : job.state === "Accepted" ? (
-          <>
-            <LiveLeft
-              endsAt={job.sprayDeadline}
-              render={(left) => (
-                <Text style={type.small}>
-                  {left > 0
-                    ? `If the operator cannot deliver an accepted record, you can release the job after the spray-by deadline (${whenText(job.sprayDeadline)}, ${Math.ceil(left / 60)} min left): the payment and the operator's bond are returned.`
-                    : "The spray-by deadline has passed. Release the job to get your payment back (the operator's bond is returned too)."}
-                </Text>
-              )}
-            />
-            <Button testID="release-job" label="Release this job (after the deadline)" kind="secondary" disabled={!expired} hint="Available once the spray-by deadline has passed" onPress={() => void actions.reclaimExpired(JOB_ID).catch(() => undefined)} />
-          </>
-        ) : null}
-        <ErrorText message={err} />
-      </Card>
-    );
-  }
+/** The current job's details with cancel / release; `showNew` adds "Start a new job" once it has ended. */
+export function CurrentJobCard({ job, showNew = true }: { job: Job; showNew?: boolean }) {
+  const actions = useActions();
+  const session = useSession();
+  const expired = useReached(job.sprayDeadline);
+  const d = describeJob(job, session);
+  return (
+    <Card>
+      <CardTitle>Your current job</CardTitle>
+      <Row testID="job-id" label="Job" value={d.ref} sub={job.state} />
+      <Row label="Field" value={d.field} sub={`${haText(job.areaCha / 100)}${d.crop ? ` · ${d.crop}` : ""}`} />
+      <Row label="Product" value={d.product} />
+      <Row label="Target" value={litersPerHa(job.targetRateMlPerHa)} />
+      <Row label="Spray by" value={whenText(job.sprayDeadline)} />
+      <Text style={[type.body, { color: colors.green, fontWeight: "600" }]}>
+        {job.payout ? `This job is finished (${job.state}).` : `${usdc(job.amount)} is held safely.`}
+      </Text>
+      {job.payout ? (
+        showNew ? <Button testID="new-job" label="Start a new job" onPress={() => void actions.newJob(JOB_ID).catch(() => undefined)} /> : null
+      ) : job.state === "Posted" ? (
+        <Button testID="cancel-job" label="Cancel this job and take the money back" kind="secondary" onPress={() => void actions.cancelJob(JOB_ID).catch(() => undefined)} />
+      ) : job.state === "Accepted" ? (
+        <>
+          <LiveLeft
+            endsAt={job.sprayDeadline}
+            render={(left) => (
+              <Text style={type.small}>
+                {left > 0
+                  ? `If the operator cannot deliver an accepted record, you can release the job after the spray-by deadline (${whenText(job.sprayDeadline)}, ${Math.ceil(left / 60)} min left): the payment and the operator's bond are returned.`
+                  : "The spray-by deadline has passed. Release the job to get your payment back (the operator's bond is returned too)."}
+              </Text>
+            )}
+          />
+          <Button testID="release-job" label="Release this job (after the deadline)" kind="secondary" disabled={!expired} hint="Available once the spray-by deadline has passed" onPress={() => void actions.reclaimExpired(JOB_ID).catch(() => undefined)} />
+        </>
+      ) : null}
+    </Card>
+  );
+}
+
+export function PostJobCard() {
+  const job = useEngine().state.jobs[JOB_ID];
+  const { post, err, field, farmer } = usePostJob();
+  if (job) return <CurrentJobCard job={job} />;
 
   return (
     <Card>

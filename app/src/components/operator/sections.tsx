@@ -119,6 +119,7 @@ function plainError(e: unknown): string {
 
 const when = (secs: number) => new Date(secs * 1000).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
+const SETUP_FIRST = "Set up your operator wallet and certificate (the card below) first, then you can accept a job.";
 const SIGN_UP_FIRST = "Sign up as a drone operator first: you need your own demo wallet to accept a job.";
 
 function jobCard(j: Job, feeBps: bigint, onAccept: () => void, o: { onChain?: boolean; session: Session | null; disabledReason?: string; mine?: boolean }) {
@@ -173,7 +174,7 @@ export function useChainJobs() {
   return { dev, extra, held: dev.mode === "devnet" ? dev.heldJob : null };
 }
 
-export function OpenJobs({ onError, onDone }: { onError: (m: string | null) => void; onDone: () => void }) {
+export function OpenJobs({ onError, onDone, needsSetup }: { onError: (m: string | null) => void; onDone: () => void; needsSetup?: boolean }) {
   const { state } = useEngine();
   const actions = useActions();
   const { dev, extra, held } = useChainJobs();
@@ -206,7 +207,7 @@ export function OpenJobs({ onError, onDone }: { onError: (m: string | null) => v
           <Button label={`Continue job …${String(held.chainJobId).slice(-5)}`} onPress={() => void run(() => actions.continueHeldJob(held.chainJobId))} />
         </Card>
       ) : null}
-      {jobs.map((j) => jobCard(j, feeBps, () => void run(() => actions.acceptJob(j.id)), { session, mine: true, disabledReason: operatorAcct ? undefined : SIGN_UP_FIRST }))}
+      {jobs.map((j) => jobCard(j, feeBps, () => void run(() => actions.acceptJob(j.id)), { session, mine: true, disabledReason: !operatorAcct ? SIGN_UP_FIRST : needsSetup ? SETUP_FIRST : undefined }))}
       {extra.length > 0 ? (
         <Button
           small
@@ -219,7 +220,7 @@ export function OpenJobs({ onError, onDone }: { onError: (m: string | null) => v
         jobCard(chainAsJob(c), feeBps, () => void run(() => actions.acceptOpenJob(c.chainJobId)), {
           onChain: true,
           session,
-          disabledReason: operatorAcct ? busyReason : SIGN_UP_FIRST,
+          disabledReason: !operatorAcct ? SIGN_UP_FIRST : needsSetup ? SETUP_FIRST : busyReason,
         }),
       )}
       {none ? (

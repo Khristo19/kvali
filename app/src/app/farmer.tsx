@@ -8,6 +8,7 @@ import { type } from "@/theme";
 
 import {
   ActionsCard,
+  CurrentJobCard,
   DemoControls,
   MoneyCard,
   PayoutCard,
@@ -17,12 +18,14 @@ import {
   TimelineCard,
 } from "@/components/farmer/sections";
 import { CropHealthCard, MyFields, haText } from "@/components/farmer/fields";
+import { HistoryCard, HistoryRecorder, SectionTitle, StartCard } from "@/components/farmer/jobs";
 import { ChainGate } from "@/components/chain-gate";
 import { HowSteps } from "@/components/how-steps";
 import { SettleNow } from "@/components/settle-now";
 import { FarmerPayments, ResetDemo } from "@/components/tab-views";
 import { fieldHa } from "@/data/fields";
 import { selectedField, useFields } from "@/data/fields-store";
+import { keys } from "@/devnet/keys";
 import { ChainCard } from "@/components/devnet/chain-card";
 import { SAMPLE_JOB_ID } from "@/engine/scenario";
 import { useEngine } from "@/engine/useEngine";
@@ -60,47 +63,37 @@ export default function Farmer() {
         </>
       ) : (
       <>
-      {tab === "" &&
-        (job ? (
-          <>
-            <TwoUp>
-              <StatusCard />
-              <MoneyCard />
-            </TwoUp>
-            <TwoUp>
-              <TimelineCard />
-              <View style={{ gap: 16 }}>
-                <PayoutCard />
-                <SettleNow job={job} />
-              </View>
-            </TwoUp>
-            <ActionsCard />
-            <ChainCard />
-            <TwoUp>
-              <View style={{ gap: 16 }}>
-                <MyFields />
-              </View>
-              <View style={{ gap: 16 }}>
-                <PostJobCard />
-                <CropHealthCard fieldId={sel.id} />
-              </View>
-            </TwoUp>
-          </>
-        ) : (
-          <>
+      {tab === "" && (
+        <>
+          <HistoryRecorder />
+          <StartCard />
+          <SectionTitle>In progress</SectionTitle>
+          {job ? (
+            <>
+              <TwoUp>
+                <StatusCard />
+                <MoneyCard />
+              </TwoUp>
+              <TwoUp>
+                <TimelineCard />
+                <View style={{ gap: 16 }}>
+                  <PayoutCard />
+                  <SettleNow job={job} />
+                </View>
+              </TwoUp>
+              <ActionsCard />
+              <CurrentJobCard job={job} showNew={false} />
+              <ChainCard />
+            </>
+          ) : (
             <Card>
-              <CardTitle>No job yet</CardTitle>
-              <Text style={type.body}>You have not posted a job. Pick a field below and post one; it will then be listed here with its status.</Text>
+              <Text style={type.body}>No job in progress. Post one above and it will show up here.</Text>
             </Card>
-            <TwoUp>
-              <View style={{ gap: 16 }}>
-                <MyFields />
-                <CropHealthCard fieldId={sel.id} />
-              </View>
-              <PostJobCard />
-            </TwoUp>
-          </>
-        ))}
+          )}
+          <SectionTitle sub="Jobs that are paid out, refunded or cancelled.">History</SectionTitle>
+          <HistoryCard addr={keys.farmer.publicKey.toBase58()} />
+        </>
+      )}
       {tab === "post" && (
         <TwoUp>
           <View style={{ gap: 16 }}>
