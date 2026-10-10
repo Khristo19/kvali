@@ -113,7 +113,7 @@ We would rather you read these here than discover them.
 | `sim/` | Pixel-art "how it works" simulation (spec only, last step) |
 | `research/` | Original vetting report |
 
-Key docs: [ARCHITECTURE.md](docs/ARCHITECTURE.md), [ONCHAIN_SPEC.md](docs/ONCHAIN_SPEC.md), [PROOF_SPEC.md](docs/PROOF_SPEC.md), [DECISIONS.md](docs/DECISIONS.md), [VALIDATORS.md](docs/VALIDATORS.md), [CALIBRATION.md](docs/CALIBRATION.md), [WHY.md](docs/WHY.md), [DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md). Also [REGULATORY.md](docs/REGULATORY.md) and [FIELD_VALIDATION.md](docs/FIELD_VALIDATION.md) for the real-world plan in Georgia.
+Key docs: [ARCHITECTURE.md](docs/ARCHITECTURE.md), [ONCHAIN_SPEC.md](docs/ONCHAIN_SPEC.md), [PROOF_SPEC.md](docs/PROOF_SPEC.md), [DECISIONS.md](docs/DECISIONS.md), [VALIDATORS.md](docs/VALIDATORS.md), [CALIBRATION.md](docs/CALIBRATION.md), [WHY.md](docs/WHY.md), [DEMO_SCRIPT.md](docs/DEMO_SCRIPT.md), [MARKET_EU_ASIA.md](docs/MARKET_EU_ASIA.md) (sourced market numbers). Also [REGULATORY.md](docs/REGULATORY.md) and [FIELD_VALIDATION.md](docs/FIELD_VALIDATION.md) for the real-world plan in Georgia.
 
 ## How to run
 
