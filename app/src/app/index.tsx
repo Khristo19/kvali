@@ -121,7 +121,7 @@ export default function Home() {
               <TextInput
                 value={name}
                 onChangeText={setName}
-                placeholder="e.g. Nino"
+                placeholder="e.g. George"
                 autoComplete="name"
                 accessibilityLabel="Your name"
                 testID="signup-name"
