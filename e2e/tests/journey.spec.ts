@@ -141,6 +141,7 @@ test("Happy path: farmer posts, operator flies, the bots co-sign by themselves, 
   });
 
   await test.step("13. State survives a reload", async () => {
+    await go(page, "job");
     await page.reload();
     await expect(tid(page, "job-state")).toContainText("Released", { timeout: 120_000 });
     await expect(tid(page, "adds-up")).toContainText("Adds up", { timeout: 60_000 });
