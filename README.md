@@ -1,6 +1,24 @@
+<p align="center"><img src="brand/kvali-logo-512.png" alt="Kvali logo" width="120"></p>
+
 # Kvali: proof of spray
 
+**Live demo: [khristo19.github.io/kvali](https://khristo19.github.io/kvali/)** (Solana devnet, test money only). To try several farmers and operators, use the [staging version with the account switcher](https://khristo19.github.io/kvali/staging/).
+
+[![E2E](https://github.com/Khristo19/kvali/actions/workflows/e2e.yml/badge.svg)](https://github.com/Khristo19/kvali/actions/workflows/e2e.yml)
+
+Farmers pay for drone spraying only when the work is proven, and operators get paid on proof, not on the farmer's word. A farmer posts a job and puts the money in escrow. A drone operator does the spraying. Automatic checker bots look at the spray record and, if it holds up, release the payment. If the record is bad (say, the pump was off), it is refused and the reason is shown. Georgia is only the first test field; the plan is fleets and companies with many pilots, then Europe, then Asia. Nothing here uses real money yet.
+
 Verified agricultural drone spraying, settled in USDC on Solana. *Kvali* (კვალი) means "trace" in Georgian: every spray job leaves one you can verify. Working name; may change.
+
+<p align="center"><img src="app/assets/satellite/field-1-truecolor-2026-09-27.png" alt="Sentinel-2 satellite view of a demo vineyard field (Copernicus)" width="420"><br><sub>A demo vineyard field in Kakheti, Georgia, from real Sentinel-2 imagery (Copernicus). The spray flights on top of it are simulated.</sub></p>
+
+### What is real and what is simulated
+
+- **Real, on Solana devnet:** the escrow, the operator bond, validator staking and co-signing, challenges, and payout. Every step in the demo is a real devnet transaction with an Explorer link.
+- **Simulated:** the drone flight and its sensors (spray records are constructed samples), and the money (test USDC from our own mint).
+- **Validator bots:** when the operator sends the spray record, checker bots verify coverage, the litres-per-hectare band and the flow meter against the tank. Two staked validators then co-sign automatically, with no human click. Humans are only needed for certificates, spot checks and challenges.
+- **Validator staking:** each demo validator has $500 test USDC staked (minimum stake $100). The program tests prove that an upheld challenge slashes the co-signers to the farmer and that a slashed stake can never sign again. Slashing is switched off in the public demo so the shared demo seats stay usable.
+- **E2E:** browser tests (Playwright) run on every deploy against the live and staging demos. The program has 56 tests.
 
 **The pitch.** A farmer posts a spray job and funds a USDC escrow. A certified drone operator accepts it and locks a bond at least equal to the job value. After spraying, independent validators check **liters dispensed per hectare** (not the GPS path) and co-sign; the full record goes to Arweave and only its hash goes on-chain. The operator is paid automatically when the challenge window closes (24 hours for real jobs). Nobody approves: the farmer can only challenge by locking 20% of the job, and a balanced validator panel rules. Fee: 5% (3% Kvali, 2% validators). No token (see [DECISIONS.md](docs/DECISIONS.md)).
 
@@ -13,6 +31,7 @@ Built for the Colosseum Crypto World's Fair, Solana track. Submitted solo.
 | What | Link |
 |---|---|
 | Live web demo | [khristo19.github.io/kvali](https://khristo19.github.io/kvali/) |
+| Staging demo (account switcher for several farmers and operators) | [khristo19.github.io/kvali/staging](https://khristo19.github.io/kvali/staging/) |
 | Pitch video | [PITCH VIDEO] |
 | Tech demo video | [TECH DEMO VIDEO] |
 | Program on Solana devnet | [`2TWg6cMa7bxFa8y7HHoDXZecNJxcbYrUAqwfrg5T8FPK`](https://explorer.solana.com/address/2TWg6cMa7bxFa8y7HHoDXZecNJxcbYrUAqwfrg5T8FPK?cluster=devnet) |
@@ -28,7 +47,7 @@ More transactions (post, accept, submit proof, and a rejected pump-off proof) ar
 | Piece | Status |
 |---|---|
 | Anchor program (escrow, bond, 2-of-3 proof co-sign, challenge, panel ruling, fees, calibration certificates) | **Live on devnet.** Deployed 8 Oct 2026. Not on mainnet, not audited. |
-| Program tests | **44 tests pass** in LiteSVM (in-process Solana runtime, runs the real compiled program). No network used. |
+| Program tests | **56 tests pass** in LiteSVM (in-process Solana runtime, runs the real compiled program). No network used. |
 | Devnet demo script | **Works.** Runs an honest job to payout, and a pump-off job that the program rejects (`RateOutOfBand`). A farmer-challenge scenario exists in the script but has not been run live. |
 | Proof service and CLI | **Works.** Telemetry record to verdict (coverage, rate band, tank cross-check), manifest, canonical SHA-256. 42 tests pass. |
 | Manifest on Arweave | **Works on Irys devnet** (one upload, link above). Not encrypted yet; not mainnet Arweave. |
@@ -69,14 +88,14 @@ More transactions (post, accept, submit proof, and a rejected pump-off proof) ar
 
 We would rather you read these here than discover them.
 
-- **Validator seats are permissioned in v1.** The three seats are set by an admin key (Kvali). The program limits what they can do (they can only send vault funds to the job's farmer or operator), but you are trusting three parties to be honest and balanced. Validators can now stake USDC on chain (`stake_validator`, cooldown-gated `withdraw_stake`); when the admin sets a minimum stake, only staked validators can co-sign proofs, and a challenge panel ruling against a proof slashes every staked co-signer to the farmer. Slashing happens only through that ruling, never by admin decision. On the demo deployment the three demo validators hold $500 test USDC each, but the minimum is still 0 until the web app passes stake accounts, so today's proofs are not yet slashable. The panel itself is the same three seats and is not staked against its own vote. Permissionless joining and random assignment are the v2 plan, not built. The admin key must move to a multisig before mainnet.
+- **Validator seats are permissioned in v1.** The three seats are set by an admin key (Kvali). The program limits what they can do (they can only send vault funds to the job's farmer or operator), but you are trusting three parties to be honest and balanced. Validators can now stake USDC on chain (`stake_validator`, cooldown-gated `withdraw_stake`); when the admin sets a minimum stake, only staked validators can co-sign proofs, and a challenge panel ruling against a proof slashes every staked co-signer to the farmer. Slashing happens only through that ruling, never by admin decision. On the demo deployment the minimum stake is $100 and each demo validator has $500 test USDC staked, so only staked validators co-sign. Slashing is proven by program tests but disabled in the public demo so the shared seats stay usable. The panel itself is the same three seats and is not staked against its own vote. Permissionless joining and random assignment are the v2 plan, not built. The admin key must move to a multisig before mainnet.
 - **No on-chain tank cross-check.** The flow-meter versus tank-weight check runs in the proof service and in validators' software. The program checks only liters per hectare and coverage from the submitted numbers; it cannot tell whether the tank reading was honest. Drone telemetry itself is still trusted (DJI export). A sealed signing device on the drone is the long-term fix.
 - **A validator can also be an operator.** `issue_certificate` only checks that the signer is in the validator set, so a validator who runs a drone can certify their own. Proof and challenge signing skip conflicted keys; certification does not. A test documents this.
 - **Single-validator renew.** Any one validator can renew a non-revoked certificate and change its recorded meter error. Revocation wins over renewal, but renewal is not a panel decision.
 - **No maximum certificate expiry.** `valid_until` has no upper bound.
 - **Vault accounts are not closed.** After a job ends the empty vault token account stays open and its rent stays locked.
-- **Test money and keys.** Devnet test USDC, a deploy wallet that is also the upgrade authority, and validator keys we control. The program has not been audited.
-- **LiteSVM is not a real validator.** The 44 tests run the compiled program in-process; they do not replace a localnet or mainnet-beta run.
+- **Test money and keys.** Devnet test USDC, a deploy wallet that is also the upgrade authority (the program is upgradeable on purpose while we build; the plan is a Squads multisig with a timelock and a verified build before mainnet, and freezing it after an audit, see [DECISIONS.md](docs/DECISIONS.md) D16), and validator keys we control. The program has not been audited.
+- **LiteSVM is not a real validator.** The 56 tests run the compiled program in-process; they do not replace a localnet or mainnet-beta run.
 - **Simulated data.** No real spray job has happened yet. The pump-off, half-field and tank-mismatch cases are constructed samples.
 - **Privacy.** The sample manifest on Arweave is public and unencrypted. Encrypted records (farmer-held key) and private payments via Hinkal are planned.
 
@@ -104,7 +123,7 @@ Key docs: [ARCHITECTURE.md](docs/ARCHITECTURE.md), [ONCHAIN_SPEC.md](docs/ONCHAI
 # 1. Program tests (local, in-process, never touches a network)
 npm install
 anchor build            # only if you changed the program; tests use target/deploy/kvali.so
-npm test                # 44 tests
+npm test                # 56 tests
 ```
 
 Do not use plain `anchor test`: `Anchor.toml` points at devnet. Use `npm test`.
