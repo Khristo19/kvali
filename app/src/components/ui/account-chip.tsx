@@ -1,16 +1,21 @@
 import { router, type Href } from "expo-router";
+import { useEffect } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { Pressable } from "@/components/ui/pressable";
 
 import { addressFor, roleLabel, shortAddr, signOut, useAccount, type Role } from "@/account/store";
-import { activeLabel, useMulti } from "@/devnet/multi";
+import { activeLabel, loadMulti, useMulti } from "@/devnet/multi";
+import { switcherOn } from "@/presenter/store";
 import { colors, fonts, radius } from "@/theme";
 
 /** Signed-in demo account (name, role, public devnet address) with "Sign out"; "Sign in" when there is none. */
 export function AccountChip({ role }: { role?: Role }) {
   const a = useAccount(role);
   const multi = useMulti();
+  useEffect(() => {
+    if (a && switcherOn()) loadMulti(); // presenter mode: picks up the wallet this chip just created, so it shows "Farmer 1"
+  }, [a]);
   if (!a) {
     return (
       <Pressable testID="chip-signup" accessibilityRole="link" onPress={() => router.replace((role ? `/?role=${role}` : "/") as Href)} style={styles.btn}>
