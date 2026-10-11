@@ -2,28 +2,30 @@ import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { Text, View } from "react-native";
 
-import { lari, usdc, whenText } from "@/components/money";
+import { usdc, whenText } from "@/components/money";
 import { TxId } from "@/components/job/ui";
 import { jobLog } from "@/components/job/helpers";
-import { Button, Card, CardTitle, ErrorText, Row, StatusChip, TwoUp } from "@/components/ui";
-import { fieldHa } from "@/data/fields";
-import { selectField, useFields } from "@/data/fields-store";
+import { ChainCard } from "@/components/devnet/chain-card";
+import { SettleNow } from "@/components/settle-now";
+import { Button, Card, ErrorText, StatusChip, TwoUp } from "@/components/ui";
+import { fieldHa, fieldHash, type Field } from "@/data/fields";
+import { selectField, selectedField, useFields } from "@/data/fields-store";
 import { keys } from "@/devnet/keys";
 import { useActions } from "@/engine/actions";
-import { SAMPLE_JOB_ID, SAMPLE_AMOUNT } from "@/engine/scenario";
+import { SAMPLE_JOB_ID } from "@/engine/scenario";
 import type { Action, Job } from "@/engine/types";
 import { useEngine } from "@/engine/useEngine";
-import { addHistory, useHistory, type HistoryEntry } from "@/session/history";
+import { addHistory, historyForField, useHistory, type HistoryEntry } from "@/session/history";
 import { jobRef } from "@/session/info";
-import { useSession } from "@/session/store";
+import { usePending, useSession } from "@/session/store";
 import { colors, type } from "@/theme";
-import { CropHealthCard, MyFields, haText } from "./fields";
-import { usePostJob } from "./sections";
+import { CropHealthCard, FieldCard, fieldStatus, haText, type FieldView } from "./fields";
+import { ActionsCard, CurrentJobCard, MoneyCard, PayoutCard, PostJobCard, StatusCard, TimelineCard, usePostJob } from "./sections";
 
 const JOB_ID = SAMPLE_JOB_ID;
 const ENDING: Action[] = ["settle", "resolveChallenge", "cancelJob", "reclaimExpired"];
 
-/** Section heading of the "My jobs" tab. */
+/** Section heading of the farmer pages. */
 export function SectionTitle({ children, sub }: { children: string; sub?: string }) {
   return (
     <View style={{ gap: 2, paddingTop: 8 }}>
@@ -51,6 +53,7 @@ function useFinishedEntry(): { addr: string; entry: HistoryEntry } | null {
       id: String(session?.chainJobId ?? `${job.postedAt}`),
       ref: jobRef(job.id, session),
       field: session?.fieldName ?? "Field",
+      fieldHash: job.fieldHash,
       areaCha: job.areaCha,
       state: job.state,
       at,
@@ -72,57 +75,113 @@ export function HistoryRecorder() {
   return null;
 }
 
-/** First thing on the page: add a field or post a job on the selected field; the field list and crop health sit under a toggle. */
-export function StartCard() {
+function viewOf(f: Field): FieldView {
+  return { id: f.id, name: f.name, hash: fieldHash(f), ha: fieldHa(f), crop: f.crop, product: f.product, field: f };
+}
+
+/**
+ * The farmer home ("My fields"): add a field, one card per field with its status and main action, then the selected
+ * field's current job (or the card to post one) and its past jobs. One job at a time.
+ */
+export function FieldsHome({ signedIn }: { signedIn: boolean }) {
   const { state } = useEngine();
   const actions = useActions();
-  const job = state.jobs[JOB_ID];
-  const { post, err, field, farmer } = usePostJob();
-  const { fields, selectedId } = useFields();
-  const [open, setOpen] = useState(false);
+  // Signed out: only the fields (no job, no money on screen).
+  const job: Job | undefined = signedIn ? state.jobs[JOB_ID] : undefined;
+  const fs = useFields();
+  const session = useSession();
+  const pending = usePending();
+  const addr = keys.farmer.publicKey.toBase58();
+  const history = useHistory(signedIn ? addr : null);
+  const { post, err } = usePostJob();
   const fin = useFinishedEntry();
+  const [picked, setPicked] = useState<string | null>(null);
+
+  const views = fs.fields.map(viewOf);
+  // The job's field; a stand-in from the job itself when this browser no longer has it (e.g. a drawn field after a reload).
+  const jobView: FieldView | undefined = job
+    ? (views.find((v) => v.hash === job.fieldHash) ?? {
+        id: "job-field",
+        name: session?.fieldName ?? "Your field",
+        hash: job.fieldHash,
+        ha: job.areaCha / 100,
+        crop: session?.crop,
+        product: session?.product,
+      })
+    : undefined;
+  const list = jobView && !jobView.field ? [...views, jobView] : views;
+  const focus = list.find((v) => v.id === picked) ?? jobView ?? viewOf(selectedField(fs));
+  const jobHere = !!job && focus.hash === job.fieldHash;
+
+  const pick = (v: FieldView) => {
+    setPicked(v.id);
+    if (v.field) selectField(v.id);
+  };
   const newJob = () => {
     if (fin) addHistory(fin.addr, fin.entry);
+    if (focus.field) selectField(focus.id);
+    setPicked(focus.id);
     void actions.newJob(JOB_ID).catch(() => undefined);
   };
+
   return (
     <>
-      <Card testID="start-card">
-        <CardTitle>Start</CardTitle>
-        <Row label="Field for the next job" value={field.name} sub={`${haText(fieldHa(field))} · ${field.crop}`} />
-        {fields.length > 1 ? (
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 8 }}>
-            {fields.map((f) => (
-              <Button key={f.id} testID={`use-field-${f.id}`} small kind={f.id === selectedId ? "primary" : "secondary"} label={f.name} onPress={() => selectField(f.id)} />
-            ))}
-          </View>
-        ) : null}
-        <TwoUp>
-          <Button testID="add-field" kind="secondary" label="+ Add a field" onPress={() => router.push("/mark-field" as never)} />
-          <Button
-            testID="post-job"
-            label="Post a new job"
-            onPress={post}
-            disabled={!farmer || !!job}
-            hint={!farmer ? "Sign up as a farmer first" : job ? "You have a job in progress" : `Holds ${usdc(SAMPLE_AMOUNT)} until the spraying is checked`}
-          />
-        </TwoUp>
-        {job ? (
-          <Text style={type.small}>You have a job in progress; one job at a time in the demo.</Text>
-        ) : (
-          <Text style={type.small}>Posting holds {usdc(SAMPLE_AMOUNT)} ({lari(SAMPLE_AMOUNT)}) safely until the spraying is checked.</Text>
-        )}
-        {job?.payout ? <Button testID="new-job" label="Start a new job" onPress={newJob} /> : null}
-        <ErrorText message={err} />
-        <Button small kind="secondary" testID="fields-toggle" label={open ? "Hide my fields and crop health" : "My fields and crop health"} onPress={() => setOpen(!open)} />
-      </Card>
-      {open ? (
-        <TwoUp>
-          <View style={{ gap: 16 }}>
-            <MyFields />
-          </View>
-          <CropHealthCard fieldId={field.id} />
-        </TwoUp>
+      <Button testID="add-field" kind="secondary" label="+ Add a field" onPress={() => router.push("/mark-field" as never)} />
+      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 16 }}>
+        {list.map((v) => {
+          const here = !!job && v.hash === job.fieldHash;
+          const status = fieldStatus(job, here, historyForField(history, v)[0], pending);
+          const action =
+            signedIn && !job && v.field ? (
+              <Button
+                testID={`spray-field-${v.id}`}
+                small
+                label="Spray this field"
+                onPress={() => {
+                  pick(v);
+                  void post(v.field);
+                }}
+              />
+            ) : here ? (
+              <Button small kind="secondary" label="See the job" onPress={() => pick(v)} />
+            ) : null;
+          return <FieldCard key={v.id} view={v} selected={v.id === focus.id} status={status} onSelect={() => pick(v)} action={action} />;
+        })}
+      </View>
+      <ErrorText message={err} />
+
+      <SectionTitle sub={[haText(focus.ha), focus.crop, focus.product].filter(Boolean).join(" · ")}>{focus.name}</SectionTitle>
+      {job && jobHere ? (
+        <>
+          <TwoUp>
+            <StatusCard />
+            <MoneyCard />
+          </TwoUp>
+          <TwoUp>
+            <TimelineCard />
+            <View style={{ gap: 16 }}>
+              <PayoutCard />
+              <SettleNow job={job} />
+            </View>
+          </TwoUp>
+          <ActionsCard />
+          <CurrentJobCard job={job} onNew={newJob} />
+          <ChainCard />
+        </>
+      ) : !job ? (
+        signedIn && focus.field ? <PostJobCard field={focus.field} /> : null
+      ) : jobView ? (
+        <Card>
+          <Text style={type.body}>One job at a time: your job on {jobView.name} is still running.</Text>
+          <Button small kind="secondary" label={`Open ${jobView.name}`} onPress={() => pick(jobView)} />
+        </Card>
+      ) : null}
+      {focus.field ? <CropHealthCard fieldId={focus.id} /> : null}
+      {signedIn ? (
+        <>
+          <SectionTitle sub="Paid out, refunded or cancelled">Past jobs on this field</SectionTitle>
+          <HistoryCard addr={addr} field={{ name: focus.name, hash: focus.hash }} />
+        </>
       ) : null}
     </>
   );
@@ -149,12 +208,17 @@ function HistoryRow({ e }: { e: HistoryEntry }) {
   );
 }
 
-/** Finished jobs of this farmer account, newest first. */
-export function HistoryCard({ addr }: { addr: string }) {
-  const list = useHistory(addr);
+/** Finished jobs of this farmer account (only those of `field` when given), newest first. */
+export function HistoryCard({ addr, field }: { addr: string; field?: { name: string; hash: string } }) {
+  const all = useHistory(addr);
+  const list = field ? historyForField(all, field) : all;
   return (
     <Card testID="history-card">
-      {list.length === 0 ? <Text style={type.body}>No finished jobs yet.</Text> : list.map((e) => <HistoryRow key={e.id} e={e} />)}
+      {list.length === 0 ? (
+        <Text style={type.body}>{field ? "No finished jobs on this field yet." : "No finished jobs yet."}</Text>
+      ) : (
+        list.map((e) => <HistoryRow key={e.id} e={e} />)
+      )}
     </Card>
   );
 }

@@ -21,8 +21,7 @@ export const ROLE_TABS: Record<Role, { title: string; tabs: Tab[] }> = {
   farmer: {
     title: "Farmer",
     tabs: [
-      { key: "", label: "My jobs", icon: "jobs" },
-      { key: "post", label: "Post a job", icon: "plus" },
+      { key: "", label: "Fields", icon: "pin" },
       { key: "payments", label: "Payments", icon: "wallet" },
       { key: "help", label: "Help", icon: "help" },
     ],

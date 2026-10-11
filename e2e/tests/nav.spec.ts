@@ -13,8 +13,7 @@ test.beforeEach(({}, testInfo) => {
 /** Titles shown in the page header per role/tab. Signed-out operators always see "Jobs near you". */
 const TABS: Record<Role, { key: string; label: string; title: string; signedOutTitle?: string }[]> = {
   farmer: [
-    { key: "", label: "My jobs", title: "My jobs" },
-    { key: "post", label: "Post a job", title: "Post a job" },
+    { key: "", label: "Fields", title: "My fields" },
     { key: "payments", label: "Payments", title: "Payments" },
     { key: "help", label: "Help", title: "Help" },
   ],
@@ -136,25 +135,19 @@ test("Nav: Connect Phantom says 'coming soon' and does not navigate", async ({ p
   expect(page.url()).toBe(before);
 });
 
-test("Nav: Demo controls toggle opens and closes", async ({ page }) => {
+test("Nav: farmer home lists the fields, with no demo controls", async ({ page }) => {
   await seedAccounts(page, ["farmer"]);
   await go(page, "farmer");
-  const toggle = tid(page, "demo-controls-toggle");
-  await expect(toggle).toBeVisible({ timeout: 90_000 });
-  await expect(toggle).toHaveAttribute("aria-expanded", "false");
-  await expect(tid(page, "demo-accept")).toHaveCount(0);
-  await toggle.click();
-  await expect(toggle).toHaveAttribute("aria-expanded", "true");
-  await expect(tid(page, "demo-accept")).toBeVisible();
-  await toggle.click();
-  await expect(toggle).toHaveAttribute("aria-expanded", "false");
+  await expect(tid(page, "add-field")).toBeVisible({ timeout: 90_000 });
+  await expect(page.locator("[data-testid^=field-card-]").first()).toBeVisible();
+  await expect(tid(page, "demo-controls-toggle")).toHaveCount(0);
   await expect(tid(page, "demo-accept")).toHaveCount(0);
 });
 
 test("Layout: no horizontal overflow at 390 px on every page", async ({ page }) => {
   test.skip(!isMobile(page), "phone width only");
   const paths = [
-    "/", "farmer", "farmer?tab=post", "farmer?tab=payments", "farmer?tab=help",
+    "/", "farmer", "farmer?tab=payments", "farmer?tab=help",
     "operator", "operator?tab=mine", "operator?tab=earnings", "operator?tab=drones",
     "validator", "validator?tab=reviewed", "validator?tab=earnings", "validator?tab=profile",
     "job", "how-it-works",
@@ -181,7 +174,7 @@ for (const path of ["validator", "job", "farmer", "operator"] as const) {
 
 // Loader: switching role must answer at once (role page + loader/skeleton in fixed-height slots), never freeze until the chain
 // data and the satellite map have loaded. Role-specific heading visible within 1 s of the click.
-const ROLE_TITLE: Record<Role, RegExp> = { farmer: /My jobs/, operator: /Jobs near you/, validator: /Proof review/ };
+const ROLE_TITLE: Record<Role, RegExp> = { farmer: /My fields/, operator: /Jobs near you/, validator: /Proof review/ };
 test("Loader: switching role shows the role page within 1 s (loader or content, no freeze)", async ({ page }) => {
   await seedAccounts(page, ROLES);
   await go(page, "job");
