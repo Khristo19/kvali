@@ -1,12 +1,10 @@
 import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import { Pressable } from "@/components/ui/pressable";
-
 import { hectares, litersPerHa } from "@/components/money";
-import { Banner, Card, CardTitle, Fact, FactGrid, RoleShell, TwoUp, useTab , Button } from "@/components/ui";
+import { Banner, Card, CardTitle, Fact, FactGrid, RoleShell, useTab, Button } from "@/components/ui";
 import { SettleNow } from "@/components/settle-now";
-import { ResetDemo, ValidatorEarnings, ValidatorProfile, ValidatorReviewed } from "@/components/tab-views";
+import { ValidatorEarnings, ValidatorProfile, ValidatorReviewed } from "@/components/tab-views";
 import { notify } from "@/components/ui/notice";
 import { describeJob, jobRef } from "@/session/info";
 import { usePending, useSession } from "@/session/store";
@@ -17,11 +15,9 @@ import { StakeCards } from "@/components/validator/stake-card";
 import { useMode } from "@/devnet/mode";
 import { useAccount } from "@/account/store";
 import { ChainGate } from "@/components/chain-gate";
-import { ModeBanner } from "@/components/devnet/mode-banner";
-import { setSeat, useSeat } from "@/devnet/multi";
 import { useActions } from "@/engine/actions";
 import { useEngine } from "@/engine/useEngine";
-import { DRONE, VALIDATORS, sampleRecords } from "@/engine/scenario";
+import { DRONE, sampleRecords } from "@/engine/scenario";
 import { EngineError, type Validator } from "@/engine/types";
 import { colors, radius, space, type } from "@/theme";
 
@@ -35,8 +31,6 @@ export default function ValidatorScreen() {
   const session = useSession();
   const validatorAcct = useAccount("validator");
   const locked = validatorAcct ? undefined : "Sign up as a validator first (home page) to add stake.";
-  const seatId = useSeat(); // persisted on staging (account switcher), starts at the first seat on live
-  const setSeatId = setSeat;
   const [votes, setVotes] = useState<Record<number, Record<string, boolean>>>({});
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -79,40 +73,12 @@ export default function ValidatorScreen() {
       title={tab === "" ? "Proof review" : tab === "reviewed" ? "Reviewed" : tab === "earnings" ? "Earnings" : "Profile"}
       subtitle={tab === "" ? (first ? `Job ${jobRef(first.id, session)} · checker bots: ${state.config.proofThreshold} of ${state.config.validators.length} must co-sign` : "Nothing to check right now") : undefined}
     >
-      <ModeBanner />
       <ChainGate>
       {tab === "reviewed" && <ValidatorReviewed />}
       {tab === "earnings" && <ValidatorEarnings />}
-      {tab === "profile" && (
-        <>
-          <ValidatorProfile />
-          <ResetDemo />
-        </>
-      )}
+      {tab === "profile" && <ValidatorProfile />}
       {tab === "" && (
         <>
-
-      <TwoUp>
-        <Card>
-          <CardTitle>Your seat</CardTitle>
-          {VALIDATORS.map((v) => (
-            <Pressable
-              key={v.id}
-              testID={`seat-${v.seat}`}
-              accessibilityRole="radio"
-              accessibilityLabel={`${v.label}, ${v.seat} seat`}
-              aria-checked={v.id === seatId}
-              onPress={() => setSeatId(v.id)}
-              style={[styles.seat, v.id === seatId && styles.seatOn]}
-            >
-              <Text style={[type.body, styles.seatText, v.id === seatId && { fontWeight: "700", color: colors.ink }]}>
-                {v.label} ({v.seat})
-              </Text>
-              <View style={[styles.dot, v.id === seatId && styles.dotOn]} />
-            </Pressable>
-          ))}
-          <Text style={type.small}>Validators share a {Number(state.config.validatorFeeBps) / 100}% fee pool on every settled job.</Text>
-        </Card>
         <View style={{ gap: 16 }}>
           {error && (
             <View style={styles.error} accessibilityRole="alert">
@@ -135,10 +101,10 @@ export default function ValidatorScreen() {
                 <Fact label="Product" value={describeJob(current, session).product} />
                 <Fact label="Target" value={`${litersPerHa(current.targetRateMlPerHa)} ± ${current.toleranceBps / 100}%`} />
               </FactGrid>
+              <Text style={type.small}>Validators share a {Number(state.config.validatorFeeBps) / 100}% fee pool on every settled job.</Text>
             </Card>
           )}
         </View>
-      </TwoUp>
 
       <BotVerdicts session={session} job={current} />
       <StakeCards locked={locked} />
@@ -200,7 +166,7 @@ export default function ValidatorScreen() {
 
       {challenged.length > 0 && <Text style={type.heading}>Challenges</Text>}
       {challenged.map((job) => (
-        <ChallengeCard key={job.id} job={job} config={state.config} votes={votes[job.id] ?? {}} onVote={(v, u) => vote(job.id, v, u)} upholdOff={devnet ? "Switched off in the public demo: upholding would slash the shared demo validators' stakes. Slashing is proven by the program tests." : undefined} />
+        <ChallengeCard key={job.id} job={job} config={state.config} votes={votes[job.id] ?? {}} onVote={(v, u) => vote(job.id, v, u)} upholdOff={devnet ? "Upholding is switched off on the shared checker seats (it would slash their stakes). Slashing is proven by the program tests." : undefined} />
       ))}
         </>
       )}
@@ -211,22 +177,6 @@ export default function ValidatorScreen() {
 
 const styles = StyleSheet.create({
   error: { borderWidth: 1, borderColor: colors.error, backgroundColor: colors.card, borderRadius: radius.md, padding: space.md },
-  seat: {
-    minHeight: 56,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-    gap: space.md,
-    paddingHorizontal: space.md,
-    borderRadius: radius.md,
-    borderWidth: 1.5,
-    borderColor: colors.border,
-    backgroundColor: colors.card,
-  },
-  seatOn: { borderColor: colors.green, borderWidth: 2 },
-  seatText: { flex: 1, flexShrink: 1 },
-  dot: { width: 24, height: 24, borderRadius: 12, borderWidth: 2, borderColor: colors.border, backgroundColor: colors.card },
-  dotOn: { borderWidth: 8, borderColor: colors.green },
   practice: { gap: space.md, padding: space.md, borderRadius: radius.lg, borderWidth: 1, borderStyle: "dashed", borderColor: colors.border },
   group: { gap: space.lg },
   proofs: { flexDirection: "row", flexWrap: "wrap", gap: space.lg },

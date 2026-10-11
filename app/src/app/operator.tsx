@@ -2,9 +2,8 @@ import { useState } from "react";
 import { View , Text } from "react-native";
 
 import { CertificateCard, CertificateStrip, OpenJobs, UploadRecord, Verdict, Wallet, useOpenJobsText } from "@/components/operator/sections";
-import { OperatorEarnings, OperatorMine, ResetDemo } from "@/components/tab-views";
+import { OperatorEarnings, OperatorMine } from "@/components/tab-views";
 import { ChainGate } from "@/components/chain-gate";
-import { ModeBanner } from "@/components/devnet/mode-banner";
 import { router, type Href } from "expo-router";
 
 import { useAccount } from "@/account/store";
@@ -36,7 +35,6 @@ export default function Operator() {
 
   return (
     <RoleShell role="operator" title={account ? TITLES[tab] : "Jobs near you"} subtitle={tab === "" && account ? openText : undefined}>
-      <ModeBanner />
       <ChainGate>
       {needsSetup ? <OpenJobs onError={setError} onDone={() => undefined} needsSetup /> : null}
       {needsSetup ? (
@@ -44,8 +42,8 @@ export default function Operator() {
           <CardTitle>Get your operator wallet</CardTitle>
           <Text style={type.body}>
             {account
-              ? "Your operator wallet and drone certificate are not on the chain yet. Press the button to create them (a few seconds, test money only)."
-              : "Sign up as a drone operator to get a devnet wallet with test money and a drone calibration certificate."}
+              ? "Your operator wallet and drone certificate are not on the chain yet. Press the button to create them (a few seconds)."
+              : "Sign up as a drone operator to get your own wallet and a drone calibration certificate."}
           </Text>
           {account ? (
             <Button
@@ -53,7 +51,7 @@ export default function Operator() {
               label="Set up my operator wallet"
               disabled={!!dev.walletNote}
               onPress={() => {
-                setDevnetState({ walletNote: "Setting up your devnet wallet…", walletOk: false });
+                setDevnetState({ walletNote: "Setting up your wallet…", walletOk: false });
                 void ensureWallet("operator").catch((e: Error) => notify("error", e.message));
               }}
             />
@@ -90,10 +88,7 @@ export default function Operator() {
         </TwoUp>
       )}
       {!needsSetup && tab === "drones" && (
-        <>
-          <CertificateCard />
-          <ResetDemo />
-        </>
+        <CertificateCard />
       )}
       </ChainGate>
     </RoleShell>
