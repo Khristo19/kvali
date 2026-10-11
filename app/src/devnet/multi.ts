@@ -1,4 +1,5 @@
-// STAGING ONLY (build flag EXPO_PUBLIC_ACCOUNT_SWITCHER, see src/env.ts): several burner accounts per role in one browser.
+// PRESENTER MODE ONLY (?present=1, see src/presenter/store.ts; works on live and staging, build flag EXPO_PUBLIC_ACCOUNT_SWITCHER=0 turns it off):
+// several burner accounts per role in one browser.
 //  - Farmer 1..N and Operator 1..N: each is its own burner keypair (funded by the demo bank like the normal burner flow).
 //  - Validator: which of the 3 public demo seats this browser acts as.
 // The ACTIVE farmer / operator burner is always the one in "kvali.burners.v1" (devnet/keys.ts), so the rest of the app is unchanged.
@@ -6,7 +7,8 @@
 // loads the incoming one's, swaps the active burner and reloads the page, so every store starts clean and re-reads the chain.
 import { useSyncExternalStore } from "react";
 
-import { SWITCHER, lsKey } from "@/env";
+import { lsKey } from "@/env";
+import { switcherOn } from "@/presenter/store";
 import { VALIDATORS } from "@/engine/scenario";
 import { Keypair } from "@solana/web3.js";
 import { BKEY } from "./keys";
@@ -39,7 +41,7 @@ const emit = () => listeners.forEach((l) => l());
 const ls = () => globalThis.localStorage;
 
 function persist() {
-  if (!SWITCHER) return; // live keeps the seat in memory only
+  if (!switcherOn()) return; // outside presenter mode the seat lives in memory only
   try {
     ls()?.setItem(MKEY, JSON.stringify(state));
   } catch {
@@ -63,7 +65,7 @@ function writeBurner(role: MultiRole, secret: number[]) {
 
 /** Read the saved list and make it agree with the burner wallets that really exist (a Reset demo removes them). */
 export function loadMulti() {
-  if (!SWITCHER) return;
+  if (!switcherOn()) return;
   let saved: Partial<Multi> = {};
   try {
     saved = JSON.parse(ls()?.getItem(MKEY) ?? "null") ?? {};
@@ -103,7 +105,7 @@ export const activeEntry = (m: Multi, role: MultiRole) => m[role].find((e) => e.
 
 /** The chip text for the active account of a role (null when the switcher is off). */
 export function activeLabel(m: Multi, role: "farmer" | "operator" | "validator"): string | null {
-  if (!SWITCHER) return null;
+  if (!switcherOn()) return null;
   if (role === "validator") {
     const v = VALIDATORS.find((x) => x.id === m.seat) ?? VALIDATORS[0];
     return `Validator (${v.seat} seat)`;

@@ -39,8 +39,24 @@ Live site https://khristo19.github.io/kvali/ (devnet; test USDC). One browser, t
 |---|---|---|
 | 0:00-0:20 | **Post the job** | Farmer page: pick an OSM vineyard, Post job. Real `post_job` tx; $300 sits in the vault PDA. Open the Explorer link. |
 | 0:20-0:35 | **Operator accepts** | Operator page, Accept: the operator's $300 bond is locked on chain (`accept_job`). |
-| 0:35-0:50 | **Flight** | "Demo: simulate the drone flight", pick Honest flight, Send. (A real drone uploads its log; here it is a sample record.) |
+| 0:35-0:50 | **Flight** | Operator page, "Send the flight log": pick Honest flight, Send. (A real drone uploads its log; here it is a sample record.) |
 | 0:50-1:15 | **Bots co-sign automatically** | Open the Validator page. "Bot verdicts": every bot ran coverage, L/ha band and flow-meter-vs-tank; 2 of 3 co-signed and `submit_proof` went on chain with no human click. Open the co-sign transaction on Explorer (three signers plus the stake accounts). Optional: send the Pump off record on another job; the bots refuse it, nothing is signed or paid. |
 | 1:15-1:35 | **Stake card** | Each seat shows $500 staked, active, proofs co-signed, open co-signs. One line: "Checkers lock their own USDC. If a panel rules that a proof they signed was false, their stake goes to the farmer and they lose their seat." Unstake and withdraw are switched off for the public demo seats; slashing is proven by the program tests, not run on the shared demo keys. |
 | 1:35-1:50 | **Settle and payout** | The 60 s window closes and the app settles by itself: operator $285 plus the $300 bond back, treasury $9, validator pool $6. Show Operator earnings and the farmer's "Operator paid" card. After settle the app calls `release_cosign` for each co-signer, so open co-signs go back to 0. |
 | 1:50-2:00 | **Explorer links** | Job story page: every step has its Explorer link and "Adds up". |
+
+## Presenter mode (record the web demo)
+
+Open https://khristo19.github.io/kvali/?present=1 (staging: https://khristo19.github.io/kvali/staging/?present=1). Any page works with `?present=1`; the flag stays on for that browser tab. Without it the site is exactly what a user sees, so everything shown on screen is the real user environment. There are no demo controls on the pages themselves.
+
+- A small **Presenter** button sits in the bottom-right corner. It opens the presenter drawer. **Shift+P** also opens and closes the drawer.
+- **Recording**: "Hide the Presenter button" removes the button for a clean screen. Shift+P still opens the drawer, and "Show the Presenter button" brings the button back.
+- **Exit presenter** (or opening any page with `?present=0`) turns presenter mode off.
+
+What each drawer section does:
+
+1. **Network**: the network status, the switch between the live network and the in-browser simulation, and the Explorer link of the last transaction.
+2. **Act as**: which farmer and which operator account this browser uses (Farmer 1, Farmer 2, ...; "+ New farmer account" creates and funds another one; switching reloads the page and the drawer stays open), and which of the 3 validator seats you act as.
+3. **Job shortcuts**: play the other side so one role can be shown alone: operator accepts the job, operator sends one of the sample records, settle now, or run the rest of the job automatically (post, accept, honest record).
+4. **Jump to**: Home, Farmer, Operator, Validator, Job story, How it works.
+5. **Reset**: "Reset this browser" forgets the accounts, the wallets created in this browser and the current job.

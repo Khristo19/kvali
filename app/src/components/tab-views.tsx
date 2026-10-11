@@ -51,7 +51,7 @@ export function FarmerPayments() {
     <>
       <Card>
         <CardTitle>Payments</CardTitle>
-        <Row label="Your balance (test USDC)" value={usdc(bal)} sub={lari(bal)} />
+        <Row label="Your balance (USDC)" value={usdc(bal)} sub={lari(bal)} />
         <Row label="Held safely for this job" value={usdc(held)} sub={lari(held)} />
         {job?.payout ? (
           <>
@@ -161,17 +161,17 @@ export function ValidatorProfile() {
   return (
     <Card>
       <CardTitle>Profile</CardTitle>
-      {a ? <Row label="Signed in as" value={a.name} sub={`${roleLabel(a.role)} · ${a.email}`} /> : <Banner text="Not signed in. Go to the home page to create a demo account." />}
-      {a?.role === "validator" ? <Row label="Your devnet address" value={shortAddr(addressFor("validator"))} /> : null}
+      {a ? <Row label="Signed in as" value={a.name} sub={`${roleLabel(a.role)} · ${a.email}`} /> : <Banner text="Not signed in. Go to the home page to create an account." />}
+      {a?.role === "validator" ? <Row label="Your address" value={shortAddr(addressFor("validator"))} /> : null}
       {VALIDATORS.map((v) => (
         <Row key={v.id} label={v.label} value={`${v.seat} seat`} />
       ))}
-      <Text style={type.small}>A proof needs 2 of the 3 checker seats to co-sign. The seats run as bots in this demo; each has its own USDC stake.</Text>
+      <Text style={type.small}>A proof needs 2 of the 3 checker seats to co-sign. The seats run as checker bots; each has its own USDC stake.</Text>
     </Card>
   );
 }
 
-/** Clears this browser's demo wallets, accounts and current job. Confirms inline (no browser dialog). */
+/** Clears this browser's wallets, accounts and current job. Confirms inline (no browser dialog). */
 export function ResetDemo() {
   const [ask, setAsk] = useState(false);
   const doReset = () => {
@@ -183,8 +183,8 @@ export function ResetDemo() {
   };
   return (
     <Card>
-      <CardTitle>Reset demo in this browser</CardTitle>
-      <Text style={type.body}>Starts from zero: forgets the demo accounts, the wallets generated in this browser and the current job.</Text>
+      <CardTitle>Reset this browser</CardTitle>
+      <Text style={type.body}>Starts from zero: forgets the accounts, the wallets created in this browser and the current job.</Text>
       {ask ? (
         <>
           <Banner tone="error" text="This cannot be undone. Test money left in the old wallets is not recoverable from this page." />
@@ -192,7 +192,7 @@ export function ResetDemo() {
           <Button label="Cancel" kind="secondary" small onPress={() => setAsk(false)} />
         </>
       ) : (
-        <Button testID="reset-demo" label="Reset demo in this browser" kind="secondary" small onPress={() => setAsk(true)} />
+        <Button testID="reset-demo" label="Reset this browser" kind="secondary" small onPress={() => setAsk(true)} />
       )}
     </Card>
   );

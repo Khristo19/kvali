@@ -5,7 +5,7 @@ import { useEffect, useRef } from "react";
 import { loadAccount } from "@/account/store";
 import { consumeFresh, loadMulti } from "@/devnet/multi";
 import { ensureWallet } from "@/devnet/provision";
-import { SWITCHER } from "@/env";
+import { switcherOn } from "@/presenter/store";
 import { notify } from "@/components/ui/notice";
 import { useTick } from "@/components/ui/use-tick";
 import { useDevnetState, getDevnetState, setDevnetState } from "@/devnet/mode";
@@ -26,12 +26,12 @@ export function SessionEffects() {
 
   useEffect(() => {
     loadAccount();
-    if (SWITCHER) {
-      // Staging account switcher: read the saved accounts, and fund an account that was just created (same flow as the first sign-up).
+    if (switcherOn()) {
+      // Presenter account switcher: read the saved accounts, and fund an account that was just created (same flow as the first sign-up).
       loadMulti();
       for (const role of consumeFresh()) {
         if (getDevnetState().mode !== "devnet") continue;
-        setDevnetState({ walletNote: "Setting up your own devnet wallet: funding it with test SOL and test USDC...", walletOk: false });
+        setDevnetState({ walletNote: "Setting up your wallet…", walletOk: false });
         void ensureWallet(role).catch((e: Error) => notify("error", e.message));
       }
     }
@@ -107,7 +107,7 @@ export function SessionEffects() {
         t.next = now + Math.min(60, 5 * 2 ** t.n);
         notify(
           "info",
-          t.n >= 10 ? 'Automatic settlement gave up. Press "Settle now" to try again.' : "Settling is taking a moment (devnet is busy). The app is retrying by itself.",
+          t.n >= 10 ? 'Automatic settlement gave up. Press "Settle now" to try again.' : "Settling is taking a moment (the network is busy). The app is retrying by itself.",
         );
       })
       .finally(() => {
