@@ -37,7 +37,7 @@ Live site https://khristo19.github.io/kvali/ (devnet; test USDC). One browser, t
 
 | Time | Beat | Show |
 |---|---|---|
-| 0:00-0:20 | **Post the job** | Farmer page: pick an OSM vineyard, Post job. Real `post_job` tx; $300 sits in the vault PDA. Open the Explorer link. |
+| 0:00-0:20 | **Post the job** | Farmer page, "My fields": pick a field card (or "+ Add a field"), then "Spray this field". Real `post_job` tx; $300 sits in the vault PDA. The field card now shows "Waiting for an operator". Open the Explorer link. |
 | 0:20-0:35 | **Operator accepts** | Operator page, Accept: the operator's $300 bond is locked on chain (`accept_job`). |
 | 0:35-0:50 | **Flight** | Operator page, "Send the flight log": pick Honest flight, Send. (A real drone uploads its log; here it is a sample record.) |
 | 0:50-1:15 | **Bots co-sign automatically** | Open the Validator page. "Bot verdicts": every bot ran coverage, L/ha band and flow-meter-vs-tank; 2 of 3 co-signed and `submit_proof` went on chain with no human click. Open the co-sign transaction on Explorer (three signers plus the stake accounts). Optional: send the Pump off record on another job; the bots refuse it, nothing is signed or paid. |
@@ -59,4 +59,12 @@ What each drawer section does:
 2. **Act as**: which farmer and which operator account this browser uses (Farmer 1, Farmer 2, ...; "+ New farmer account" creates and funds another one; switching reloads the page and the drawer stays open), and which of the 3 validator seats you act as.
 3. **Job shortcuts**: play the other side so one role can be shown alone: operator accepts the job, operator sends one of the sample records, settle now, or run the rest of the job automatically (post, accept, honest record).
 4. **Jump to**: Home, Farmer, Operator, Validator, Job story, How it works.
-5. **Reset**: "Reset this browser" forgets the accounts, the wallets created in this browser and the current job.
+5. **Recording**: hide or show the Presenter button.
+6. **Reset**: "Reset this browser" forgets the accounts, the wallets created in this browser and the current job.
+
+Notes for recording:
+
+- Record on the live site (`https://khristo19.github.io/kvali/farmer?present=1`). Staging also shows a STAGING badge, which users never see.
+- New accounts made in "Act as" are funded from the shared demo bank, so make only the accounts you need.
+- The countdown after the flight log is the real 60 s challenge window. The job settles by itself about 5 s after it closes; "Settle now" on the page is the user fallback and the drawer's "Settle now" does the same.
+- The only network notice users see is a quiet line on the home page ("Runs on Solana's test network with test money.") and an alert if the network cannot be reached.
