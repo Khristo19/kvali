@@ -4,28 +4,73 @@ import { StyleSheet, Text, TextInput, View } from "react-native";
 
 import { Pressable } from "@/components/ui/pressable";
 
-import { BigNumber, Button, Card, RoleShell, TwoUp } from "@/components/ui";
-import { DrawMap } from "@/components/map/draw-map";
-import { haText } from "@/components/farmer/fields";
+import { BigNumber, Button, Card, CardTitle, RoleShell, TwoUp } from "@/components/ui";
+import { DrawMap, fmtHa } from "@/components/map/draw-map";
 import { addField, useFields } from "@/data/fields-store";
 import { areaHa, type LonLat } from "@/geo/geo";
 import { colors, fonts, radius, type } from "@/theme";
 
 type Tab = "draw" | "code";
 
+const CROPS = ["Grapes", "Hazelnuts", "Wheat", "Corn", "Apples"] as const;
+const PRODUCTS = ["Copper fungicide", "Sulfur fungicide", "Foliar fertiliser", "Insecticide"] as const;
+
+/** A row of choice chips (one can be picked). */
+function Choice<T extends string>({ label, id, options, value, onPick }: { label: string; id: string; options: readonly T[]; value: T; onPick: (v: T) => void }) {
+  return (
+    <View style={{ gap: 8 }}>
+      <Text style={styles.label} nativeID={id}>
+        {label}
+      </Text>
+      <View accessibilityRole="radiogroup" accessibilityLabelledBy={id} style={styles.chips}>
+        {options.map((o) => (
+          <Pressable
+            key={o}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: value === o }}
+            aria-checked={value === o}
+            accessibilityLabel={o}
+            onPress={() => onPick(o)}
+            style={[styles.chip, value === o && styles.chipOn]}
+          >
+            <Text style={[styles.chipText, value === o && { color: colors.onAccent }]}>{o}</Text>
+          </Pressable>
+        ))}
+      </View>
+    </View>
+  );
+}
+
 export default function MarkField() {
   const [tab, setTab] = useState<Tab>("draw");
   const [points, setPoints] = useState<LonLat[]>([]);
+  const [closed, setClosed] = useState(false);
   const [code, setCode] = useState("");
+  const [name, setName] = useState("");
+  const [crop, setCrop] = useState<(typeof CROPS)[number]>("Grapes");
+  const [product, setProduct] = useState<(typeof PRODUCTS)[number]>("Copper fungicide");
   const count = useFields().fields.length;
   const ha = areaHa(points);
+  const n = points.length;
+  const defaultName = `Field ${count + 1}`;
+
+  const edit = (p: LonLat[]) => {
+    if (p.length < 3) setClosed(false);
+    setPoints(p);
+  };
+  // Undo first re-opens a closed outline, then removes corners one at a time.
+  const undo = () => (closed && n >= 3 ? setClosed(false) : edit(points.slice(0, -1)));
+  const clear = () => {
+    setPoints([]);
+    setClosed(false);
+  };
 
   const save = () => {
     addField({
       id: `drawn-${Date.now()}`,
-      name: `Field ${count + 1} (drawn by me)`,
-      crop: "Grapes",
-      product: "Copper fungicide",
+      name: name.trim() || defaultName,
+      crop,
+      product,
       outline: points,
       source: "drawn",
     });
@@ -45,24 +90,42 @@ export default function MarkField() {
       {tab === "draw" ? (
         <TwoUp>
           <View style={{ gap: 12 }}>
-            <View>
-              <DrawMap points={points} onChange={setPoints} />
-              <View pointerEvents="none" style={styles.hint}>
-                <Text style={styles.hintText}>{points.length === 0 ? "Tap to add your first corner" : `${points.length} ${points.length === 1 ? "point" : "points"} · tap to add more`}</Text>
-              </View>
-            </View>
-            <Text style={type.body}>Tap each corner of your field. Drag a point to move it.</Text>
+            <DrawMap points={points} onChange={edit} closed={closed} onClosedChange={setClosed} />
+            <Text style={type.body}>
+              Tap each corner of your field, then tap corner 1 to close it. Drag a corner to move it, tap a corner to remove it, tap + to add one
+              in between. Drag the map to move around.
+            </Text>
           </View>
           <View style={{ gap: 16 }}>
             <Card style={styles.sizeCard}>
-              <BigNumber caption="Field size" value={haText(ha)} />
+              <BigNumber caption="Field size" value={n >= 3 ? fmtHa(ha) : "—"} sub={`${n} ${n === 1 ? "corner" : "corners"}${closed && n >= 3 ? " · closed" : ""}`} />
               <View style={styles.small}>
-                <Button small kind="secondary" label="Undo" disabled={points.length === 0} onPress={() => setPoints(points.slice(0, -1))} />
-                <Button small kind="secondary" label="Clear" disabled={points.length === 0} onPress={() => setPoints([])} />
+                <Button small kind="secondary" label="Undo" disabled={n === 0} onPress={undo} />
+                <Button small kind="secondary" label="Clear" disabled={n === 0} onPress={clear} />
               </View>
             </Card>
-            {points.length > 0 && points.length < 3 ? <Text style={type.small}>Add at least 3 corners to make a field.</Text> : null}
-            <Button label="Save field" disabled={points.length < 3} onPress={save} />
+            <Card style={{ gap: 16 }}>
+              <CardTitle>About this field</CardTitle>
+              <View style={{ gap: 8 }}>
+                <Text style={styles.label} nativeID="fname">
+                  Field name
+                </Text>
+                <TextInput
+                  accessibilityLabelledBy="fname"
+                  accessibilityLabel="Field name"
+                  value={name}
+                  onChangeText={setName}
+                  placeholder={defaultName}
+                  placeholderTextColor={colors.muted}
+                  maxLength={40}
+                  style={styles.nameInput}
+                />
+              </View>
+              <Choice label="Crop" id="crop" options={CROPS} value={crop} onPick={setCrop} />
+              <Choice label="Spray product" id="product" options={PRODUCTS} value={product} onPick={setProduct} />
+            </Card>
+            {n < 3 ? <Text style={type.small}>{n === 0 ? "Mark at least 3 corners to save the field." : `Add ${3 - n} more ${3 - n === 1 ? "corner" : "corners"} to save the field.`}</Text> : null}
+            <Button label="Save field" disabled={n < 3} onPress={save} />
           </View>
         </TwoUp>
       ) : (
@@ -109,10 +172,23 @@ const styles = StyleSheet.create({
   tab: { flex: 1, minHeight: 48, borderRadius: radius.sm, alignItems: "center", justifyContent: "center", paddingHorizontal: 6 },
   tabOn: { backgroundColor: colors.green },
   tabText: { fontFamily: fonts.sans, fontSize: 16, fontWeight: "600", color: colors.ink, textAlign: "center", flexShrink: 1 },
-  hint: { position: "absolute", left: 12, top: 12, backgroundColor: colors.card, borderRadius: radius.sm, paddingVertical: 8, paddingHorizontal: 12, maxWidth: "75%" },
-  hintText: { fontFamily: fonts.sans, fontSize: 15, fontWeight: "600", color: colors.ink },
   sizeCard: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 },
   small: { flexDirection: "row", gap: 8, flexShrink: 1 },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  chip: { minHeight: 44, paddingHorizontal: 14, borderRadius: 999, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.card, alignItems: "center", justifyContent: "center" },
+  chipOn: { backgroundColor: colors.green, borderColor: colors.green },
+  chipText: { fontFamily: fonts.sans, fontSize: 15, fontWeight: "600", color: colors.ink },
+  nameInput: {
+    minHeight: 48,
+    paddingHorizontal: 14,
+    borderRadius: radius.md,
+    borderWidth: 1.5,
+    borderColor: colors.border,
+    backgroundColor: colors.card,
+    color: colors.ink,
+    fontFamily: fonts.sans,
+    fontSize: 17,
+  },
   label: { fontFamily: fonts.sans, fontSize: 16, fontWeight: "600", color: colors.ink },
   codeRow: { flexDirection: "row", gap: 8, alignItems: "stretch" },
   input: {

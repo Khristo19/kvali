@@ -56,7 +56,7 @@ export function MapCanvas({
       const wx = ((tx % n) + n) % n;
       tiles.push(
         <Image
-          key={`${tx}:${ty}`}
+          key={`${vp.zoom}:${tx}:${ty}`}
           accessibilityIgnoresInvertColors
           source={{ uri: tileUrl(vp.zoom, wx, ty) }}
           style={{ position: "absolute", left: tx * TILE - ox, top: ty * TILE - oy, width: TILE, height: TILE }}
