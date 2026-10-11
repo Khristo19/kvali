@@ -120,7 +120,7 @@ function plainError(e: unknown): string {
 const when = (secs: number) => new Date(secs * 1000).toLocaleString("en-GB", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
 
 const SETUP_FIRST = "Set up your operator wallet and certificate (the card below) first, then you can accept a job.";
-const SIGN_UP_FIRST = "Sign up as a drone operator first: you need your own demo wallet to accept a job.";
+const SIGN_UP_FIRST = "Sign up as a drone operator first: you need your own wallet to accept a job.";
 
 function jobCard(j: Job, feeBps: bigint, onAccept: () => void, o: { onChain?: boolean; session: Session | null; disabledReason?: string; mine?: boolean }) {
   const d = describeJob(j, o.session);
@@ -133,10 +133,10 @@ function jobCard(j: Job, feeBps: bigint, onAccept: () => void, o: { onChain?: bo
           <Text style={styles.jobTitle}>{title}</Text>
           <Text style={type.small}>
             {d.farmer ? `Farmer: ${d.farmer} · ` : ""}job {d.ref}
-            {o.onChain ? " · read from Solana devnet" : ""}
+            {o.onChain ? " · on chain" : ""}
           </Text>
         </View>
-        <StatusChip label={o.mine ? "Your demo job" : "Open"} tone="green" />
+        <StatusChip label="Open" tone="green" />
       </View>
       <BigNumber value={usdc(j.amount)} size={30} sub={`${lari(j.amount)} · you receive ${usdc(receive)} after fee`} />
       <Divider />
@@ -193,7 +193,7 @@ export function OpenJobs({ onError, onDone, needsSetup }: { onError: (m: string 
     }
   };
   const local = state.jobs[17];
-  const busyReason = local && !['Released', 'Refunded', 'Cancelled'].includes(local.state) ? (local.state === 'Posted' ? 'The demo job above is still open. Accept it, or ask the farmer to cancel it, before taking another one.' : 'You are working on the demo job. Finish it or release it first.') : undefined;
+  const busyReason = local && !['Released', 'Refunded', 'Cancelled'].includes(local.state) ? (local.state === 'Posted' ? 'The job above is still open. Accept it, or ask the farmer to cancel it, before taking another one.' : 'You are working on a job. Finish it or release it first.') : undefined;
   const reading = dev.mode === "devnet" && dev.openJobs === null;
   const none = jobs.length === 0 && extra.length === 0 && !held;
   return (
@@ -212,7 +212,7 @@ export function OpenJobs({ onError, onDone, needsSetup }: { onError: (m: string 
         <Button
           small
           kind="secondary"
-          label={`${showOthers || jobs.length === 0 ? "Hide" : "Show"} other open jobs on devnet from other visitors (${extra.length})`}
+          label={`${showOthers || jobs.length === 0 ? "Hide" : "Show"} other open jobs (${extra.length})`}
           onPress={() => setShowOthers(!(showOthers || jobs.length === 0))}
         />
       ) : null}
@@ -227,7 +227,7 @@ export function OpenJobs({ onError, onDone, needsSetup }: { onError: (m: string 
         <Card>
           <CardTitle>Jobs near you</CardTitle>
           <Text style={type.body}>
-            {reading ? "Reading open jobs from Solana devnet…" : "No open jobs right now. Post one from the Farmer page, then come back."}
+            {reading ? "Loading open jobs…" : "No open jobs right now. Post one from the Farmer page, then come back."}
           </Text>
         </Card>
       ) : null}
@@ -249,7 +249,7 @@ const SAMPLE_INFO: { key: keyof typeof sampleRecords; title: string; desc: strin
   { key: "honest", title: "Honest flight", desc: "Whole field sprayed at the right rate; flow meter matches the tank weights." },
   { key: "pumpOff", title: "Pump off", desc: "Drone flew the field but the pump was off: almost no liquid sprayed." },
   { key: "halfField", title: "Half field", desc: "Only about half of the field was flown." },
-  { key: "tankMismatch", title: "Tank mismatch", desc: "Flow meter says the full amount, but the tank weights show far less left the tank. (The simulated program only checks rate and coverage; the tank cross-check is a validator job.)" },
+  { key: "tankMismatch", title: "Tank mismatch", desc: "Flow meter says the full amount, but the tank weights show far less left the tank. (The program checks rate and coverage; the tank cross-check is done by the checker bots.)" },
 ];
 
 export function UploadRecord({ job, onError }: { job: Job; onError: (m: string | null) => void }) {
@@ -272,9 +272,9 @@ export function UploadRecord({ job, onError }: { job: Job; onError: (m: string |
   };
   return (
     <Card testID="simulate-flight">
-      <CardTitle>Demo: simulate the drone flight</CardTitle>
+      <CardTitle>Send the flight log</CardTitle>
       <Text style={type.body}>
-        Presenter control. A real drone would upload its flight log after spraying {describeJob(job, session).field} (job {jobRef(job.id, session)}). Here you pick a sample record instead.
+        After spraying {describeJob(job, session).field} (job {jobRef(job.id, session)}), send the drone&apos;s flight log. Pick the log for this flight:
       </Text>
       {SAMPLE_INFO.map((s) => (
         <Button testID={`record-${s.key}`} small key={s.key} kind={s.key === key ? "primary" : "secondary"} label={s.title + (s.key === key ? " (selected)" : "")} onPress={() => setKey(s.key)} />
@@ -320,7 +320,7 @@ export function ReleaseJob({ job }: { job: Job }) {
         render={(left) => (
           <Text style={type.small}>
             {left > 0
-              ? `Demo jobs must be sprayed within 30 minutes (until ${when(job.sprayDeadline)}). If no good record is accepted by then, the program returns the farmer's payment and your bond: press the button after the deadline (${Math.ceil(left / 60)} min left).`
+              ? `Jobs must be sprayed within 30 minutes (until ${when(job.sprayDeadline)}). If no good record is accepted by then, the program returns the farmer's payment and your bond: press the button after the deadline (${Math.ceil(left / 60)} min left).`
               : "The spray-by deadline has passed with no accepted proof. Release the job to return the payment and the bond."}
           </Text>
         )}

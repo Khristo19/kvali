@@ -34,7 +34,7 @@ export function ChainGate({ children }: { children: ReactNode }) {
   return (
     <View style={styles.box} accessibilityLiveRegion="polite" testID="chain-gate">
       <ActivityIndicator color={colors.green} />
-      <Text style={type.body}>{s.rpcBusy ? "Solana devnet is busy — retrying…" : "Reading the latest state from Solana devnet…"}</Text>
+      <Text style={type.body}>{s.rpcBusy ? "Solana is busy — retrying…" : "Loading the latest data from Solana…"}</Text>
     </View>
   );
 }

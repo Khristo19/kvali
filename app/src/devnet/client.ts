@@ -71,8 +71,8 @@ function toChainError(e: unknown, logs?: string[] | null, sig: string | null = n
   const text = [...(logs ?? []), (e as Error)?.message ?? String(e)].join("\n");
   const m = text.match(ERR_RE);
   if (m) return new ChainError(m[1], `${m[1]}: ${m[3].replace(/\.$/, "")}`, sig);
-  if (/insufficient funds|0x1\b/i.test(text)) return new ChainError("InsufficientFunds", "Not enough funds for this step (devnet SOL or test USDC).", sig);
-  return new ChainError("rpc", friendlyMessage((e as Error)?.message ?? "Devnet request failed."), sig);
+  if (/insufficient funds|0x1\b/i.test(text)) return new ChainError("InsufficientFunds", "Not enough funds for this step.", sig);
+  return new ChainError("rpc", friendlyMessage((e as Error)?.message ?? "Request failed."), sig);
 }
 
 // ---- sending --------------------------------------------------------------

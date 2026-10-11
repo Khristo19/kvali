@@ -19,7 +19,7 @@ const getEngineRef = () => lastEngine as Engine;
 const nowSecs = () => Math.floor(Date.now() / 1000);
 
 async function track<T>(label: string, fn: () => Promise<{ sig: string; value: T }>, needs?: "farmer" | "operator"): Promise<T> {
-  if (getDevnetState().busy) throw new Error("Another devnet transaction is still being sent. Wait a few seconds.");
+  if (getDevnetState().busy) throw new Error("Another transaction is still being sent. Wait a few seconds.");
   setDevnetState({ busy: label });
   try {
     if (needs) {
@@ -167,7 +167,7 @@ export async function refreshOpenJobs() {
 /** Put a job that exists on chain (posted by another visit) into this browser's session and mirror it. */
 export async function adoptChainJob(engine: Engine, cj: chain.ChainJob) {
   const local = engine.getState().jobs[localJobId()];
-  if (local && !ENDED.includes(local.state) && getSession()?.chainJobId !== cj.chainJobId) throw new Error(`The demo job in this browser is still ${local.state}. Finish it first, or release it, then accept another one.`);
+  if (local && !ENDED.includes(local.state) && getSession()?.chainJobId !== cj.chainJobId) throw new Error(`Your current job in this browser is still ${local.state}. Finish it first, or release it, then accept another one.`);
   if (local && getSession()?.chainJobId === cj.chainJobId) return; // already the shared session job
   chain.setJobFarmer(cj.farmer);
   newSession({ farmer: cj.farmer, chainJobId: cj.chainJobId, fieldHash: cj.fieldHash, areaCha: cj.areaCha, sprayDeadline: cj.sprayDeadline });
@@ -351,7 +351,7 @@ export function devnetActions(engine: Engine): DevActions {
   lastEngine = engine;
   const chainId = () => {
     const id = getDevnetState().chainJobId;
-    if (id === null) throw new Error("No devnet job yet. Post one from the Farmer screen.");
+    if (id === null) throw new Error("No job yet. Post one from the Farmer screen.");
     return id;
   };
   const retag = (action: string, jobId: number, sig: string, time?: number) => {
@@ -494,7 +494,7 @@ export function devnetActions(engine: Engine): DevActions {
       }, "farmer");
     },
     async resolveChallenge(signers, jobId, upheld) {
-      if (upheld) throw new Error("Upholding a challenge would slash the shared demo validators on devnet, so it is switched off in the public demo. Slashing is proven by the program tests.");
+      if (upheld) throw new Error("Upholding a challenge is switched off on the shared validator seats (it would slash their stakes). Slashing is proven by the program tests.");
       await track(upheld ? "Resolve challenge (upheld)" : "Resolve challenge (rejected)", async () => {
         const ids = signers.filter((s) => VALIDATORS.some((v) => v.id === s));
         const sig = await chain.resolveChallenge(chainId(), { validatorIds: ids.length ? ids : PANEL_SIGNERS, upheld, reportText: `panel-report-${jobId}-${upheld}` });

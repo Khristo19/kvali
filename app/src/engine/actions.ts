@@ -51,14 +51,14 @@ function plain(e: unknown): string {
 
 const OK: Record<keyof Actions, string> = {
   postJob: "Job posted. The payment is held safely until the spraying is checked.",
-  acceptJob: "Job accepted. Your bond is locked. Next: fly the job (use \"Demo: simulate the drone flight\" below).",
+  acceptJob: "Job accepted. Your bond is locked. Next: spray the field and send the flight log below.",
   submitRecord: "The checker bots passed the record and 2 of 3 co-signed: the proof is on chain. The challenge window is open.",
   settle: "Settled. The operator was paid.",
   challenge: "Challenge raised. A validator panel will decide.",
   resolveChallenge: "The panel has decided and the money was paid out.",
   reclaimExpired: "Job released. The payment and the bond went back (the spray-by deadline had passed).",
   cancelJob: "Job cancelled. Your payment came back.",
-  acceptOpenJob: "Job accepted. Your bond is locked. Next: fly the job (use \"Demo: simulate the drone flight\" below).",
+  acceptOpenJob: "Job accepted. Your bond is locked. Next: spray the field and send the flight log below.",
   continueHeldJob: "Continuing the job you hold on chain.",
   newJob: "Ready for a new job.",
 };

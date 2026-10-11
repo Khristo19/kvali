@@ -22,7 +22,7 @@ const TTL_MS: Record<string, number> = {
 
 export class RpcBusyError extends Error {
   constructor() {
-    super("Solana devnet is busy right now. The app keeps retrying; please wait a few seconds.");
+    super("The Solana network is busy right now. The app keeps retrying; please wait a few seconds.");
     this.name = "RpcBusyError";
   }
 }
@@ -136,8 +136,8 @@ export const clearRpcCache = () => cache.clear();
 export function friendlyMessage(raw: string): string {
   const m = raw ?? "";
   if (/429|rate limit|too many requests|busy|failed to fetch|fetch failed|network|timeout|timed out|ECONN/i.test(m)) {
-    return "Solana devnet is busy right now. The app keeps retrying; please wait a few seconds and try again if nothing changes.";
+    return "The Solana network is busy right now. The app keeps retrying; please wait a few seconds and try again if nothing changes.";
   }
-  if (m.trim().startsWith("{") || m.includes('"jsonrpc"')) return "Solana devnet returned an unexpected answer. Please try again in a moment.";
+  if (m.trim().startsWith("{") || m.includes('"jsonrpc"')) return "Solana returned an unexpected answer. Please try again in a moment.";
   return m;
 }

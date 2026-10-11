@@ -26,9 +26,9 @@ async function provision(role: Role) {
     return;
   }
 
-  const steps = [lowSol && "funding with test SOL", lowUsdc && "adding test USDC", role === "operator" && !certOk && "registering you and issuing the drone certificate"].filter(Boolean) as string[];
+  const steps = [lowSol && "adding SOL for network fees", lowUsdc && "adding USDC", role === "operator" && !certOk && "registering you and issuing the drone certificate"].filter(Boolean) as string[];
   let n = 0;
-  const step = () => say(`Setting up your devnet wallet… ${++n}/${steps.length}: ${steps[n - 1]}`);
+  const step = () => say(`Setting up your wallet… ${++n}/${steps.length}: ${steps[n - 1]}`);
   // 1. SOL from the bank (the demo validator that pays the certificate rent is topped up too)
   if (lowSol) {
     step();
@@ -41,7 +41,7 @@ async function provision(role: Role) {
       try {
         await chain.airdrop(kp.publicKey, 0.1);
       } catch {
-        throw new Error("The demo wallet bank is out of devnet SOL and the public faucet is busy. Please try again in a minute, or tell the presenter to run the bank top-up.");
+        throw new Error("Wallet setup is busy right now. Please try again in a minute.");
       }
     }
   }
@@ -70,7 +70,7 @@ async function provision(role: Role) {
       /* ignore */
     }
   }
-  say(`Your devnet ${role} wallet is funded and ready ✓`, true);
+  say(`Your ${role} wallet is funded and ready ✓`, true);
   setTimeout(() => setDevnetState({ walletNote: null, walletOk: false }), 5000);
   setDevnetState({ walletReadyAt: Date.now() });
 }

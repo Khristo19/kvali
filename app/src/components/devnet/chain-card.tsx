@@ -37,7 +37,7 @@ export function ChainCard() {
   };
   return (
     <Card>
-      <CardTitle>On Solana devnet right now</CardTitle>
+      <CardTitle>On Solana right now</CardTitle>
       <Text style={type.small}>Read from the chain (slot {snap.slot.toLocaleString("en-US")}), not from this app.</Text>
       {j ? (
         <>
