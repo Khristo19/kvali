@@ -34,7 +34,7 @@ test("Happy path: farmer posts, operator flies, the bots co-sign by themselves, 
     await shot(page, "02-operator-accepted");
   });
 
-  await test.step("4. Demo control: simulate an honest drone flight and send the record (the bots take it from here)", async () => {
+  await test.step("4. Operator sends the flight log: simulate an honest drone flight and send the record (the bots take it from here)", async () => {
     await operatorSendsRecord(page, "honest");
     // No validator click: the flight card goes away once the bots' co-signed proof is on chain.
     await expect(tid(page, "simulate-flight")).toBeHidden({ timeout: 240_000 });

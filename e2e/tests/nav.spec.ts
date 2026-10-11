@@ -98,20 +98,20 @@ for (const role of ROLES) {
   });
 }
 
-test("Nav: /job 'Open this demo as' buttons open the right page", async ({ page }) => {
+test("Nav: /job 'See this job as' buttons open the right page", async ({ page }) => {
   const targets: [string, RegExp][] = [
     ["job-open-farmer", /\/farmer\/?$/],
     ["job-open-operator", /\/operator\/?$/],
     ["job-open-validator", /\/validator\/?$/],
   ];
   for (const [id, url] of targets) {
-    await test.step(`Open this demo as: ${id.replace("job-open-", "")}`, async () => {
+    await test.step(`See this job as: ${id.replace("job-open-", "")}`, async () => {
       await go(page, "job");
       await tid(page, id).click();
       await expect(page).toHaveURL(url);
     });
   }
-  await test.step("Open this demo as: Home", async () => {
+  await test.step("See this job as: Home", async () => {
     await go(page, "job");
     await tid(page, "job-open-home").click();
     await expect(tid(page, "continue-email")).toBeVisible();
@@ -144,10 +144,38 @@ test("Nav: farmer home lists the fields, with no demo controls", async ({ page }
   await expect(tid(page, "demo-accept")).toHaveCount(0);
 });
 
+test("Presenter: controls only appear with ?present=1", async ({ page }) => {
+  await seedAccounts(page, ["farmer"]);
+  await go(page, "farmer");
+  await expect(tid(page, "page-title")).toBeVisible({ timeout: 60_000 });
+  for (const id of ["presenter-open", "demo-accept", "reset-demo", "demo-controls-toggle"]) await expect(tid(page, id)).toHaveCount(0);
+
+  await go(page, "farmer?present=1");
+  await expect(tid(page, "presenter-open")).toBeVisible({ timeout: 60_000 });
+  await tid(page, "presenter-open").click();
+  await expect(tid(page, "presenter-drawer")).toBeVisible();
+  await expect(tid(page, "demo-accept")).toBeVisible();
+  await expect(tid(page, "reset-demo")).toBeVisible();
+  await expect(tid(page, "seat-neutral")).toBeVisible();
+
+  // Kept for the tab: another page without the parameter is still in presenter mode.
+  await go(page, "operator");
+  await expect(tid(page, "presenter-open")).toBeVisible({ timeout: 60_000 });
+  if (!(await tid(page, "presenter-drawer").isVisible())) await tid(page, "presenter-open").click();
+  await tid(page, "presenter-exit").click();
+  await expect(page).not.toHaveURL(/present=/);
+  await expect(tid(page, "page-title")).toBeVisible({ timeout: 60_000 });
+  await expect(tid(page, "presenter-open")).toHaveCount(0);
+
+  await go(page, "farmer");
+  await expect(tid(page, "page-title")).toBeVisible({ timeout: 60_000 });
+  await expect(tid(page, "presenter-open")).toHaveCount(0);
+});
+
 test("Layout: no horizontal overflow at 390 px on every page", async ({ page }) => {
   test.skip(!isMobile(page), "phone width only");
   const paths = [
-    "/", "farmer", "farmer?tab=payments", "farmer?tab=help",
+    "/", "farmer", "farmer?present=1", "farmer?tab=payments", "farmer?tab=help",
     "operator", "operator?tab=mine", "operator?tab=earnings", "operator?tab=drones",
     "validator", "validator?tab=reviewed", "validator?tab=earnings", "validator?tab=profile",
     "job", "how-it-works",

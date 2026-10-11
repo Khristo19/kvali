@@ -17,7 +17,7 @@ test("Refusal path: bots refuse a pump-off record, operator and farmer see the r
     await operatorAccepts(page);
   });
 
-  await test.step("3. Demo control: simulate 'Pump off' and send the record: the bots refuse it at once", async () => {
+  await test.step("3. Operator sends the flight log: simulate 'Pump off' and send the record: the bots refuse it at once", async () => {
     await operatorSendsRecord(page, "pumpOff");
     await expect(tid(page, "refusal-banner")).toContainText("Bots refused", { timeout: 120_000 });
   });
