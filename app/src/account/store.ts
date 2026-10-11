@@ -1,6 +1,7 @@
 // Demo account: name + email + role, kept only in this browser (localStorage). No password, no network.
 // The role is bound to that role's PUBLIC devnet demo key (src/devnet/keys.ts), shown as the account address.
-import { SWITCHER, lsKey } from "@/env";
+import { lsKey } from "@/env";
+import { switcherOn } from "@/presenter/store";
 import { useSyncExternalStore } from "react";
 
 import { keyFor, keys } from "@/devnet/keys";
@@ -99,7 +100,7 @@ export function useAccounts(): Accounts {
 
 /** Public devnet demo address bound to a role (validators: the neutral seat). */
 export function addressFor(role: Role): string {
-  const k = role === "farmer" ? keys.farmer : role === "operator" ? keys.operator : SWITCHER ? keyFor(getSeat()) : keys.vNeutral;
+  const k = role === "farmer" ? keys.farmer : role === "operator" ? keys.operator : switcherOn() ? keyFor(getSeat()) : keys.vNeutral;
   return k.publicKey.toBase58();
 }
 export const shortAddr = (a: string) => `${a.slice(0, 4)}...${a.slice(-4)}`;

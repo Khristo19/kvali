@@ -3,6 +3,7 @@ import { Slot, Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { Platform, View } from "react-native";
 
+import { PresenterDock } from "@/components/presenter/dock";
 import { StagingBadge } from "@/components/ui/staging-badge";
 import { SessionEffects } from "@/components/session-effects";
 import { EngineProvider } from "@/engine/useEngine";
@@ -37,6 +38,7 @@ export default function RootLayout() {
           <Stack.Screen name="how-it-works" options={{ title: "How it works" }} />
         </Stack>
       )}
+      <PresenterDock />
     </EngineProvider>
   );
 }
