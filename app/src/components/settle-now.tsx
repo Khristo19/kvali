@@ -22,8 +22,8 @@ export function SettleNow({ job }: { job: Job | undefined }) {
       <LiveLeft endsAt={job.proof?.windowEndsAt ?? 0} render={(secs) => <Row label="Challenge window" value={secs > 0 ? `${clock(secs)} left` : "closed"} />} />
       <Text style={type.body}>
         {left > 0
-          ? "The farmer can challenge until the window closes. After that anyone can settle the job, and the operator is paid."
-          : "The window is closed and nobody challenged. Settle now to pay the operator (this page also does it by itself in a few seconds)."}
+          ? "The farmer can still challenge. When the window closes, the payment is released automatically."
+          : "The window is closed and nobody challenged. The payment is being released; press Settle now if it takes long."}
       </Text>
       <Button
         testID="settle-now"

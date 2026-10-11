@@ -56,7 +56,7 @@ export function StakeCards({ locked }: { locked?: string }) {
     setErr(null);
     try {
       await stakeMore(id, ADD);
-      notify("ok", "Stake added: $100.00 test USDC locked in the stake vault.");
+      notify("ok", "Stake added: $100.00 USDC locked in the stake vault.");
       await reload();
     } catch (e) {
       setErr(friendlyMessage(e instanceof Error ? e.message : "Could not add stake."));
@@ -111,14 +111,14 @@ export function StakeCards({ locked }: { locked?: string }) {
                   hint={locked ?? (status === "slashed" ? "A slashed stake can never be added to" : status === "unstaking" ? "Not while unstaking" : undefined)}
                   onPress={() => void add(v.id)}
                 />
-                <Button testID={`request-unstake-${v.seat}`} small label="Request unstake" kind="secondary" disabled hint="Demo seats stay staked" onPress={() => undefined} />
-                <Button testID={`withdraw-${v.seat}`} small label="Withdraw" kind="secondary" disabled hint="Demo seats stay staked" onPress={() => undefined} />
+                <Button testID={`request-unstake-${v.seat}`} small label="Request unstake" kind="secondary" disabled hint="Shared seats stay staked" onPress={() => undefined} />
+                <Button testID={`withdraw-${v.seat}`} small label="Withdraw" kind="secondary" disabled hint="Shared seats stay staked" onPress={() => undefined} />
               </View>
             </View>
           );
         })}
       </View>
-      <Text style={type.small}>Demo seats stay staked: Request unstake and Withdraw are switched off for the three public demo seats, and slashing is never run on them here (the program tests prove it).</Text>
+      <Text style={type.small}>Shared seats stay staked: Request unstake and Withdraw are switched off for the three shared checker seats, and slashing is never run on them here (the program tests prove it).</Text>
       {locked ? <Text style={[type.small, { color: colors.accent, fontWeight: "600" }]}>{locked}</Text> : null}
       <ErrorText message={err} />
     </Card>

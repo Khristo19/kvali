@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { Pressable } from "@/components/ui/pressable";
@@ -19,11 +18,23 @@ function Seg({ label, on, onPress }: { label: string; on: boolean; onPress: () =
   );
 }
 
-/** Mode switch plus the accurate banner for the current mode. Shown on every role screen. */
-export function ModeBanner() {
+/** Real failure notice for everyone: shown only when the Solana network could not be reached. */
+export function NetworkAlert() {
   const s = useDevnetState();
-  const [openedAt] = useState(() => Date.now());
-  const last = s.last && s.last.at >= openedAt ? s.last : null;
+  if (!s.fellBack) return null;
+  return (
+    <View style={[styles.box, styles.err]} accessibilityRole="alert" testID="network-alert">
+      <Text style={[type.small, { color: colors.error }]}>
+        Can't reach the Solana network right now. What you see is an offline preview and nothing is saved. Reload to try again.
+      </Text>
+    </View>
+  );
+}
+
+/** Presenter-only network panel: mode switch, status and the last transaction's Explorer link. */
+export function NetworkPanel() {
+  const s = useDevnetState();
+  const last = s.last ?? null;
   const pick = (m: Mode) => {
     if (m !== s.mode) setPending(null); // a staged record belongs to one mode
     setDevnetState({ mode: m, fellBack: false });

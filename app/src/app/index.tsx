@@ -11,7 +11,7 @@ import { addressFor, roleHome, roleLabel, saveAccount, shortAddr, signOut, useAc
 import { notify } from "@/components/ui/notice";
 import { hasBurner } from "@/devnet/keys";
 import { ensureWallet } from "@/devnet/provision";
-import { getDevnetState, setDevnetState, useMode } from "@/devnet/mode";
+import { getDevnetState, setDevnetState } from "@/devnet/mode";
 import { colors, fonts, radius, space, type } from "@/theme";
 
 type RoleId = "farmer" | "operator" | "validator";
@@ -23,7 +23,6 @@ const roles: { id: RoleId; title: string; desc: string; href: Href; glyph: strin
 ];
 
 export default function Home() {
-  const mode = useMode();
   const { role: roleParam } = useLocalSearchParams<{ role?: string }>();
   const [picked, setPicked] = useState<RoleId>(roleParam === "operator" || roleParam === "validator" ? roleParam : "farmer");
   const account = useAccount(picked); // each role has its own demo account
@@ -54,7 +53,7 @@ export default function Home() {
     if (!/^\S+@\S+\.\S+$/.test(m)) return setErr("Please enter a valid email address, like name@example.com.");
     const freshWallet = picked !== "validator" && !hasBurner(picked);
     saveAccount({ name: n, email: m, role: picked });
-    if (picked !== "validator" && getDevnetState().mode === "devnet" && freshWallet) setDevnetState({ walletNote: "Setting up your own devnet wallet: funding it with test SOL and test USDC...", walletOk: false });
+    if (picked !== "validator" && getDevnetState().mode === "devnet" && freshWallet) setDevnetState({ walletNote: "Setting up your wallet…", walletOk: false });
     // The browser makes its own devnet wallet for this role and the public demo bank funds it (farmer, operator).
     if ((picked === "farmer" || picked === "operator") && getDevnetState().mode === "devnet") {
       void ensureWallet(picked).catch((e: Error) => notify("error", e.message));
@@ -112,10 +111,10 @@ export default function Home() {
           </View>
 
           {form ? (
-            <View testID="signup-form" style={styles.form} accessibilityLabel="Create demo account">
-              <Text style={styles.who}>Create your demo account</Text>
+            <View testID="signup-form" style={styles.form} accessibilityLabel="Create account">
+              <Text style={styles.who}>Create your account</Text>
               <Text style={type.small}>
-                Role: {role.title}. Saved only in this browser, no password. {picked === "validator" ? "Validators use the public demo validator keys." : "A devnet wallet with test money is created in this browser for you."}
+                Role: {role.title}. Saved only in this browser, no password. {picked === "validator" ? "Validators use the shared checker seats." : "A wallet is created in this browser for you."}
               </Text>
               <Text style={type.label}>Your name</Text>
               <TextInput
@@ -162,11 +161,11 @@ export default function Home() {
                 {phantom ? (
                   <View testID="phantom-soon" style={styles.soonBox} accessibilityRole="alert">
                     <Text style={[type.body, styles.soon]}>
-                      Coming soon: Phantom wallet sign-in is not available yet. Please use &ldquo;Continue with email&rdquo;; it creates a demo wallet on Solana devnet for you.
+                      Coming soon: Phantom wallet sign-in is not available yet. Please use &ldquo;Continue with email&rdquo;; it creates a wallet for you.
                     </Text>
                   </View>
                 ) : (
-                  <Text style={styles.footnote}>A demo account is created for you in this browser. No crypto knowledge needed.</Text>
+                  <Text style={styles.footnote}>An account and wallet are created for you in this browser. No crypto knowledge needed.</Text>
                 )}
               </View>
             </View>
@@ -202,7 +201,7 @@ export default function Home() {
 
           <SettlementDemo />
 
-          <Text style={[type.small, { textAlign: "center" }]}>{mode === "devnet" ? "Running on Solana devnet (test money)" : "Simulated mode (no chain)"}</Text>
+          <Text testID="honesty-line" style={[type.small, { textAlign: "center" }]}>Runs on Solana&apos;s test network with test money.</Text>
         </View>
       </ScrollView>
     </SafeAreaView>

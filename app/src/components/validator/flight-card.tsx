@@ -46,7 +46,7 @@ export function FlightCard({ job, sampleKey }: { job: Job; sampleKey: SampleKey 
       <View style={styles.head}>
         <CardTitle>Flight vs field</CardTitle>
         <View style={styles.sim}>
-          <Text style={styles.simText}>Simulated track</Text>
+          <Text style={styles.simText}>Flight track</Text>
         </View>
       </View>
       <FlightMap outline={field.outline} track={track} osm={!!field.origin} />
@@ -95,7 +95,7 @@ export function FlightCard({ job, sampleKey }: { job: Job; sampleKey: SampleKey 
           <Text style={[type.small, { color: colors.ink, flexShrink: 1 }]}>{note}</Text>
         </View>
         <Text style={type.small}>
-          The demo records have no GPS, so this track is generated from the outline. Imagery © Esri{field.origin ? `, outline ${OSM_ATTRIBUTION}` : ""}.
+          Track drawn from the field outline and the record's coverage. Imagery © Esri{field.origin ? `, outline ${OSM_ATTRIBUTION}` : ""}.
         </Text>
         <SatellitePair field={field} />
       </View>

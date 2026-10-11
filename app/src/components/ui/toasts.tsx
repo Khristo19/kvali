@@ -22,7 +22,7 @@ export function Toasts() {
         {s.busy ? (
           <View style={styles.box}>
             <ActivityIndicator color={colors.accent} />
-            <Text testID="busy-note" style={[type.body, styles.text]}>Sending to devnet: {s.busy}… (a few seconds)</Text>
+            <Text testID="busy-note" style={[type.body, styles.text]}>Confirming on Solana: {s.busy}… (a few seconds)</Text>
           </View>
         ) : null}
         <NoticeBar />
