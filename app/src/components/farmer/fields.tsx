@@ -1,12 +1,15 @@
-import { router } from "expo-router";
+import type { ReactNode } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
 import { isoShort } from "@/components/money";
 import { FieldThumb } from "@/components/map/field-thumb";
-import { Button, Card, CardTitle, Icon } from "@/components/ui";
-import { OSM_ATTRIBUTION, fieldHa, type Field, type FieldSource } from "@/data/fields";
-import { selectField, useFields } from "@/data/fields-store";
+import { Card, CardTitle, Icon, StatusChip, type ChipTone } from "@/components/ui";
+import { Pressable } from "@/components/ui/pressable";
+import { OSM_ATTRIBUTION, type Field, type FieldSource } from "@/data/fields";
 import { SATELLITE_ATTRIBUTION, bandOf, getFieldHealth, type HealthBand } from "@/data/field-health";
+import type { Job } from "@/engine/types";
+import type { HistoryEntry } from "@/session/history";
+import type { PendingRecord } from "@/session/store";
 import { colors, fonts, type } from "@/theme";
 
 export const BAND_COLOR: Record<HealthBand, string> = { Poor: colors.accent, Medium: "#C9A227", Good: colors.green };
@@ -27,41 +30,88 @@ export function haText(ha: number): string {
   return `${ha.toFixed(1)} ha`;
 }
 
-export function FieldRow({ field, selected, many }: { field: Field; selected: boolean; many: boolean }) {
-  return (
-    <Card>
-      <View style={styles.row}>
-        <FieldThumb outline={field.outline} />
-        <View style={styles.info}>
-          <Text style={styles.name}>{field.name}</Text>
-          <Text style={type.body}>
-            {haText(fieldHa(field))} · {field.crop}
-          </Text>
-          <BoundaryBadge source={field.source} origin={field.origin} />
-        </View>
-      </View>
-      {field.origin ? <Text style={type.small}>Outline: OpenStreetMap ({OSM_ATTRIBUTION}). Demo field.</Text> : null}
-      {many ? (
-        selected ? (
-          <Text testID={`field-selected-${field.id}`} style={[type.body, { color: colors.green, fontWeight: "600" }]}>Used for the next job</Text>
-        ) : (
-          <Button testID={`use-field-${field.id}`} small kind="secondary" label="Use for the next job" onPress={() => selectField(field.id)} />
-        )
-      ) : null}
-    </Card>
-  );
+/** Status chip of a field: its active job's step, else the outcome of its last finished job. */
+export function fieldStatus(
+  job: Job | undefined,
+  onThisField: boolean,
+  last: HistoryEntry | undefined,
+  pending: PendingRecord | null,
+): { label: string; tone: ChipTone } {
+  if (job && onThisField) {
+    switch (job.state) {
+      case "Posted":
+        return { label: "Waiting for an operator", tone: "orange" };
+      case "Accepted":
+        if (pending?.refusal) return { label: "Record refused", tone: "orange" };
+        if (pending) return { label: "Checking the record", tone: "orange" };
+        return { label: "Being sprayed", tone: "orange" };
+      case "ProofSubmitted":
+        return { label: "Checked · payment soon", tone: "orange" };
+      case "Challenged":
+        return { label: "Under review", tone: "orange" };
+      case "Released":
+        return { label: "Paid", tone: "green" };
+      case "Refunded":
+        return { label: "Refunded", tone: "muted" };
+      default:
+        return { label: "Cancelled", tone: "muted" };
+    }
+  }
+  if (last) return { label: `Last job: ${last.state === "Released" ? "Paid" : last.state}`, tone: "muted" };
+  return { label: "No job yet", tone: "muted" };
 }
 
-/** "My fields": one card per field plus "Add another field". */
-export function MyFields() {
-  const { fields, selectedId } = useFields();
+/** What a field card shows: a saved field, or a stand-in for a job whose field is not in this browser's list. */
+export interface FieldView {
+  id: string;
+  name: string;
+  hash: string;
+  ha: number;
+  crop?: string;
+  product?: string;
+  /** The saved field (missing for the stand-in). */
+  field?: Field;
+}
+
+/** One field in "My fields": thumbnail, size, crop, status and its main action. Pressing it selects the field. */
+export function FieldCard({
+  view,
+  selected,
+  status,
+  onSelect,
+  action,
+}: {
+  view: FieldView;
+  selected: boolean;
+  status: { label: string; tone: ChipTone };
+  onSelect: () => void;
+  action?: ReactNode;
+}) {
+  const f = view.field;
   return (
-    <>
-      {fields.map((f) => (
-        <FieldRow key={f.id} field={f} selected={f.id === selectedId} many={fields.length > 1} />
-      ))}
-      <Button testID="mark-field" kind="secondary" label="Mark or add a field" onPress={() => router.push("/mark-field" as never)} />
-    </>
+    <Card style={[styles.fieldCard, selected && styles.fieldCardOn]}>
+      <Pressable
+        testID={`field-card-${view.id}`}
+        accessibilityRole="button"
+        accessibilityLabel={`${view.name}, ${status.label}`}
+        aria-selected={selected}
+        onPress={onSelect}
+        style={styles.row}
+      >
+        {f ? <FieldThumb outline={f.outline} /> : null}
+        <View style={styles.info}>
+          <Text style={styles.name}>{view.name}</Text>
+          <Text style={type.body}>
+            {haText(view.ha)}
+            {view.crop ? ` · ${view.crop}` : ""}
+          </Text>
+          {f ? <BoundaryBadge source={f.source} origin={f.origin} /> : null}
+          <StatusChip label={status.label} tone={status.tone} testID={`field-status-${view.id}`} />
+        </View>
+      </Pressable>
+      {action}
+      {f?.origin ? <Text style={[type.small, { fontSize: 13 }]}>Outline: OpenStreetMap ({OSM_ATTRIBUTION}).</Text> : null}
+    </Card>
   );
 }
 
@@ -142,6 +192,8 @@ export function CropHealthCard({ fieldId }: { fieldId: string }) {
 
 const styles = StyleSheet.create({
   row: { flexDirection: "row", gap: 14, alignItems: "center" },
+  fieldCard: { flexBasis: 320, flexGrow: 1, minWidth: 0 },
+  fieldCardOn: { borderColor: colors.green, borderWidth: 2 },
   info: { flex: 1, flexShrink: 1, minWidth: 0, gap: 4 },
   name: { fontFamily: fonts.display, fontSize: 20, lineHeight: 24, fontWeight: "700", color: colors.ink, flexShrink: 1 },
   badge: { alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 4, paddingVertical: 3, paddingHorizontal: 10, borderRadius: 999, backgroundColor: colors.softGreen },

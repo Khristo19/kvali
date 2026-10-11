@@ -9,20 +9,18 @@ import { Banner, BigNumber, Button, Card, CardTitle, ErrorText, Icon, Row, Timel
 import {
   WALLETS,
   sampleJob,
-  sampleRecords,
   SAMPLE_AMOUNT,
   SAMPLE_JOB_ID,
   DEMO_DEADLINE_SECS,
 } from "@/engine/scenario";
 import { LiveLeft } from "@/components/live-clock";
-import { ModeBanner } from "@/components/devnet/mode-banner";
 import { TxId } from "@/components/job/ui";
 import { useActions } from "@/engine/actions";
 import { useEngine } from "@/engine/useEngine";
 import type { Job, JobState } from "@/engine/types";
 import { colors, type } from "@/theme";
-import { fieldHa, fieldHash } from "@/data/fields";
-import { selectedField, useFields } from "@/data/fields-store";
+import { fieldHa, fieldHash, type Field } from "@/data/fields";
+import { selectField, selectedField, useFields } from "@/data/fields-store";
 import { useAccount } from "@/account/store";
 import { describeJob } from "@/session/info";
 import { usePending, useSession } from "@/session/store";
@@ -31,10 +29,6 @@ import { haText } from "./fields";
 import { errorMessage } from "./ui";
 
 const JOB_ID = SAMPLE_JOB_ID;
-
-export function SimBanner() {
-  return <ModeBanner />;
-}
 
 function useJob(): Job | undefined {
   return useEngine().state.jobs[JOB_ID];
@@ -46,16 +40,18 @@ export function regionName(): string {
   return raw.region ? raw.region.split(",")[0] : "Georgia";
 }
 
-/** Posts a job on the selected field (shared by the start card and the "Post a job" tab). */
+/** Posts a job on a field (the given one, else the selected one; shared by the field cards and the "Spray this field" card). */
 export function usePostJob() {
   const actions = useActions();
   const field = selectedField(useFields());
   const farmer = useAccount("farmer");
   const [err, setErr] = useState<string | null>(null);
-  const post = async () => {
+  const post = async (on?: Field) => {
+    const f = on ?? field;
+    if (on) selectField(on.id);
     try {
       setErr(null);
-      await actions.postJob(JOB_ID, { hash: fieldHash(field), areaCha: areaCha(field.outline), name: field.name, crop: field.crop, product: field.product, farmerName: farmer?.name });
+      await actions.postJob(JOB_ID, { hash: fieldHash(f), areaCha: areaCha(f.outline), name: f.name, crop: f.crop, product: f.product, farmerName: farmer?.name });
     } catch (e) {
       setErr(errorMessage(e));
     }
@@ -63,8 +59,8 @@ export function usePostJob() {
   return { post, err, field, farmer };
 }
 
-/** The current job's details with cancel / release; `showNew` adds "Start a new job" once it has ended. */
-export function CurrentJobCard({ job, showNew = true }: { job: Job; showNew?: boolean }) {
+/** The current job's details with cancel / release, and "Start a new job" once it has ended (`onNew` replaces its default handler). */
+export function CurrentJobCard({ job, onNew }: { job: Job; onNew?: () => void }) {
   const actions = useActions();
   const session = useSession();
   const expired = useReached(job.sprayDeadline);
@@ -81,7 +77,7 @@ export function CurrentJobCard({ job, showNew = true }: { job: Job; showNew?: bo
         {job.payout ? `This job is finished (${job.state}).` : `${usdc(job.amount)} is held safely.`}
       </Text>
       {job.payout ? (
-        showNew ? <Button testID="new-job" label="Start a new job" onPress={() => void actions.newJob(JOB_ID).catch(() => undefined)} /> : null
+        <Button testID="new-job" label="Start a new job" onPress={onNew ?? (() => void actions.newJob(JOB_ID).catch(() => undefined))} />
       ) : job.state === "Posted" ? (
         <Button testID="cancel-job" label="Cancel this job and take the money back" kind="secondary" onPress={() => void actions.cancelJob(JOB_ID).catch(() => undefined)} />
       ) : job.state === "Accepted" ? (
@@ -103,24 +99,32 @@ export function CurrentJobCard({ job, showNew = true }: { job: Job; showNew?: bo
   );
 }
 
-export function PostJobCard() {
+/** "Spray this field": price, product, target and the button that posts the job on `field` (default: the selected field). */
+export function PostJobCard({ field: on, onNew }: { field?: Field; onNew?: () => void }) {
   const job = useEngine().state.jobs[JOB_ID];
-  const { post, err, field, farmer } = usePostJob();
-  if (job) return <CurrentJobCard job={job} />;
+  const { post, err, field: sel, farmer } = usePostJob();
+  const field = on ?? sel;
+  if (job) return <CurrentJobCard job={job} onNew={onNew} />;
 
   return (
     <Card>
-      <CardTitle>Post a spray job</CardTitle>
+      <CardTitle>Spray this field</CardTitle>
       <BigNumber caption="Price" value={lariAmount(SAMPLE_AMOUNT)} sub={`${usdc(SAMPLE_AMOUNT)} USDC`} />
       <Row label="Field" value={field.name} sub={`${haText(fieldHa(field))} · ${field.crop}`} />
       <Row label="Product" value={field.product} />
       <Row label="Target" value={litersPerHa(sampleJob.targetRateMlPerHa)} />
-      <Row label="Spray by" value={`${DEMO_DEADLINE_SECS / 60} minutes after posting (demo)`} />
+      <Row label="Spray by" value={`${DEMO_DEADLINE_SECS / 60} minutes after posting`} />
       <Text style={type.body}>Your {usdc(SAMPLE_AMOUNT)} is held safely until the spraying is checked.</Text>
-      <Button testID="post-job" label={`Post job and hold ${usdc(SAMPLE_AMOUNT)}`} onPress={post} disabled={!farmer} hint={farmer ? undefined : "Sign up as a farmer first"} />
+      <Button
+        testID="post-job"
+        label={`Spray this field · hold ${usdc(SAMPLE_AMOUNT)}`}
+        onPress={() => void post(field)}
+        disabled={!farmer}
+        hint={farmer ? undefined : "Sign up as a farmer first"}
+      />
       {farmer ? null : (
         <>
-          <Text style={[type.body, { color: colors.accent, fontWeight: "600" }]}>Sign up as a farmer first: you need your own demo wallet to post a job.</Text>
+          <Text style={[type.body, { color: colors.accent, fontWeight: "600" }]}>Sign up as a farmer first: you need your own wallet to post a job.</Text>
           <Button testID="farmer-signup" small kind="secondary" label="Sign up as a farmer" onPress={() => router.replace("/?role=farmer" as Href)} />
         </>
       )}
@@ -420,54 +424,6 @@ export function PayoutCard() {
       {rows.map(([l, v], i) => (
         <Row key={l} testID={`payout-${["operator", "bond", "kvali", "validators"][i]}`} label={l} value={usdc(v)} sub={lari(v)} />
       ))}
-    </Card>
-  );
-}
-
-export function DemoControls() {
-  const { state } = useEngine();
-  const actions = useActions();
-  const job = state.jobs[JOB_ID];
-  const [open, setOpen] = useState(false);
-  const [err, setErr] = useState<string | null>(null);
-
-  const run = async (fn: () => Promise<void>) => {
-    try {
-      setErr(null);
-      await fn();
-    } catch (e) {
-      setErr(errorMessage(e));
-    }
-  };
-  const records = Object.keys(sampleRecords) as (keyof typeof sampleRecords)[];
-
-  return (
-    <Card>
-      <Pressable
-        accessibilityRole="button"
-        testID="demo-controls-toggle"
-        accessibilityLabel="Demo controls, presenter only"
-        aria-expanded={open}
-        onPress={() => setOpen(!open)}
-        style={{ minHeight: 44, justifyContent: "center" }}
-      >
-        <Text style={type.label}>{open ? "▾" : "▸"} DEMO CONTROLS (presenter only)</Text>
-      </Pressable>
-      {open ? (
-        <>
-          <Text style={type.small}>
-            Demo only. These play the operator and validator roles so the farmer screen can be shown alone. The proper flow is on the Operator page
-            (&ldquo;Demo: simulate the drone flight&rdquo;) and the Validator page. Not part of the real app.
-          </Text>
-          {!job ? <Text style={type.body}>Post a job first: these buttons need a job.</Text> : null}
-          <Button testID="demo-accept" small label="Operator accepts the job" kind="secondary" disabled={!job || job.state !== "Posted"} onPress={() => run(() => actions.acceptJob(JOB_ID))} />
-          {records.map((k) => (
-            <Button testID={`demo-submit-${k}`} small key={k} label={`Operator submits record: ${k} (validators co-sign automatically)`} kind="secondary" disabled={!job || job.state !== "Accepted"} onPress={() => run(() => actions.submitRecord(k, JOB_ID))} />
-          ))}
-          <Button testID="demo-settle" small label="Settle after window" kind="secondary" disabled={!job || job.state !== "ProofSubmitted"} onPress={() => run(() => actions.settle(WALLETS.farmer, JOB_ID))} />
-          <ErrorText message={err} />
-        </>
-      ) : null}
     </Card>
   );
 }

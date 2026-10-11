@@ -10,6 +10,8 @@ export interface HistoryEntry {
   /** Short job reference, e.g. "…97622". */
   ref: string;
   field: string;
+  /** SHA-256 of the field outline (entries saved before this existed only have the name). */
+  fieldHash?: string;
   /** Hundredths of a hectare. */
   areaCha: number;
   state: "Released" | "Refunded" | "Cancelled";
@@ -56,6 +58,11 @@ export function addHistory(addr: string, entry: HistoryEntry) {
     /* storage blocked: kept in memory for this visit */
   }
   emit();
+}
+
+/** The finished jobs of one field: matched by outline hash when the entry has one, otherwise by field name. */
+export function historyForField(list: HistoryEntry[], f: { name: string; hash: string }): HistoryEntry[] {
+  return list.filter((e) => (e.fieldHash ? e.fieldHash === f.hash : e.field === f.name));
 }
 
 export function useHistory(addr: string | null): HistoryEntry[] {
