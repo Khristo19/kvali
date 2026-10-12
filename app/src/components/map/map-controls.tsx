@@ -5,7 +5,7 @@ import { StyleSheet, View } from "react-native";
 import { Pressable } from "@/components/ui/pressable";
 import { colors } from "@/theme";
 
-export type MapIconName = "plus" | "minus" | "fit" | "locate";
+export type MapIconName = "plus" | "minus" | "fit" | "locate" | "expand" | "close";
 
 function Bar({ w, h, color }: { w: number; h: number; color: string }) {
   return <View style={{ position: "absolute", width: w, height: h, borderRadius: Math.min(w, h) / 2, backgroundColor: color }} />;
@@ -32,6 +32,26 @@ export function MapIcon({ name, color = colors.ink }: { name: MapIconName; color
         <View style={{ width: 5, height: 5, borderRadius: 3, backgroundColor: color }} />
       </>
     );
+  } else if (name === "expand") {
+    // Four bigger corner brackets pointing outward: "make the map bigger".
+    const c = { position: "absolute", width: 7, height: 7, borderColor: color } as const;
+    body = (
+      <>
+        <View style={[c, { left: 0, top: 0, borderLeftWidth: 2.5, borderTopWidth: 2.5 }]} />
+        <View style={[c, { right: 0, top: 0, borderRightWidth: 2.5, borderTopWidth: 2.5 }]} />
+        <View style={[c, { left: 0, bottom: 0, borderLeftWidth: 2.5, borderBottomWidth: 2.5 }]} />
+        <View style={[c, { right: 0, bottom: 0, borderRightWidth: 2.5, borderBottomWidth: 2.5 }]} />
+      </>
+    );
+  } else if (name === "close") {
+    // An X: two bars crossed at 45 degrees.
+    const x = { position: "absolute", width: 18, height: 2.5, borderRadius: 1.25, backgroundColor: color } as const;
+    body = (
+      <>
+        <View style={[x, { transform: [{ rotate: "45deg" }] }]} />
+        <View style={[x, { transform: [{ rotate: "-45deg" }] }]} />
+      </>
+    );
   } else {
     // Ring with a dot and four ticks: "my location".
     body = (
@@ -52,9 +72,22 @@ export function MapIcon({ name, color = colors.ink }: { name: MapIconName; color
   );
 }
 
-export function MapButton({ icon, label, onPress, disabled }: { icon: MapIconName; label: string; onPress: () => void; disabled?: boolean }) {
+export function MapButton({
+  icon,
+  label,
+  onPress,
+  disabled,
+  testID,
+}: {
+  icon: MapIconName;
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+  testID?: string;
+}) {
   return (
     <Pressable
+      testID={testID}
       accessibilityRole="button"
       accessibilityLabel={label}
       accessibilityState={{ disabled: !!disabled }}

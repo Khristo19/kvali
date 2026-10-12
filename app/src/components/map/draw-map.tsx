@@ -5,15 +5,15 @@ import { Pressable } from "@/components/ui/pressable";
 import { areaHa, centroidOf, fitZoom, lonLatFromWorldPx, worldPx, type LonLat, type XY } from "@/geo/geo";
 import { DEFAULT_CENTER, DEFAULT_OUTLINE } from "@/data/fields";
 import { colors, fonts } from "@/theme";
-import { MapCanvas, onWidth, projector, type Viewport } from "./map-canvas";
+import { MapCanvas, projector, type Viewport } from "./map-canvas";
 import { MapButton } from "./map-controls";
+import type { MapView } from "./map-frame";
 import { DashedLine, Fill, Line } from "./shapes";
 
-const HEIGHT = 400;
 /** Finger radius around a corner that grabs it (44 px target). */
 const HIT_CORNER = 22;
 /** Radius around a "+" midpoint handle. */
-const HIT_MID = 18;
+const HIT_MID = 22;
 /** Movement (px) below which a press counts as a tap. */
 const TAP = 7;
 const MIN_Z = 4;
@@ -75,22 +75,36 @@ const nearest = (q: XY, list: (XY | null)[], radius: number) => {
 /**
  * Satellite map for drawing a field: tap to add numbered corners, tap corner 1 to close the shape, drag a corner to
  * move it, tap "+" on an edge to insert one, tap a corner to select (and remove) it. Drag empty map to pan; zoom with
- * the buttons or the mouse wheel.
+ * the buttons or the mouse wheel (inline, ctrl/cmd + wheel, so the page still scrolls). The camera lives in the parent so
+ * it survives moving between the inline map and the full-screen one.
  */
 export function DrawMap({
   points,
   onChange,
   closed = false,
   onClosedChange,
+  width,
+  height,
+  expanded = false,
+  view,
+  onViewChange,
 }: {
   points: LonLat[];
   onChange: (p: LonLat[]) => void;
   /** The farmer tapped corner 1 again: the outline is finished (taps on the map no longer add corners). */
   closed?: boolean;
   onClosedChange?: (closed: boolean) => void;
+  /** Size to draw, from MapFrame's MapSize. */
+  width: number;
+  height: number;
+  /** Full-screen mode: the wheel always zooms and the map takes every touch gesture. */
+  expanded?: boolean;
+  view: MapView | null;
+  onViewChange: (v: MapView | null) => void;
 }) {
-  const [w, setW] = useState(350);
-  const [view, setView] = useState<{ center: LonLat; zoom: number } | null>(null);
+  const setView = onViewChange;
+  const [wheelTip, setWheelTip] = useState(false);
+  const tipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [dragging, setDragging] = useState<number | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
@@ -103,8 +117,8 @@ export function DrawMap({
   const active = dragging != null && dragging < n ? dragging : sel;
 
   const center = view?.center ?? DEFAULT_CENTER;
-  const zoom = view?.zoom ?? fitZoom(DEFAULT_OUTLINE, w, HEIGHT, 0.6, 17);
-  const vp: Viewport = { width: w, height: HEIGHT, center, zoom };
+  const zoom = view?.zoom ?? fitZoom(DEFAULT_OUTLINE, width, height, 0.6, 17);
+  const vp: Viewport = { width, height, center, zoom };
   const { project, unproject } = projector(vp);
   const px = points.map(project);
 
@@ -122,17 +136,17 @@ export function DrawMap({
   const zoomTo = (z: number, around?: XY) => {
     const nz = Math.max(MIN_Z, Math.min(MAX_Z, z));
     if (nz === zoom) return;
-    const q = around ?? { x: w / 2, y: HEIGHT / 2 };
+    const q = around ?? { x: width / 2, y: height / 2 };
     // Keep the spot under `q` in place.
     const ll = unproject(q);
     const p = worldPx(ll, nz);
-    setView({ center: lonLatFromWorldPx({ x: p.x - (q.x - w / 2), y: p.y - (q.y - HEIGHT / 2) }, nz), zoom: nz });
+    setView({ center: lonLatFromWorldPx({ x: p.x - (q.x - width / 2), y: p.y - (q.y - height / 2) }, nz), zoom: nz });
   };
 
   const recenter = () => {
     if (n === 0) setView(null);
     else if (n === 1) setView({ center: points[0], zoom });
-    else setView({ center: centroidOf(points), zoom: fitZoom(points, w, HEIGHT, 0.6, MAX_Z) });
+    else setView({ center: centroidOf(points), zoom: fitZoom(points, width, height, 0.6, MAX_Z) });
   };
 
   const locate = () => {
@@ -159,12 +173,30 @@ export function DrawMap({
     return () => clearTimeout(t);
   }, [msg]);
 
-  // Mouse wheel / trackpad zoom on the web, one step at a time.
+  // Clear the wheel tip timer on unmount.
+  useEffect(
+    () => () => {
+      if (tipTimer.current) clearTimeout(tipTimer.current);
+    },
+    [],
+  );
+
+  // Mouse wheel / trackpad zoom on the web, one step at a time. Inline, a plain wheel scrolls the page (with a hint);
+  // ctrl/cmd + wheel (and a trackpad pinch, which sets ctrlKey) zooms. Full screen, the wheel always zooms.
   useEffect(() => {
     if (Platform.OS !== "web") return;
     const el = box.current as unknown as HTMLElement | null;
     if (!el || typeof el.addEventListener !== "function") return;
     const onWheel = (ev: WheelEvent) => {
+      if (!expanded && !ev.ctrlKey && !ev.metaKey) {
+        if (!wheelTip) setWheelTip(true);
+        if (tipTimer.current) clearTimeout(tipTimer.current);
+        tipTimer.current = setTimeout(() => {
+          tipTimer.current = null;
+          setWheelTip(false);
+        }, 1500);
+        return;
+      }
       ev.preventDefault();
       const dir = g0.wheel(ev.deltaY);
       if (!dir) return;
@@ -256,12 +288,13 @@ export function DrawMap({
   let hint: string;
   if (msg) hint = msg;
   else if (dragging != null) hint = `Moving corner ${dragging + 1}`;
-  else if (sel != null) hint = `Corner ${sel + 1} selected · drag it, or remove it below`;
+  else if (wheelTip) hint = "Ctrl + scroll to zoom, or tap Expand";
+  else if (sel != null) hint = `Corner ${sel + 1} selected`;
   else if (n === 0) hint = "Tap the first corner of your field";
-  else if (n === 1) hint = "Now tap the next corner";
-  else if (n === 2) hint = "Tap a third corner to make a shape";
-  else if (!isClosed) hint = "Tap the first corner (1) again to close";
-  else hint = "Field closed · drag a corner to adjust, tap + to add one";
+  else if (n === 1) hint = "Tap the next corner";
+  else if (n === 2) hint = "Tap a third corner";
+  else if (!isClosed) hint = "Tap corner 1 to close the field";
+  else hint = "Done · drag corners to adjust, + adds one";
 
   const edges = [];
   for (let i = 0; i < (n >= 3 ? n : n - 1); i++) {
@@ -279,9 +312,9 @@ export function DrawMap({
   }
 
   return (
-    <View ref={box} style={styles.wrap} onLayout={onWidth(setW)}>
+    <View ref={box} style={[styles.wrap, { width, height }]}>
       <MapCanvas vp={vp}>
-        <Fill pts={px} color={isClosed ? "rgba(251,250,245,0.3)" : "rgba(251,250,245,0.2)"} width={w} height={HEIGHT} />
+        <Fill pts={px} color={isClosed ? "rgba(251,250,245,0.3)" : "rgba(251,250,245,0.2)"} width={width} height={height} />
         {edges}
         {mids.map((m, i) =>
           m ? (
@@ -326,7 +359,7 @@ export function DrawMap({
       </MapCanvas>
 
       <View pointerEvents="none" style={styles.hint}>
-        <Text style={styles.hintText} accessibilityLiveRegion="polite">
+        <Text style={styles.hintText} numberOfLines={2} accessibilityLiveRegion="polite">
           {hint}
         </Text>
       </View>
@@ -365,7 +398,8 @@ export function DrawMap({
 const shadow = { boxShadow: "0 1px 4px rgba(0,0,0,0.4)" };
 
 const styles = StyleSheet.create({
-  wrap: { borderRadius: 14, overflow: "hidden", borderWidth: 1, borderColor: colors.border, height: HEIGHT + 2, backgroundColor: "#33402C" },
+  wrap: { overflow: "hidden", backgroundColor: "#33402C" },
+  // touchAction 'none' even inline: with 'pan-y' a vertical corner drag would also scroll the page (pointercancel ends the drag).
   layer: { position: "absolute", left: 0, right: 0, top: 0, bottom: 0, cursor: "crosshair", touchAction: "none" } as never,
   pinBox: { position: "absolute", width: 44, height: 44, alignItems: "center", justifyContent: "center" },
   halo: { position: "absolute", width: 44, height: 44, borderRadius: 22, borderWidth: 3, borderColor: colors.card, backgroundColor: "rgba(47,93,62,0.35)" },
@@ -401,8 +435,8 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     ...shadow,
   },
-  controls: { position: "absolute", right: 10, top: 10, gap: 8 },
-  removeRow: { position: "absolute", left: 0, right: 0, bottom: 26, flexDirection: "row", justifyContent: "center", gap: 8, paddingHorizontal: 10 },
+  controls: { position: "absolute", right: 10, bottom: 26, gap: 8 },
+  removeRow: { position: "absolute", left: 10, right: 64, bottom: 26, flexDirection: "row", flexWrap: "wrap", justifyContent: "flex-start", gap: 8 },
   remove: { minHeight: 44, paddingHorizontal: 16, borderRadius: 999, backgroundColor: colors.card, borderWidth: 2, borderColor: colors.error, alignItems: "center", justifyContent: "center", ...shadow },
   removeText: { fontFamily: fonts.sans, fontSize: 15, fontWeight: "700", color: colors.error },
   keep: { minHeight: 44, paddingHorizontal: 16, borderRadius: 999, backgroundColor: colors.card, borderWidth: 1, borderColor: colors.border, alignItems: "center", justifyContent: "center", ...shadow },

@@ -6,6 +6,7 @@ import { Pressable } from "@/components/ui/pressable";
 
 import { BigNumber, Button, Card, CardTitle, RoleShell, TwoUp } from "@/components/ui";
 import { DrawMap, fmtHa } from "@/components/map/draw-map";
+import { MapFrame, useInlineMapHeight, type MapView } from "@/components/map/map-frame";
 import { addField, useFields } from "@/data/fields-store";
 import { areaHa, type LonLat } from "@/geo/geo";
 import { colors, fonts, radius, type } from "@/theme";
@@ -41,10 +42,28 @@ function Choice<T extends string>({ label, id, options, value, onPick }: { label
   );
 }
 
+/** Bottom bar of the full-screen map: corner count and size, Undo, Clear, Done. */
+function ExpandedBar({ n, ha, onUndo, onClear, onDone }: { n: number; ha: number; onUndo: () => void; onClear: () => void; onDone: () => void }) {
+  // Short form ("4 · 1.25 ha") once there is a size, so the row fits one line at 390px.
+  const status = n >= 3 ? `${n} · ${fmtHa(ha)}` : `${n} ${n === 1 ? "corner" : "corners"}`;
+  return (
+    <View style={styles.bar}>
+      <Text style={styles.barText} numberOfLines={1} accessibilityLabel={`${n} ${n === 1 ? "corner" : "corners"}${n >= 3 ? `, ${fmtHa(ha)}` : ""}`}>
+        {status}
+      </Text>
+      <Button small kind="secondary" label="Undo" disabled={n === 0} onPress={onUndo} />
+      <Button small kind="secondary" label="Clear" disabled={n === 0} onPress={onClear} />
+      <Button small label="Done" onPress={onDone} testID="draw-map-done" />
+    </View>
+  );
+}
+
 export default function MarkField() {
   const [tab, setTab] = useState<Tab>("draw");
   const [points, setPoints] = useState<LonLat[]>([]);
   const [closed, setClosed] = useState(false);
+  const [view, setView] = useState<MapView | null>(null);
+  const inlineH = useInlineMapHeight(420);
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [crop, setCrop] = useState<(typeof CROPS)[number]>("Grapes");
@@ -88,46 +107,63 @@ export default function MarkField() {
       </View>
 
       {tab === "draw" ? (
-        <TwoUp>
-          <View style={{ gap: 12 }}>
-            <DrawMap points={points} onChange={edit} closed={closed} onClosedChange={setClosed} />
-            <Text style={type.body}>
-              Tap each corner of your field, then tap corner 1 to close it. Drag a corner to move it, tap a corner to remove it, tap + to add one
-              in between. Drag the map to move around.
-            </Text>
-          </View>
-          <View style={{ gap: 16 }}>
-            <Card style={styles.sizeCard}>
-              <BigNumber caption="Field size" value={n >= 3 ? fmtHa(ha) : "—"} sub={`${n} ${n === 1 ? "corner" : "corners"}${closed && n >= 3 ? " · closed" : ""}`} />
-              <View style={styles.small}>
-                <Button small kind="secondary" label="Undo" disabled={n === 0} onPress={undo} />
-                <Button small kind="secondary" label="Clear" disabled={n === 0} onPress={clear} />
-              </View>
-            </Card>
-            <Card style={{ gap: 16 }}>
-              <CardTitle>About this field</CardTitle>
-              <View style={{ gap: 8 }}>
-                <Text style={styles.label} nativeID="fname">
-                  Field name
-                </Text>
-                <TextInput
-                  accessibilityLabelledBy="fname"
-                  accessibilityLabel="Field name"
-                  value={name}
-                  onChangeText={setName}
-                  placeholder={defaultName}
-                  placeholderTextColor={colors.muted}
-                  maxLength={40}
-                  style={styles.nameInput}
-                />
-              </View>
-              <Choice label="Crop" id="crop" options={CROPS} value={crop} onPick={setCrop} />
-              <Choice label="Spray product" id="product" options={PRODUCTS} value={product} onPick={setProduct} />
-            </Card>
-            {n < 3 ? <Text style={type.small}>{n === 0 ? "Mark at least 3 corners to save the field." : `Add ${3 - n} more ${3 - n === 1 ? "corner" : "corners"} to save the field.`}</Text> : null}
-            <Button label="Save field" disabled={n < 3} onPress={save} />
-          </View>
-        </TwoUp>
+        <View style={{ gap: 16 }}>
+          <MapFrame
+            title="Mark your field"
+            testID="draw-map"
+            inlineHeight={inlineH}
+            renderMap={({ width, height, expanded }) => (
+              <DrawMap
+                points={points}
+                onChange={edit}
+                closed={closed}
+                onClosedChange={setClosed}
+                width={width}
+                height={height}
+                expanded={expanded}
+                view={view}
+                onViewChange={setView}
+              />
+            )}
+            footer={(close) => <ExpandedBar n={n} ha={ha} onUndo={undo} onClear={clear} onDone={close} />}
+          />
+          <Text style={type.small}>Tap corners, then corner 1 to close. Tap Expand for a bigger map.</Text>
+          <TwoUp>
+            <View>
+              <Card style={styles.sizeCard}>
+                <BigNumber caption="Field size" value={n >= 3 ? fmtHa(ha) : "—"} sub={`${n} ${n === 1 ? "corner" : "corners"}${closed && n >= 3 ? " · closed" : ""}`} />
+                <View style={styles.small}>
+                  <Button small kind="secondary" label="Undo" disabled={n === 0} onPress={undo} />
+                  <Button small kind="secondary" label="Clear" disabled={n === 0} onPress={clear} />
+                </View>
+              </Card>
+            </View>
+            <View style={{ gap: 16 }}>
+              <Card style={{ gap: 16 }}>
+                <CardTitle>About this field</CardTitle>
+                <View style={{ gap: 8 }}>
+                  <Text style={styles.label} nativeID="fname">
+                    Field name
+                  </Text>
+                  <TextInput
+                    accessibilityLabelledBy="fname"
+                    accessibilityLabel="Field name"
+                    value={name}
+                    onChangeText={setName}
+                    placeholder={defaultName}
+                    placeholderTextColor={colors.muted}
+                    maxLength={40}
+                    style={styles.nameInput}
+                  />
+                </View>
+                <Choice label="Crop" id="crop" options={CROPS} value={crop} onPick={setCrop} />
+                <Choice label="Spray product" id="product" options={PRODUCTS} value={product} onPick={setProduct} />
+              </Card>
+              {n < 3 ? <Text style={type.small}>{n === 0 ? "Mark at least 3 corners to save the field." : `Add ${3 - n} more ${3 - n === 1 ? "corner" : "corners"} to save the field.`}</Text> : null}
+              <Button label="Save field" disabled={n < 3} onPress={save} />
+            </View>
+          </TwoUp>
+        </View>
       ) : (
         <View style={{ gap: 16, maxWidth: 560 }}>
           <View style={{ gap: 8 }}>
@@ -174,6 +210,8 @@ const styles = StyleSheet.create({
   tabText: { fontFamily: fonts.sans, fontSize: 16, fontWeight: "600", color: colors.ink, textAlign: "center", flexShrink: 1 },
   sizeCard: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", flexWrap: "wrap", gap: 12 },
   small: { flexDirection: "row", gap: 8, flexShrink: 1 },
+  bar: { flexDirection: "row", alignItems: "center", gap: 8, flexWrap: "nowrap" },
+  barText: { flex: 1, minWidth: 0, fontFamily: fonts.display, fontSize: 17, fontWeight: "700", color: colors.ink },
   chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
   chip: { minHeight: 44, paddingHorizontal: 14, borderRadius: 999, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.card, alignItems: "center", justifyContent: "center" },
   chipOn: { backgroundColor: colors.green, borderColor: colors.green },
