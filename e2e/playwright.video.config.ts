@@ -1,7 +1,7 @@
 import { defineConfig } from "@playwright/test";
 
 // Technical demo video only (video/demo.spec.ts); the test suites use playwright.config.ts.
-// A real, full-screen Chrome on a 1920x1080 virtual display (Xvfb), drawn at 1.5x so the page is 1280x720 CSS pixels:
+// A real, maximised Chrome window on a 1920x1080 virtual display (Xvfb), drawn at 1.5x (the window is 1280x720 CSS pixels):
 // the workflow records that display with ffmpeg, so the video has true 1080p pixels.
 const raw = process.env.E2E_BASE_URL || "https://khristo19.github.io/kvali/";
 const baseURL = raw.endsWith("/") ? raw : `${raw}/`;

@@ -150,12 +150,13 @@ async function signUp(page: Page, role: "farmer" | "operator" | "validator", nam
 
 test("Technical demo video", async ({ baseURL }) => {
   test.setTimeout(25 * 60_000);
-  // Our own full-screen window (kiosk only applies to the browser's first window, so a persistent context): no tabs or address bar on screen.
+  // A normal Chrome window, maximised on the 1080p screen with its tab strip and address bar, as a person would see it.
+  // A persistent context, so the browser's own first window is used (it takes the window flags).
   const ctx = await chromium.launchPersistentContext("", {
     headless: false,
     viewport: null,
     baseURL,
-    args: ["--kiosk", "--force-device-scale-factor=1.5", "--window-position=0,0", "--window-size=1280,720", "--hide-scrollbars", "--disable-infobars", "--no-first-run"],
+    args: ["--start-maximized", "--force-device-scale-factor=1.5", "--window-position=0,0", "--window-size=1280,720", "--hide-scrollbars", "--disable-infobars", "--no-first-run", "--no-default-browser-check"],
   });
   const page = ctx.pages()[0] ?? (await ctx.newPage());
   await page.addInitScript(CAPTION_JS);
