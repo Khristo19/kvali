@@ -1,7 +1,7 @@
 // Turns the recorded run into an MP4 under 3 minutes: normal speed for the captioned steps, fast for the marked chain waits.
 // Usage: node video/make-video.mjs  (reads video-out/marks.json, rec-start.txt and the screen capture screen.mp4, writes video-out/kvali-technical-demo.mp4)
 import { execFileSync } from "node:child_process";
-import { readFileSync } from "node:fs";
+import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 const TARGET = 170; // seconds, leaves room under the 3-minute limit
 const { t0Epoch, fast, total } = JSON.parse(readFileSync("video-out/marks.json", "utf8"));
@@ -30,8 +30,15 @@ const k = slow > 0 ? Math.min(60, Math.max(4, slow / room)) : 1;
 console.log(`recording ${(end - lead).toFixed(1)}s: normal ${normal.toFixed(1)}s, waits ${slow.toFixed(1)}s at ${k.toFixed(1)}x -> about ${(normal + slow / k).toFixed(1)}s`);
 if (normal + slow / k > 179) console.warn("WARNING: the video is longer than 3 minutes");
 
-const parts = segs.map(([s, e, f], i) => `[0:v]trim=start=${s.toFixed(3)}:end=${e.toFixed(3)},setpts=(PTS-STARTPTS)/${f ? k.toFixed(3) : 1}[v${i}]`);
-const filter = `${parts.join(";")};${segs.map((_, i) => `[v${i}]`).join("")}concat=n=${segs.length}:v=1:a=0,fps=30,format=yuv420p[out]`;
-execFileSync("ffmpeg", ["-y", "-i", src, "-filter_complex", filter, "-map", "[out]", "-c:v", "libx264", "-preset", "slow", "-crf", "16", "-profile:v", "high", "-movflags", "+faststart", "video-out/kvali-technical-demo.mp4"], { stdio: "inherit" });
+// Cut and re-time each section on its own, then join them: light on memory, unlike one filter graph over the whole capture.
+mkdirSync("video-out/parts", { recursive: true });
+const list = segs.map(([s, e, f], i) => {
+  const file = `video-out/parts/p${String(i).padStart(2, "0")}.mp4`;
+  const speed = f ? k : 1;
+  execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-ss", s.toFixed(3), "-to", e.toFixed(3), "-i", src, "-an", "-vf", `setpts=(PTS-STARTPTS)/${speed.toFixed(3)},fps=30,format=yuv420p`, "-c:v", "libx264", "-preset", "medium", "-crf", "16", "-profile:v", "high", file], { stdio: "inherit" });
+  return `file '${file.replace("video-out/", "")}'`;
+});
+writeFileSync("video-out/parts.txt", list.join("\n") + "\n");
+execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", "video-out/parts.txt", "-c", "copy", "-movflags", "+faststart", "video-out/kvali-technical-demo.mp4"], { stdio: "inherit" });
 const out = Number(execFileSync("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", "video-out/kvali-technical-demo.mp4"]).toString().trim());
 console.log(`MP4 length: ${out.toFixed(1)}s`);
