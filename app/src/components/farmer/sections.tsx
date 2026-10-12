@@ -14,7 +14,7 @@ import { TxId } from "@/components/job/ui";
 import { useActions } from "@/engine/actions";
 import { useEngine } from "@/engine/useEngine";
 import type { Job, JobState } from "@/engine/types";
-import { colors, fonts, type } from "@/theme";
+import { colors, type } from "@/theme";
 import { fieldHa, fieldHash, type Field } from "@/data/fields";
 import { selectField, selectedField, useFields } from "@/data/fields-store";
 import { useAccount } from "@/account/store";
@@ -99,7 +99,6 @@ export function CurrentJobCard({ job }: { job: Job }) {
  * say when it should be done, post. A finished job is moved to the history by the post itself; a running one blocks it.
  */
 export function PostJobCard({ onChoose }: { onChoose?: (fieldId: string) => void }) {
-  const fs = useFields();
   const { post, err, field, farmer } = usePostJob();
   const busy = !!useDevnetState().busy;
   const mounted = useMounted();
@@ -112,37 +111,7 @@ export function PostJobCard({ onChoose }: { onChoose?: (fieldId: string) => void
   return (
     <Card testID="post-job-card">
       <CardTitle>Post a spray job</CardTitle>
-      <View style={{ gap: 8 }}>
-        <Text style={styles.label} nativeID="post-field-label">
-          Which field?
-        </Text>
-        <View accessibilityRole="radiogroup" accessibilityLabelledBy="post-field-label" style={styles.chips}>
-          {fs.fields.map((f) => {
-            const on = f.id === field.id;
-            return (
-              <Pressable
-                key={f.id}
-                testID={`post-field-${f.id}`}
-                accessibilityRole="radio"
-                accessibilityState={{ checked: on }}
-                aria-checked={on}
-                accessibilityLabel={`${f.name}, ${haText(fieldHa(f))}`}
-                onPress={() => {
-                  selectField(f.id);
-                  onChoose?.(f.id);
-                }}
-                style={[styles.chip, on && styles.chipOn]}
-              >
-                <Text style={[styles.chipText, on && { color: colors.onAccent }]}>
-                  {f.name} · {haText(fieldHa(f))}
-                </Text>
-              </Pressable>
-            );
-          })}
-        </View>
-        <Button testID="post-add-field" small kind="secondary" label="+ Add a new field" onPress={() => router.push("/mark-field" as Href)} />
-      </View>
-      <Row label="Field" value={field.name} sub={`${haText(fieldHa(field))} · ${field.crop}`} />
+      <Row testID="post-field" label="Field" value={field.name} sub={`${haText(fieldHa(field))} · ${field.crop} · tap another field above to change`} />
       <Row label="Product" value={field.product} />
       <Row label="Target" value={litersPerHa(sampleJob.targetRateMlPerHa)} />
       <DateField
@@ -473,11 +442,6 @@ export function PayoutCard() {
 }
 
 const styles = StyleSheet.create({
-  label: { fontFamily: fonts.sans, fontSize: 16, fontWeight: "600", color: colors.ink },
-  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
-  chip: { minHeight: 44, paddingHorizontal: 14, borderRadius: 999, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.card, alignItems: "center", justifyContent: "center" },
-  chipOn: { backgroundColor: colors.green, borderColor: colors.green },
-  chipText: { fontFamily: fonts.sans, fontSize: 15, fontWeight: "600", color: colors.ink },
   titleRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   badge: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.green, alignItems: "center", justifyContent: "center", flexShrink: 0 },
   badgeOpen: { backgroundColor: colors.card, borderWidth: 4, borderColor: colors.green },

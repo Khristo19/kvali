@@ -79,7 +79,7 @@ function viewOf(f: Field): FieldView {
 }
 
 /**
- * The farmer home ("My fields"). On top, "Post a spray job" in one step: pick a field (or add one), the date, post.
+ * The farmer home ("My fields"). On top, the field cards (tap one to pick it), then "Post a spray job" for that field: the date, post.
  * While a job runs, a note says so instead (one job at a time). Then one card per field with its status, the chosen
  * field's current job, its crop health and its past jobs.
  */
@@ -118,7 +118,6 @@ export function FieldsHome({ signedIn }: { signedIn: boolean }) {
 
   return (
     <>
-      {signedIn && !running ? <PostJobCard onChoose={setPicked} /> : null}
       {running && jobView ? (
         <Card testID="one-job-note">
           <Text style={type.body}>
@@ -138,6 +137,7 @@ export function FieldsHome({ signedIn }: { signedIn: boolean }) {
           return <FieldCard key={v.id} view={v} selected={v.id === focus.id} status={status} onSelect={() => pick(v)} action={action} />;
         })}
       </View>
+      {signedIn && !running ? <PostJobCard onChoose={setPicked} /> : null}
 
       <SectionTitle sub={[haText(focus.ha), focus.crop, focus.product].filter(Boolean).join(" · ")}>{focus.name}</SectionTitle>
       {job && jobHere ? (
