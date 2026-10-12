@@ -1,7 +1,7 @@
 // A map box with an "Expand" button: inline it is a framed map of a given height; expanded it fills the screen in a
 // modal with a header (title + Close) and an optional footer. The map is rendered in exactly one place at a time, and
 // `renderMap` gets the size to draw, so the camera (kept by the caller) carries over between the two.
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from "react";
 import { Modal, Platform, StyleSheet, Text, View, useWindowDimensions, type LayoutChangeEvent } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
@@ -16,17 +16,16 @@ export type MapSize = { width: number; height: number; expanded: boolean };
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
-/** Inline map height for the current window. SSR-safe: returns `fallback` until mounted. */
+const noop = () => () => {};
+
+/** Inline map height for the current window. SSR-safe: returns `fallback` in the static HTML and during hydration. */
 export function useInlineMapHeight(fallback = 420): number {
   const { width: ww, height: wh } = useWindowDimensions();
-  const [h, setH] = useState(fallback);
-  useEffect(() => {
-    if (!ww || !wh) return;
-    // 900 matches the +html.tsx breakpoint (bottom tab bar below 900).
-    const phone = ww < 900;
-    setH(Math.round(phone ? clamp(0.55 * wh, 300, 520) : clamp(0.6 * wh, 360, 600)));
-  }, [ww, wh]);
-  return h;
+  const mounted = useSyncExternalStore(noop, () => true, () => false);
+  if (!mounted || !ww || !wh) return fallback;
+  // 900 matches the +html.tsx breakpoint (bottom tab bar below 900).
+  const phone = ww < 900;
+  return Math.round(phone ? clamp(0.55 * wh, 300, 520) : clamp(0.6 * wh, 360, 600));
 }
 
 export function MapFrame({
@@ -65,10 +64,18 @@ export function MapFrame({
 
   const open = () => setExpanded(true);
 
-  const close = useCallback(() => {
-    setExpanded(false);
-    if (Platform.OS !== "web" || typeof document === "undefined") return;
-    setTimeout(() => {
+  const close = useCallback(() => setExpanded(false), []);
+
+  // Web: after the full-screen map closes, put keyboard focus back on the Expand button (it remounts inline).
+  const wasOpen = useRef(false);
+  useEffect(() => {
+    if (expanded) {
+      wasOpen.current = true;
+      return;
+    }
+    if (!wasOpen.current || Platform.OS !== "web" || typeof document === "undefined") return;
+    wasOpen.current = false;
+    const t = setTimeout(() => {
       try {
         const box = btnBox.current as unknown as HTMLElement | null;
         const btn = (box?.querySelector?.(`[data-testid="${testID}-expand"]`) as HTMLElement | null) ?? box;
@@ -77,7 +84,8 @@ export function MapFrame({
         // focus is a nicety
       }
     }, 0);
-  }, [testID]);
+    return () => clearTimeout(t);
+  }, [expanded, testID]);
 
   // Web: Escape closes (RNW's Modal only listens to keyup), and the page behind does not scroll while open.
   useEffect(() => {

@@ -1,4 +1,4 @@
-import { useRef, useState, type ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { Image, Platform, StyleSheet, Text, View, type LayoutChangeEvent } from "react-native";
 
 import { OSM_ATTRIBUTION } from "@/data/fields";
@@ -50,8 +50,8 @@ export function MapCanvas({
   const oy = c.y - vp.height / 2;
   const n = 2 ** vp.zoom;
   const [loaded, setLoaded] = useState(false);
-  const [failed, setFailed] = useState(false);
-  const errs = useRef(new Set<string>());
+  // Tiles that failed to load (any zoom). Only matters while nothing has loaded yet.
+  const [errs, setErrs] = useState(0);
   // Collect tile positions first so the handlers below see the final tile count.
   const cells: { key: string; tx: number; ty: number; wx: number }[] = [];
   for (let ty = Math.floor(oy / TILE); ty <= Math.floor((oy + vp.height) / TILE); ty++) {
@@ -71,12 +71,10 @@ export function MapCanvas({
       onLoad={() => {
         if (!loaded) setLoaded(true);
       }}
-      onError={() => {
-        errs.current.add(key);
-        if (!loaded && errs.current.size >= count) setFailed(true);
-      }}
+      onError={() => setErrs((e) => e + 1)}
     />
   ));
+  const failed = count > 0 && errs >= count;
   const status = !attribution || loaded ? null : failed ? "Imagery unavailable — your outline still saves" : "Loading satellite…";
   return (
     <View style={[styles.box, { width: vp.width, height: vp.height }]}>
