@@ -1,6 +1,6 @@
 import { StyleSheet, Text, View } from "react-native";
 
-import { clock, lari, litersPerHa, usdc } from "@/components/money";
+import { clock, litersPerHa, usdc } from "@/components/money";
 import { BigNumber, Card, CardTitle, TimelineStep } from "@/components/ui";
 import { actorName, describe, moneyLine, payoutRows, relTime } from "./helpers";
 import { Row, TxId } from "./ui";
@@ -113,11 +113,11 @@ export function MoneyWent({ job }: { job: Job }) {
         <View key={x.label} style={styles.legendRow}>
           <View style={[styles.swatch, { backgroundColor: x.color }]} />
           <View style={{ flex: 1 }}>
-            <Row left={x.label} right={`${usdc(x.value)} · ${lari(x.value)}`} />
+            <Row left={x.label} right={usdc(x.value)} />
           </View>
         </View>
       ))}
-      <Row left="Total" right={`${usdc(r.total)} · ${lari(r.total)}`} bold />
+      <Row left="Total" right={usdc(r.total)} bold />
       <Text testID="adds-up" style={[styles.small, { color: ok ? colors.green : colors.accent }]} accessibilityLabel={ok ? "Adds up" : "Does not add up"}>
         {ok
           ? `Adds up ✓  (payment ${usdc(job.amount)} + bonds ${usdc(r.expected - job.amount)})`

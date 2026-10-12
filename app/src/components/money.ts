@@ -1,8 +1,4 @@
 // Shared money formatting for all role screens. Amounts are USDC base units (6 decimals).
-// The lari figure is an ESTIMATE for farmers; payments settle in USDC.
-
-/** Approximate lari per US dollar, for display only. Update before the demo if it drifts. */
-export const GEL_PER_USD = 2.7;
 
 /** 300_000_000n -> "$300.00" */
 export function usdc(amount: bigint): string {
@@ -14,12 +10,6 @@ export function usdc(amount: bigint): string {
   return `${neg ? "-" : ""}$${whole}.${frac}`;
 }
 
-/** 300_000_000n -> "≈ 810 ₾" (estimate) */
-export function lari(amount: bigint): string {
-  const gel = Math.round((Number(amount) / 1_000_000) * GEL_PER_USD);
-  return `≈ ${gel.toLocaleString("en-US")} ₾`;
-}
-
 /** Hundredths of a hectare -> "17.00 ha" */
 export function hectares(cha: number): string {
   return `${(cha / 100).toFixed(2)} ha`;
@@ -28,12 +18,6 @@ export function hectares(cha: number): string {
 /** Milliliters per hectare -> "10.0 L/ha" */
 export function litersPerHa(mlPerHa: number): string {
   return `${(mlPerHa / 1000).toFixed(1)} L/ha`;
-}
-
-/** 300_000_000n -> "810 ₾" (estimate, no "≈"; for big numbers) */
-export function lariAmount(amount: bigint): string {
-  const gel = Math.round((Number(amount) / 1_000_000) * GEL_PER_USD);
-  return `${gel.toLocaleString("en-US")} ₾`;
 }
 
 /** Unix seconds -> "6 Oct, 09:12" */

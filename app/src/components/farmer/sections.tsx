@@ -4,7 +4,7 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { Pressable } from "@/components/ui/pressable";
 
-import { clock, lari, lariAmount, litersPerHa, usdc, whenText } from "@/components/money";
+import { clock, litersPerHa, usdc, whenText } from "@/components/money";
 import { Banner, BigNumber, Button, Card, CardTitle, ErrorText, Icon, Row, TimelineStep, useMounted, useReached, type StepState } from "@/components/ui";
 import { DateField, daysFromToday, isIsoDate } from "@/components/ui/date-field";
 import { useDevnetState } from "@/devnet/mode";
@@ -155,7 +155,7 @@ export function PostJobCard({ onChoose }: { onChoose?: (fieldId: string) => void
         onChange={setBy}
       />
       <ErrorText message={dateErr} />
-      <BigNumber caption="Price" value={lariAmount(SAMPLE_AMOUNT)} sub={`${usdc(SAMPLE_AMOUNT)} USDC, held safely until the spraying is checked`} />
+      <BigNumber caption="Price" value={usdc(SAMPLE_AMOUNT)} sub={`USDC, held safely until the spraying is checked`} />
       <Button
         testID="post-job"
         label={`Post the job · hold ${usdc(SAMPLE_AMOUNT)}`}
@@ -268,7 +268,7 @@ export function MoneyCard() {
     const pay = p.operator - bondBack;
     return (
       <Card testID="money-card" style={styles.moneyCard}>
-        <BigNumber caption="Paid to the operator" value={usdc(pay)} sub={`${lari(pay)} · plus the operator's own ${usdc(bondBack)} bond returned`} />
+        <BigNumber caption="Paid to the operator" value={usdc(pay)} sub={`plus the operator's own ${usdc(bondBack)} bond returned`} />
         <View style={styles.lockTile}>
           <Icon name="lock" color={colors.green} size={26} />
         </View>
@@ -278,7 +278,7 @@ export function MoneyCard() {
   const caption = !p ? "Payment held safely" : "Payment returned to you";
   return (
     <Card style={styles.moneyCard}>
-      <BigNumber caption={caption} value={lariAmount(job.amount)} sub={`${usdc(job.amount)} USDC`} />
+      <BigNumber caption={caption} value={usdc(job.amount)} sub="USDC" />
       <View style={styles.lockTile}>
         <Icon name="lock" color={colors.green} size={26} />
       </View>
@@ -310,10 +310,10 @@ export function TimelineCard() {
   const pay = job.payout ? job.payout.operator - bondBack : 0n;
   const lastDetail =
     job.payout && job.state === "Released"
-      ? `Payment ${usdc(pay)} (${lari(pay)}) released; the operator's ${usdc(bondBack)} bond was returned separately`
+      ? `Payment ${usdc(pay)} released; the operator's ${usdc(bondBack)} bond was returned separately`
       : job.state === "Refunded" || job.state === "Cancelled"
         ? "Your payment came back to you"
-        : `${lariAmount(job.amount)} is released automatically`;
+        : `${usdc(job.amount)} is released automatically`;
   const windowDetail =
     job.state === "Challenged"
       ? "You challenged. A panel is reviewing."
@@ -376,19 +376,19 @@ export function ActionsCard() {
     <View style={styles.actions}>
       {job.proof ? <Button testID="see-proof" label="See the proof" onPress={() => router.push("/job?from=farmer" as Href)} /> : null}
       {job.state === "Challenged" ? (
-        <Banner text={`You challenged this job and put up ${usdc(job.challenge?.bond ?? bond)} (${lariAmount(job.challenge?.bond ?? bond)}). A panel will decide.`} />
+        <Banner text={`You challenged this job and put up ${usdc(job.challenge?.bond ?? bond)}. A panel will decide.`} />
       ) : open && !confirm ? (
         <>
           <Button label="Something is wrong — challenge" kind="warn" onPress={() => setConfirm(true)} />
           <Text style={styles.note}>
-            A challenge locks {lariAmount(bond)} ({pct}%) until an agronomist decides.
+            A challenge locks {usdc(bond)} ({pct}%) until an agronomist decides.
           </Text>
         </>
       ) : open && confirm ? (
         <Card>
           <CardTitle>Challenge this record</CardTitle>
           <Text style={[type.body, { color: colors.ink, fontWeight: "600" }]}>
-            To challenge you put up a deposit of {usdc(bond)} ({lari(bond)}), which is {pct}% of the job.
+            To challenge you put up a deposit of {usdc(bond)}, which is {pct}% of the job.
           </Text>
           <Text style={type.body}>If you are right (upheld): you get your {usdc(job.amount)} back and your deposit back.</Text>
           <Text style={type.body}>If you are wrong (rejected): you lose the deposit and the operator is paid.</Text>
@@ -464,9 +464,9 @@ export function PayoutCard() {
   return (
     <Card testID="payout-card">
       <CardTitle>{title}</CardTitle>
-      <Row testID="payout-farmer" label="Back to you (farmer)" value={usdc(p.farmer)} sub={p.farmer === 0n ? "paid in full: nothing to return" : lari(p.farmer)} />
+      <Row testID="payout-farmer" label="Back to you (farmer)" value={usdc(p.farmer)} sub={p.farmer === 0n ? "paid in full: nothing to return" : undefined} />
       {rows.map(([l, v], i) => (
-        <Row key={l} testID={`payout-${["operator", "bond", "kvali", "validators"][i]}`} label={l} value={usdc(v)} sub={lari(v)} />
+        <Row key={l} testID={`payout-${["operator", "bond", "kvali", "validators"][i]}`} label={l} value={usdc(v)} />
       ))}
     </Card>
   );

@@ -1,7 +1,7 @@
 import { StyleSheet, Text, View } from "react-native";
 
 import { Card, CardTitle } from "@/components/ui";
-import { hectares, lari, litersPerHa, usdc } from "@/components/money";
+import { hectares, litersPerHa, usdc } from "@/components/money";
 import type { Config, Job, Validator } from "@/engine/types";
 import { colors, space, type } from "@/theme";
 import { Btn } from "./ui";
@@ -33,7 +33,7 @@ export function ChallengeCard({
       <CardTitle>Job {jobRef(job.id, session)} challenged</CardTitle>
       <Text style={type.body}>Farmer evidence hash: {c.evidenceHash}</Text>
       <Text style={type.body}>
-        Bond: {usdc(c.bond)} ({lari(c.bond)})
+        Bond: {usdc(c.bond)}
       </Text>
       <Text style={type.body}>
         Proof: {(p.litersMl / 1000).toFixed(1)} L over {hectares(p.areaCoveredCha)}, {litersPerHa(p.appliedRateMlPerHa)} applied

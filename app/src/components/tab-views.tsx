@@ -7,7 +7,7 @@ import { resetBurners } from "@/devnet/keys";
 import { resetSessionStorage , useSession } from "@/session/store";
 import { signOut , addressFor, roleLabel, shortAddr, useAccount } from "@/account/store";
 
-import { lari, litersPerHa, usdc } from "@/components/money";
+import { litersPerHa, usdc } from "@/components/money";
 import { actorName, jobLog, moneyLine } from "@/components/job/helpers";
 import { TxId } from "@/components/job/ui";
 import { jobRef } from "@/session/info";
@@ -51,8 +51,8 @@ export function FarmerPayments() {
     <>
       <Card>
         <CardTitle>Payments</CardTitle>
-        <Row label="Your balance (USDC)" value={usdc(bal)} sub={lari(bal)} />
-        <Row label="Held safely for this job" value={usdc(held)} sub={lari(held)} />
+        <Row label="Your balance (USDC)" value={usdc(bal)} />
+        <Row label="Held safely for this job" value={usdc(held)} />
         {job?.payout ? (
           <>
             <Row label="Back to you" value={usdc(job.payout.farmer)} />
@@ -105,7 +105,7 @@ export function OperatorEarnings() {
     <>
       <Card>
         <CardTitle>Earnings</CardTitle>
-        <Row testID="earnings-wallet" label="Wallet balance" value={usdc(bal)} sub={lari(bal)} />
+        <Row testID="earnings-wallet" label="Wallet balance" value={usdc(bal)} />
         <Row testID="earnings-paid-out" label="Paid out in this session" value={usdc(earned)} sub="payment after fees plus your bond back" />
         <Row testID="earnings-completed" label="Jobs completed" value={String(op?.jobsCompleted ?? 0)} />
         <Row label="Jobs failed" value={String(op?.jobsFailed ?? 0)} />
@@ -148,7 +148,7 @@ export function ValidatorEarnings() {
   return (
     <Card>
       <CardTitle>Earnings</CardTitle>
-      <Row label="Validator fee pool" value={usdc(pool)} sub={lari(pool)} />
+      <Row label="Validator fee pool" value={usdc(pool)} />
       <Row label="Fee on each settled job" value={`${Number(state.config.validatorFeeBps) / 100}%`} />
       <Row label="Jobs settled in this session" value={String(settled)} />
       <Text style={type.small}>The pool is shared by the three validator seats.</Text>

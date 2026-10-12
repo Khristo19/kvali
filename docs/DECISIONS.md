@@ -34,7 +34,7 @@ M-of-N data validators (2 of 3 in v1) independently recompute the verdict from t
 
 ## D6 — Farmers never see crypto
 
-The distributor sells the service in lari while USDC settles underneath (the "DePIN mullet"). Embedded wallet with social login; no "install Phantom".
+The distributor sells the service in US dollars while USDC settles underneath (the "DePIN mullet"). Embedded wallet with social login; no "install Phantom".
 
 ## D7 — Expo / React Native front-end (changed 7 Oct 2026; was Angular)
 

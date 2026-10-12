@@ -39,11 +39,11 @@ The two questions every judge, farmer and investor will ask. Keep these answers 
 | Water per hectare | Low volume, typically ~10–20 L/ha | Typically ~100–300 L/ha |
 | Operator safety | Stands at the field edge | Drives through the spray zone |
 | Smallholder fit | Hired per hectare as a service | Must own or borrow machinery |
-| To own | The operator owns the drone; the farmer hires by the hectare | Tractor + sprayer: **[₾__, get a dealer quote]**. Never pays back on a 1–3 ha plot |
-| To hire | About $10–20/ha in Georgia **[assumption from the vetting report; confirm with operators]** | **[₾__/ha, confirm]**. Reference: pull-type ground spraying costs about $4.60/acre ≈ **$11/ha** on large US farms, including overhead ([farmdoc, University of Illinois, 2021](https://farmdoc.illinois.edu/assets/management/machinery-costs/field_operations.pdf)) |
+| To own | The operator owns the drone; the farmer hires by the hectare | Tractor + sprayer: **[$__, get a dealer quote]**. Never pays back on a 1–3 ha plot |
+| To hire | About $10–20/ha in Georgia **[assumption from the vetting report; confirm with operators]** | **[$__/ha, confirm]**. Reference: pull-type ground spraying costs about $4.60/acre ≈ **$11/ha** on large US farms, including overhead ([farmdoc, University of Illinois, 2021](https://farmdoc.illinois.edu/assets/management/machinery-costs/field_operations.pdf)) |
 | Speed | Realistic ~12 ha/h (T50); up to 18 ha/h (T70P) | Depends on field access and turning space |
 
-**Demand already exists:** Georgia's Hazelnut Production Support Programme pays **500 ₾/ha** toward pesticides and agrochemicals for farmers with **0.2–3 ha** of orchard. In 2024 about **95,000 farmers** on **45,000+ ha** benefited; the 2025 budget is **23M ₾** ([CBW, Feb 2025](https://cbw.ge/business/hazelnut-subsidy-program-budget-increased-to-23-million-gel-in-2025); [MEPA](https://mepa.gov.ge/En/News/Details/21375)). That's roughly 0.5 ha per farmer: far too small to justify a tractor sprayer. The state funds the chemicals; nobody has solved how to apply them on plots that small.
+**Demand already exists:** Georgia's Hazelnut Production Support Programme pays about **$185/ha** toward pesticides and agrochemicals for farmers with **0.2–3 ha** of orchard. In 2024 about **95,000 farmers** on **45,000+ ha** benefited; the 2025 budget is about **$8.5M** ([CBW, Feb 2025](https://cbw.ge/business/hazelnut-subsidy-program-budget-increased-to-23-million-gel-in-2025); [MEPA](https://mepa.gov.ge/En/News/Details/21375)). That's roughly 0.5 ha per farmer: far too small to justify a tractor sprayer. The state funds the chemicals; nobody has solved how to apply them on plots that small.
 
 **Be honest:** tractors still win on very large, flat fields and heavy loads, and drones have more drift risk in wind. Drones win where most Georgian farms are: small, fragmented, sloped, and often wet in spring.
 
@@ -68,7 +68,7 @@ The two questions every judge, farmer and investor will ask. Keep these answers 
 | Grapevines | 164.7 million | same |
 | Employment in agriculture, forestry, fishing | 16.0% of employed (2024) | [PMC Research labour market overview, citing Geostat](https://www.pmcresearch.org/slider_file/acb76853dc62724f9.pdf) |
 | Rural population | 1.485M, 37.8% (early 2025) | [Geostat via Georgia Today, Jun 2026](https://georgiatoday.ge/geostat-agriculture-share-in-economy-falls-to-5-9-in-2025/) |
-| Agriculture share of GDP | 5.9% (2025, preliminary); output 8.6B GEL, +6.4% | same |
+| Agriculture share of GDP | 5.9% (2025, preliminary); output about $3.2B, +6.4% | same |
 | Agri-food exports | $1.8B record in 2024, 26% of all exports, 110 countries | [MEPA](https://www.mepa.gov.ge/En/News/Details/22908) |
 | Hazelnut world rank | #6 producer, ~37k t, ~3% of world (FAO 2023) | [Nocciolare / FAO data](https://nocciolare.it/wp-content/uploads/2025/12/7-Developments-in-the-world-and-Turkish-Hazelnut-Sector.pdf) |
 | Hazelnut exports | 20,000 t, $171.7M (2025); 10,700 t to EU Aug 2025–Mar 2026 (Italy, Spain, Germany, France, Greece) | [MEPA via Georgia Today, Apr 2026](https://georgiatoday.ge/hazelnut-export-value-rises-despite-drop-in-volume-ministry/) |

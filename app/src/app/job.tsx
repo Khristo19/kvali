@@ -8,7 +8,7 @@ import { useSession } from "@/session/store";
 import { SettleNow } from "@/components/settle-now";
 import { StyleSheet, Text, View } from "react-native";
 
-import { hectares, lariAmount, litersPerHa, usdc } from "@/components/money";
+import { hectares, litersPerHa, usdc } from "@/components/money";
 import { BigNumber, Button, Card, RoleShell, TwoUp } from "@/components/ui";
 import type { ChipTone } from "@/components/ui";
 import { jobLog } from "@/components/job/helpers";
@@ -86,7 +86,7 @@ export default function JobStory() {
         <Row left="Product" right={describeJob(job, session).product} />
         <Row left="Wanted by" right={describeJob(job, session).wantedText} />
         <Row left="Target" right={`${litersPerHa(job.targetRateMlPerHa)} ± ${job.toleranceBps / 100}%`} />
-        <BigNumber caption="Price" value={lariAmount(job.amount)} sub={`${usdc(job.amount)} USDC`} />
+        <BigNumber caption="Price" value={usdc(job.amount)} sub="USDC" />
       </Card>
 
       {job.state === "ProofSubmitted" && (

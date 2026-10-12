@@ -6,7 +6,7 @@ import { useSession, type Session } from "@/session/store";
 import { useEffect, useState } from "react";
 import { StyleSheet, Text, View } from "react-native";
 
-import { hectares, lari, litersPerHa, usdc } from "@/components/money";
+import { hectares, litersPerHa, usdc } from "@/components/money";
 import {
   Banner,
   BigNumber,
@@ -36,7 +36,7 @@ import { DRONE, WALLETS, recordFor, sampleRecords } from "@/engine/scenario";
 import { colors, space, type } from "@/theme";
 
 const date = (secs: number) => new Date(secs * 1000).toLocaleDateString("en-GB", { day: "numeric", month: "short", year: "numeric", timeZone: "UTC" });
-const both = (a: bigint) => `${usdc(a)} (${lari(a)})`;
+const both = (a: bigint) => usdc(a);
 
 export function Wallet() {
   const { state } = useEngine();
@@ -45,7 +45,7 @@ export function Wallet() {
     <Card>
       <Text style={type.label}>Your wallet</Text>
       <View testID="operator-wallet" accessible accessibilityLabel={`Wallet balance ${usdc(b)}`}>
-        <BigNumber value={usdc(b)} sub={`${lari(b)} · operator`} />
+        <BigNumber value={usdc(b)} sub="operator" />
       </View>
     </Card>
   );
@@ -138,7 +138,7 @@ function jobCard(j: Job, feeBps: bigint, onAccept: () => void, o: { onChain?: bo
         </View>
         <StatusChip label="Open" tone="green" />
       </View>
-      <BigNumber value={usdc(j.amount)} size={30} sub={`${lari(j.amount)} · you receive ${usdc(receive)} after fee`} />
+      <BigNumber value={usdc(j.amount)} size={30} sub={`you receive ${usdc(receive)} after fee`} />
       <Divider />
       <FactGrid>
         <Fact label="Field" value={d.crop ? `${d.field} (${d.crop})` : d.field} />
