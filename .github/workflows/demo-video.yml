@@ -6,6 +6,11 @@ on:
   push:
     branches: [demo-video]
   workflow_dispatch:
+    inputs:
+      base_url:
+        description: "Site to record (default: live)"
+        required: false
+        default: ""
 
 permissions:
   contents: read
@@ -20,7 +25,9 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 40
     env:
-      E2E_BASE_URL: https://khristo19.github.io/kvali/
+      E2E_BASE_URL: ${{ inputs.base_url || 'https://khristo19.github.io/kvali/' }}
+      E2E_PRIVY_EMAIL: ${{ secrets.E2E_PRIVY_EMAIL }}
+      E2E_PRIVY_CODE: ${{ secrets.E2E_PRIVY_CODE }}
     defaults:
       run:
         working-directory: e2e

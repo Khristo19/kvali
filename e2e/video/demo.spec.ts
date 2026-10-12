@@ -130,6 +130,26 @@ async function typeInto(page: Page, loc: Locator, text: string, delay: number) {
   await loc.pressSequentially(text, { delay });
 }
 
+/** Smooth camera zoom towards a part of the page (the app is scaled; the caption and cursor stay as they are). */
+async function zoomIn(page: Page, loc: Locator, scale = 1.35) {
+  await loc
+    .evaluate((el, s) => {
+      const b = document.body;
+      const r = (el as HTMLElement).getBoundingClientRect();
+      const br = b.getBoundingClientRect();
+      b.style.transition = "transform 900ms cubic-bezier(.4,.05,.2,1)";
+      b.style.transformOrigin = `${r.left + r.width / 2 - br.left}px ${r.top + r.height / 2 - br.top}px`;
+      b.style.transform = `scale(${s})`;
+    }, scale)
+    .catch(() => undefined);
+  await page.waitForTimeout(1000);
+}
+
+async function zoomOut(page: Page) {
+  await page.evaluate(() => (document.body.style.transform = "")).catch(() => undefined);
+  await page.waitForTimeout(950);
+}
+
 async function show(loc: Locator) {
   await loc.evaluate((el) => (el as HTMLElement).scrollIntoView({ block: "center", behavior: "smooth" })).catch(() => undefined);
 }
@@ -143,9 +163,30 @@ async function signUp(page: Page, role: "farmer" | "operator" | "validator", nam
   await press(tid(page, `role-${role}`), page);
   await press(tid(page, "continue-email"), page);
   await typeInto(page, tid(page, "signup-name"), name, 70);
-  await typeInto(page, tid(page, "signup-email"), `${name.toLowerCase()}@example.com`, 30);
+  // Privy's test account (fixed email and code) stands in for a real inbox in this recording.
+  const email = process.env.E2E_PRIVY_EMAIL || `${name.toLowerCase()}@example.com`;
+  await typeInto(page, tid(page, "signup-email"), email, 30);
   await press(tid(page, "signup-submit"), page);
-  await expect(page).toHaveURL(new RegExp(`/${role}(\\?|$|/)`));
+  const code = tid(page, "signup-code");
+  const asked = await Promise.race([
+    code.waitFor({ state: "visible", timeout: 15_000 }).then(() => true),
+    page.waitForURL(new RegExp(`/${role}(\\?|$|/)`), { timeout: 15_000 }).then(() => false),
+  ]).catch(() => false);
+  if (asked) {
+    if (!process.env.E2E_PRIVY_CODE) throw new Error("The sign-up asks for an email code but E2E_PRIVY_CODE is not set");
+    await zoomIn(page, tid(page, "signup-form"), 1.3);
+    await say(page, "Privy emails a 6-digit code to confirm the address. (This recording uses Privy's test account.)", 4200);
+    await typeInto(page, code, process.env.E2E_PRIVY_CODE, 140);
+    await page.waitForTimeout(500);
+    await press(tid(page, "signup-submit"), page);
+    await zoomOut(page);
+  }
+  await expect(page).toHaveURL(new RegExp(`/${role}(\\?|$|/)`), { timeout: 60_000 });
+  if (await tid(page, "account-verified").first().isVisible().catch(() => false)) {
+    await zoomIn(page, tid(page, "account-verified").first(), 1.6);
+    await page.waitForTimeout(1600);
+    await zoomOut(page);
+  }
 }
 
 test("Technical demo video", async ({ baseURL }) => {
@@ -169,7 +210,7 @@ test("Technical demo video", async ({ baseURL }) => {
   await page.waitForTimeout(1200);
 
   // 1. Farmer
-  await say(page, "1 · Farmer. Demo sign-up: just a name and email, nothing is checked. The browser creates the farmer's Solana wallet. Real login (Privy) comes next.", 5000);
+  await say(page, "1 · Farmer. Sign up with a name and email, confirmed with a one-time code (Privy). No crypto wallet to install: the browser creates one.", 4800);
   await signUp(page, "farmer", "Anna");
   // Ready when posting is possible (the "funded and ready" note can come and go before we look).
   await waiting(page, "Kvali creates the farmer's Solana wallet and funds it with test USDC", () =>
@@ -190,7 +231,7 @@ test("Technical demo video", async ({ baseURL }) => {
   await say(page, `Job ${jobRef} is live on chain and waiting for an operator.`, 3500);
 
   // 2. Operator
-  await say(page, "2 · Drone operator. The operator signs up the same way and gets a wallet and a drone certificate on chain.", 4200);
+  await say(page, "2 · Drone operator. The operator signs up the same way (this browser already verified the email) and gets a wallet and a drone certificate on chain.", 4200);
   await signUp(page, "operator", "Luka");
   const accept = (jobRef ? tid(page, "accept-job").filter({ hasText: jobRef }) : tid(page, "accept-job")).first();
   await waiting(page, "Setting up the operator's wallet and drone certificate, loading open jobs", () => expect(accept).toBeEnabled({ timeout: 300_000 }));
@@ -212,8 +253,10 @@ test("Technical demo video", async ({ baseURL }) => {
   await say(page, "4 · Validators. Here is what the checkers decided.", 2800);
   await signUp(page, "validator", "Mari");
   await waiting(page, "Reading the verdicts from Solana", () => expect(tid(page, "bot-outcome")).toContainText("All checks pass", { timeout: 240_000 }));
-  await show(tid(page, "bot-verdicts"));
+  await show(tid(page, "bot-outcome"));
+  await zoomIn(page, tid(page, "bot-outcome"), 1.3);
   await say(page, "All checks pass: 2 of 3 bots co-signed the proof on chain. No human click needed.", 4500);
+  await zoomOut(page);
   await show(tid(page, "stake-card"));
   await say(page, "Every validator seat stakes at least $500. A wrong co-sign can be slashed.", 4200);
 
@@ -237,11 +280,15 @@ test("Technical demo video", async ({ baseURL }) => {
   await show(tid(page, "job-status-title"));
   await say(page, "5 · Paid with proof. The farmer sees the job done and paid.", 3200);
   await show(tid(page, "payout-card"));
+  await zoomIn(page, tid(page, "payout-card"), 1.35);
   await say(page, "$285 to the operator, the $300 bond returned, $9 Kvali fee, $6 to the validators. Paid in USDC.", 5000);
+  await zoomOut(page);
 
   await go(page, "operator?tab=earnings");
   await waiting(page, "Loading the operator's earnings", () => expect(tid(page, "earnings-paid-out")).toContainText("$585.00", { timeout: 120_000 }));
+  await zoomIn(page, tid(page, "earnings-paid-out"), 1.5);
   await say(page, "The operator was paid the moment the work was proven: $585 including the bond back.", 4000);
+  await zoomOut(page);
 
   // 7. Job story + Explorer
   await go(page, "job");
@@ -251,8 +298,11 @@ test("Technical demo video", async ({ baseURL }) => {
   const story = page.getByText("What happened").first();
   await show(story);
   await say(page, "Each step links to its transaction on Solana Explorer: post, accept, proof, co-signs and payout. Anyone can check them.", 5000);
-  await show(page.getByText("Where the money went").first());
-  await say(page, "Where the money went: every dollar is accounted for, on chain.", 4000);
+  const money = page.getByText("Where the money went").first();
+  await show(money);
+  await zoomIn(page, money.locator("xpath=../.."), 1.3);
+  await say(page, "Where the money went: every dollar is accounted for, on chain.", 4500);
+  await zoomOut(page);
 
 
   writeFileSync("video-out/marks.json", JSON.stringify({ t0Epoch: t0 / 1000, fast, total: now() }, null, 2));
