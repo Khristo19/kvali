@@ -60,6 +60,8 @@ jobs:
     needs: plan
     env:
       E2E_BASE_URL: ${{ needs.plan.outputs.url }}
+      E2E_PRIVY_EMAIL: ${{ secrets.E2E_PRIVY_EMAIL }}
+      E2E_PRIVY_CODE: ${{ secrets.E2E_PRIVY_CODE }}
     runs-on: ubuntu-latest
     timeout-minutes: 45
     defaults:

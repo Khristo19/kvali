@@ -3,6 +3,7 @@ import { Slot, Stack } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { Platform, View } from "react-native";
 
+import { PrivyRoot } from "@/auth/privy";
 import { PresenterDock } from "@/components/presenter/dock";
 import { StagingBadge } from "@/components/ui/staging-badge";
 import { SessionEffects } from "@/components/session-effects";
@@ -39,6 +40,7 @@ export default function RootLayout() {
         </Stack>
       )}
       <PresenterDock />
+      <PrivyRoot />
     </EngineProvider>
   );
 }

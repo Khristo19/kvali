@@ -7,6 +7,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { SettlementDemo } from "@/components/settlement-demo";
 import { Button, Icon } from "@/components/ui";
+import { privyLogout, privyOn, privyReady } from "@/auth/privy";
 import { addressFor, roleHome, roleLabel, saveAccount, shortAddr, signOut, useAccount, useAccounts } from "@/account/store";
 import { notify } from "@/components/ui/notice";
 import { hasBurner } from "@/devnet/keys";
@@ -34,11 +35,19 @@ export default function Home() {
   const [email, setEmail] = useState("");
   const [err, setErr] = useState<string | null>(null);
   const [phantom, setPhantom] = useState(false);
+  // Email code step (only when Privy is on): "details" = name + email, "code" = the 6-digit code from the email.
+  const [step, setStep] = useState<"details" | "code">("details");
+  const [code, setCode] = useState("");
+  const [busy, setBusy] = useState<string | null>(null);
+  const [note, setNote] = useState<string | null>(null);
   const role = roles.find((r) => r.id === picked)!;
 
   const openForm = () => {
     setErr(null);
     setPhantom(false);
+    setStep("details");
+    setCode("");
+    setNote(null);
     const prefill = account ?? anyAccount;
     if (prefill) {
       setName((n) => n || prefill.name);
@@ -46,19 +55,66 @@ export default function Home() {
     }
     setForm(true);
   };
-  const create = () => {
+  const checkDetails = () => {
+    const problem =
+      name.trim().length < 2 ? "Please enter your name." : !/^\S+@\S+\.\S+$/.test(email.trim()) ? "Please enter a valid email address, like name@example.com." : null;
+    if (problem) setErr(problem);
+    return !problem;
+  };
+  const create = (verified?: boolean) => {
+    if (!checkDetails()) return;
     const n = name.trim();
     const m = email.trim();
-    if (n.length < 2) return setErr("Please enter your name.");
-    if (!/^\S+@\S+\.\S+$/.test(m)) return setErr("Please enter a valid email address, like name@example.com.");
     const freshWallet = picked !== "validator" && !hasBurner(picked);
-    saveAccount({ name: n, email: m, role: picked });
+    saveAccount({ name: n, email: m, role: picked, ...(verified ? { verified: true } : {}) });
     if (picked !== "validator" && getDevnetState().mode === "devnet" && freshWallet) setDevnetState({ walletNote: "Setting up your wallet…", walletOk: false });
     // The browser makes its own devnet wallet for this role and the public demo bank funds it (farmer, operator).
     if ((picked === "farmer" || picked === "operator") && getDevnetState().mode === "devnet") {
       void ensureWallet(picked).catch((e: Error) => notify("error", e.message));
     }
     router.replace(role.href);
+  };
+  // Privy on: the first press sends the code, the second checks it; only then is the account created (same path as above).
+  const sendCode = async () => {
+    setErr(null);
+    setBusy("Sending code…");
+    try {
+      const auth = await privyReady();
+      const m = email.trim().toLowerCase();
+      if (auth.authenticated && auth.email?.toLowerCase() === m) {
+        setNote("Email already verified");
+        return create(true);
+      }
+      if (auth.authenticated) await auth.logout(); // signed in to Privy with another email
+      await auth.sendCode(email.trim());
+      setCode("");
+      setStep("code");
+    } catch {
+      setErr("Could not send the code. Check the email address and try again.");
+    } finally {
+      setBusy(null);
+    }
+  };
+  const verify = async () => {
+    const c = code.trim();
+    if (!/^\d{6}$/.test(c)) return setErr("Please enter the 6-digit code from the email.");
+    setErr(null);
+    setBusy("Checking code…");
+    try {
+      const auth = await privyReady();
+      await auth.loginWithCode(c);
+    } catch {
+      setBusy(null);
+      return setErr("That code did not work. Check it, or tap Resend code for a new one.");
+    }
+    setBusy(null);
+    create(true);
+  };
+  const submit = () => {
+    if (busy) return;
+    if (!privyOn) return create();
+    if (!checkDetails()) return;
+    void (step === "code" ? verify() : sendCode());
   };
 
   return (
@@ -114,7 +170,7 @@ export default function Home() {
             <View testID="signup-form" style={styles.form} accessibilityLabel="Create account">
               <Text style={styles.who}>Create your account</Text>
               <Text style={type.small}>
-                Role: {role.title}. Saved only in this browser, no password. {picked === "validator" ? "Validators use the shared checker seats." : "A wallet is created in this browser for you."}
+                Role: {role.title}. {privyOn ? "We email you a code to confirm it's you. No password." : "Saved only in this browser, no password."} {picked === "validator" ? "Validators use the shared checker seats." : "A wallet is created in this browser for you."}
               </Text>
               <Text style={type.label}>Your name</Text>
               <TextInput
@@ -122,6 +178,7 @@ export default function Home() {
                 onChangeText={setName}
                 placeholder="e.g. George"
                 autoComplete="name"
+                editable={step === "details"}
                 accessibilityLabel="Your name"
                 testID="signup-name"
                 style={styles.input}
@@ -136,15 +193,67 @@ export default function Home() {
                 autoComplete="email"
                 accessibilityLabel="Email"
                 testID="signup-email"
-                onSubmitEditing={create}
+                editable={step === "details"}
+                onSubmitEditing={submit}
                 style={styles.input}
               />
+              {step === "code" ? (
+                <>
+                  <Text testID="signup-code-sent" style={type.small}>
+                    We sent a 6-digit code to {email.trim()}. Check your inbox.
+                  </Text>
+                  <Text style={type.label}>Code from the email</Text>
+                  <TextInput
+                    value={code}
+                    onChangeText={(t) => setCode(t.replace(/\D/g, "").slice(0, 6))}
+                    placeholder="123456"
+                    keyboardType="number-pad"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    textContentType="oneTimeCode"
+                    maxLength={6}
+                    accessibilityLabel="Code from the email"
+                    testID="signup-code"
+                    onSubmitEditing={submit}
+                    style={styles.input}
+                  />
+                  <View style={styles.codeLinks}>
+                    <Pressable testID="signup-resend" accessibilityRole="button" disabled={!!busy} onPress={() => void sendCode()} style={styles.link}>
+                      <Text style={styles.linkText}>Resend code</Text>
+                    </Pressable>
+                    <Pressable
+                      testID="signup-change-email"
+                      accessibilityRole="button"
+                      onPress={() => {
+                        setStep("details");
+                        setCode("");
+                        setErr(null);
+                      }}
+                      style={styles.link}
+                    >
+                      <Text style={styles.linkText}>Use a different email</Text>
+                    </Pressable>
+                  </View>
+                </>
+              ) : null}
+              {note ? (
+                <Text testID="signup-note" style={[type.body, { color: colors.green }]}>
+                  ✓ {note}
+                </Text>
+              ) : null}
               {err ? (
                 <Text style={[type.body, { color: colors.error }]} accessibilityRole="alert">
                   {err}
                 </Text>
               ) : null}
-              <Button testID="signup-submit" label={`Create account and open ${role.title.toLowerCase()} page`} onPress={create} />
+              <Button
+                testID="signup-submit"
+                label={
+                  !privyOn ? `Create account and open ${role.title.toLowerCase()} page` : busy ?? (step === "code" ? "Verify and create account" : "Send code")
+                }
+                disabled={!!busy}
+                onPress={submit}
+              />
               <Button testID="signup-cancel" label="Cancel" kind="secondary" small onPress={() => setForm(false)} />
             </View>
           ) : (
@@ -191,7 +300,16 @@ export default function Home() {
                     {roleLabel(account.role)}: {account.name}, address {shortAddr(addressFor(account.role))}
                   </Text>
                   <Button testID="open-my-page" label={`Open my ${roleLabel(account.role).toLowerCase()} page`} kind="secondary" small onPress={() => router.replace(roleHome(account.role) as Href)} />
-                  <Button testID="signout-all" label="Sign out (all roles)" kind="secondary" small onPress={() => signOut()} />
+                  <Button
+                    testID="signout-all"
+                    label="Sign out (all roles)"
+                    kind="secondary"
+                    small
+                    onPress={() => {
+                      signOut();
+                      void privyLogout();
+                    }}
+                  />
                 </>
               ) : (
                 <Text style={type.small}>Not signed in as {roleLabel(picked)} yet: continue with email below.</Text>
@@ -248,6 +366,7 @@ const styles = StyleSheet.create({
   soon: { textAlign: "center", color: colors.accent, fontWeight: "600" },
   footnote: { ...type.small, fontSize: 16, textAlign: "center", marginTop: 6 },
   links: { flexDirection: "row", justifyContent: "center", gap: space.lg },
+  codeLinks: { flexDirection: "row", flexWrap: "wrap", justifyContent: "space-between" },
   link: { minHeight: 44, justifyContent: "center", paddingHorizontal: 14 },
   linkText: { ...type.body, fontWeight: "600", color: colors.green, textDecorationLine: "underline" },
 });

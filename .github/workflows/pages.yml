@@ -47,6 +47,8 @@ jobs:
           cache-dependency-path: live/app/package-lock.json
       - name: Build live (main)
         working-directory: live/app
+        env:
+          EXPO_PUBLIC_PRIVY_APP_ID: ${{ vars.PRIVY_APP_ID }}
         run: |
           npm ci
           npx expo export --platform web
@@ -59,6 +61,7 @@ jobs:
           EXPO_BASE_URL: /kvali/staging
           EXPO_PUBLIC_KVALI_ENV: staging
           EXPO_PUBLIC_ACCOUNT_SWITCHER: "1"
+          EXPO_PUBLIC_PRIVY_APP_ID: ${{ vars.PRIVY_APP_ID }}
         run: |
           npm ci
           npx expo export --platform web

@@ -13,6 +13,11 @@ const config = getDefaultConfig(projectRoot);
 // Watch the shared folder so Metro can bundle and hot-reload it.
 config.watchFolders = [...(config.watchFolders ?? []), proofSrc, proofSamples];
 
+// Optional peer dependencies of @privy-io/react-auth (smart wallets, Abstract, Farcaster, Solana embedded wallets).
+// Kvali uses Privy only for the email code, so they are not installed; Privy's lazy chunks still import them,
+// so they resolve to an empty module instead of failing the bundle.
+const privyOptional = /^(permissionless|@abstract-foundation\/agw-client|@farcaster\/mini-app-solana|@solana\/kit|@solana-program\/(memo|system|token))(\/.*)?$/;
+
 // Resolve `@kvali/proof/<file>` to ../services/proof/src/<file>.ts.
 // (tsconfig.json has the matching `paths` entry for type-checking.)
 const upstreamResolve = config.resolver.resolveRequest;
@@ -21,6 +26,7 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
     const file = moduleName.slice("@kvali/proof/".length);
     return { type: "sourceFile", filePath: path.join(proofSrc, `${file}.ts`) };
   }
+  if (privyOptional.test(moduleName)) return { type: "empty" };
   return upstreamResolve
     ? upstreamResolve(context, moduleName, platform)
     : context.resolveRequest(context, moduleName, platform);

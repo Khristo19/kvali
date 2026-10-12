@@ -25,10 +25,32 @@ export async function signUp(page: Page, role: Role, name: string) {
   await expect(tid(page, `role-${role}`)).toHaveAttribute("aria-checked", "true");
   await tid(page, "continue-email").click();
   await tid(page, "signup-name").fill(name);
-  await tid(page, "signup-email").fill(uniqueEmail(role));
+  // With the email code on (Privy), sign up with the Privy test account: fixed email + fixed code (repo secrets).
+  await tid(page, "signup-email").fill(process.env.E2E_PRIVY_EMAIL || uniqueEmail(role));
   await tid(page, "signup-submit").click();
+  await enterEmailCode(page);
   await expect(page).toHaveURL(new RegExp(`/${ROLE_PATH[role]}(\\?|$|/)`));
   await expect(tid(page, "account-name").first()).toHaveText(name);
+}
+
+/**
+ * After "Send code": if the code field shows up (Privy is on), type the test account's code and confirm.
+ * Returns at once when the form closes instead (Privy off, or this browser already verified that email).
+ */
+export async function enterEmailCode(page: Page) {
+  const codeField = tid(page, "signup-code");
+  const shown = await Promise.race([
+    codeField.waitFor({ state: "visible", timeout: 10_000 }).then(() => true),
+    tid(page, "signup-form").waitFor({ state: "detached", timeout: 10_000 }).then(() => false),
+  ]).catch(() => false);
+  if (!shown) return;
+  const email = process.env.E2E_PRIVY_EMAIL;
+  const code = process.env.E2E_PRIVY_CODE;
+  if (!email || !code) {
+    throw new Error("Sign-up asks for an email code, but E2E_PRIVY_EMAIL / E2E_PRIVY_CODE are not set (Privy test account; repo secrets).");
+  }
+  await codeField.fill(code);
+  await tid(page, "signup-submit").click();
 }
 
 /** Farmer/operator sign-up creates a burner wallet funded by the demo bank; wait for the "funded and ready" toast. */

@@ -1,0 +1,41 @@
+# Bundle check for the email-code sign-up (Privy): builds the web app like the staging deploy, with a dummy Privy app ID so the
+# Privy code path is bundled, and checks the output contains it. Builds only; deploys nothing.
+name: Build check
+
+on:
+  push:
+    branches: [email-otp]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Expo web export (Privy on)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - run: npm ci
+      - name: Export web
+        env:
+          EXPO_BASE_URL: /kvali/staging
+          EXPO_PUBLIC_KVALI_ENV: staging
+          EXPO_PUBLIC_PRIVY_APP_ID: dummy-build-check-id
+        run: npx expo export --platform web
+      - name: Privy is in the bundle
+        run: |
+          ls -la dist/_expo/static/js/web/
+          grep -l "dummy-build-check-id" dist/_expo/static/js/web/*.js
+          grep -l "auth.privy.io" dist/_expo/static/js/web/*.js
+          grep -l "signup-code" dist/_expo/static/js/web/*.js
+          test -f dist/index.html

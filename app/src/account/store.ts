@@ -12,6 +12,8 @@ export interface Account {
   name: string;
   email: string;
   role: Role;
+  /** The email was confirmed with a one-time code (Privy). */
+  verified?: boolean;
 }
 
 const KEY = lsKey("kvali.accounts.v2");

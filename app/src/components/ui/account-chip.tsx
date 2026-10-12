@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from "react-native";
 
 import { Pressable } from "@/components/ui/pressable";
 
+import { privyLogout } from "@/auth/privy";
 import { addressFor, roleLabel, shortAddr, signOut, useAccount, type Role } from "@/account/store";
 import { activeLabel, loadMulti, useMulti } from "@/devnet/multi";
 import { switcherOn } from "@/presenter/store";
@@ -33,9 +34,16 @@ export function AccountChip({ role }: { role?: Role }) {
   return (
     <View style={styles.box} {...({ dataSet: { kv: "chip" } } as object)}>
       <View style={styles.who} {...({ dataSet: { kv: "chipwho" } } as object)}>
-        <Text testID="account-name" style={styles.name} numberOfLines={1} accessibilityLabel={`Signed in as ${a.name}`}>
-          {a.name}
-        </Text>
+        <View style={styles.nameRow}>
+          <Text testID="account-name" style={styles.name} numberOfLines={1} accessibilityLabel={`Signed in as ${a.name}`}>
+            {a.name}
+          </Text>
+          {a.verified ? (
+            <Text testID="account-verified" style={styles.verified} numberOfLines={1} accessibilityLabel="Email verified">
+              ✓ verified
+            </Text>
+          ) : null}
+        </View>
         <Text style={styles.sub} numberOfLines={1} {...({ dataSet: { kv: "chipsub" } } as object)}>
           {activeLabel(multi, a.role) ?? roleLabel(a.role)} · {shortAddr(addressFor(a.role))}
         </Text>
@@ -46,6 +54,7 @@ export function AccountChip({ role }: { role?: Role }) {
         accessibilityLabel="Sign out (all roles)"
         onPress={() => {
           signOut();
+          void privyLogout();
           router.replace("/");
         }}
         style={styles.btn}
@@ -62,7 +71,9 @@ export function AccountChip({ role }: { role?: Role }) {
 const styles = StyleSheet.create({
   box: { flexDirection: "row", alignItems: "center", gap: 8, flexShrink: 1, maxWidth: 220 },
   who: { flexShrink: 1, minWidth: 0, alignItems: "flex-end" },
-  name: { fontFamily: fonts.sans, fontSize: 15, fontWeight: "600", color: colors.ink },
+  nameRow: { flexDirection: "row", alignItems: "baseline", gap: 4, maxWidth: "100%" },
+  name: { flexShrink: 1, fontFamily: fonts.sans, fontSize: 15, fontWeight: "600", color: colors.ink },
+  verified: { flexShrink: 0, fontFamily: fonts.sans, fontSize: 12, fontWeight: "600", color: colors.green },
   sub: { fontFamily: fonts.sans, fontSize: 12, color: colors.muted },
   btn: { minHeight: 44, paddingHorizontal: 10, justifyContent: "center", borderRadius: radius.md, borderWidth: 1, borderColor: colors.border, backgroundColor: colors.card },
   btnText: { fontFamily: fonts.sans, fontSize: 14, fontWeight: "600", color: colors.green },

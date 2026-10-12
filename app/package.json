@@ -6,6 +6,7 @@
     "@coral-xyz/anchor": "0.31.1",
     "@expo/metro-runtime": "~57.0.16",
     "@expo/ui": "~57.0.22",
+    "@privy-io/react-auth": "^3.48.1",
     "@solana/spl-token": "0.4.13",
     "@solana/web3.js": "1.98.4",
     "buffer": "^6.0.3",
