@@ -1,6 +1,8 @@
-import { defineConfig, devices } from "@playwright/test";
+import { defineConfig } from "@playwright/test";
 
 // Technical demo video only (video/demo.spec.ts); the test suites use playwright.config.ts.
+// A real, full-screen Chrome on a 1920x1080 virtual display (Xvfb), drawn at 1.5x so the page is 1280x720 CSS pixels:
+// the workflow records that display with ffmpeg, so the video has true 1080p pixels.
 const raw = process.env.E2E_BASE_URL || "https://khristo19.github.io/kvali/";
 const baseURL = raw.endsWith("/") ? raw : `${raw}/`;
 
@@ -13,12 +15,15 @@ export default defineConfig({
   workers: 1,
   reporter: [["list"]],
   use: {
-    ...devices["Desktop Chrome"],
+    browserName: "chromium",
     baseURL,
-    viewport: { width: 1024, height: 576 },
-    deviceScaleFactor: 1,
+    headless: false,
+    viewport: null,
     actionTimeout: 60_000,
     navigationTimeout: 60_000,
-    video: { mode: "on", size: { width: 1024, height: 576 } },
+    video: "off",
+    launchOptions: {
+      args: ["--kiosk", "--force-device-scale-factor=1.5", "--window-position=0,0", "--window-size=1280,720", "--hide-scrollbars", "--disable-infobars", "--no-first-run"],
+    },
   },
 });

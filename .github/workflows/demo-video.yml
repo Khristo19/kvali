@@ -33,18 +33,30 @@ jobs:
           cache-dependency-path: e2e/package-lock.json
       - run: npm ci
       - run: npx playwright install --with-deps chromium
-      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg xvfb
       - run: mkdir -p video-out
-      - name: Record the run
-        run: npx playwright test -c playwright.video.config.ts
+      - name: Record the run (full-screen Chrome on a 1920x1080 virtual display, captured at 30 fps)
+        run: |
+          Xvfb :99 -screen 0 1920x1080x24 -nolisten tcp &
+          sleep 2
+          export DISPLAY=:99
+          date +%s.%N > video-out/rec-start.txt
+          ffmpeg -loglevel error -f x11grab -draw_mouse 0 -video_size 1920x1080 -framerate 30 -i :99 -c:v libx264 -preset ultrafast -crf 10 -pix_fmt yuv444p video-out/screen.mp4 &
+          FF=$!
+          set +e
+          npx playwright test -c playwright.video.config.ts
+          RC=$?
+          kill -INT $FF; wait $FF
+          exit $RC
       - name: Make the MP4
         run: node video/make-video.mjs
       - name: Still frames for review (one every 4 s)
         if: always()
         run: |
           mkdir -p video-out/frames
-          if [ -f video-out/kvali-technical-demo.mp4 ]; then SRC=video-out/kvali-technical-demo.mp4; else SRC=$(find video-out/results -name '*.webm' | head -1); fi
-          [ -n "$SRC" ] && ffmpeg -loglevel error -i "$SRC" -vf "fps=1/4,scale=960:-1" video-out/frames/f%03d.jpg || true
+          if [ -f video-out/kvali-technical-demo.mp4 ]; then SRC=video-out/kvali-technical-demo.mp4; else SRC=video-out/screen.mp4; fi
+          [ -f "$SRC" ] && ffmpeg -loglevel error -i "$SRC" -vf "fps=1/4,scale=960:-1" video-out/frames/f%03d.jpg || true
+          [ -f "$SRC" ] && ffmpeg -loglevel error -i "$SRC" -vf "fps=1/30" -q:v 2 video-out/frames/hd%02d.jpg || true
       - name: Review frames and timing (small)
         uses: actions/upload-artifact@v4
         if: always()

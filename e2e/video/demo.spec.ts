@@ -17,7 +17,7 @@ const CAPTION_JS = `(() => {
     if (!el) {
       el = document.createElement("div");
       el.id = "kv-cap";
-      el.style.cssText = "position:fixed;left:50%;bottom:18px;transform:translateX(-50%);max-width:900px;width:calc(100% - 80px);box-sizing:border-box;padding:10px 18px;border-radius:14px;background:rgba(16,32,24,.92);color:#fff;font:600 19px/1.35 system-ui,sans-serif;text-align:center;z-index:2147483647;pointer-events:none;box-shadow:0 8px 30px rgba(0,0,0,.35)";
+      el.style.cssText = "position:fixed;left:50%;bottom:18px;transform:translateX(-50%);max-width:900px;width:calc(100% - 80px);box-sizing:border-box;padding:10px 18px;border-radius:14px;background:rgba(16,32,24,.92);color:#fff;font:600 20px/1.35 system-ui,sans-serif;text-align:center;z-index:2147483647;pointer-events:none;box-shadow:0 8px 30px rgba(0,0,0,.35)";
       document.documentElement.appendChild(el);
     }
     el.textContent = text;
@@ -222,5 +222,5 @@ test("Technical demo video", async ({ page }) => {
 
   await card(page, "Kvali: proof of spray", "Farmers pay only for proven work.<br/>Operators are paid the moment it's proven.<br/><br/>khristo19.github.io/kvali", 5000);
 
-  writeFileSync("video-out/marks.json", JSON.stringify({ fast, total: now() }, null, 2));
+  writeFileSync("video-out/marks.json", JSON.stringify({ t0Epoch: t0 / 1000, fast, total: now() }, null, 2));
 });
