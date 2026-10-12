@@ -1,0 +1,51 @@
+# Records the technical demo video: one real run on the live site (devnet), captioned, waits sped up, as an MP4 under 3 minutes.
+# Runs in the cloud only. Start it by pushing to the demo-video branch, or by hand (Actions > Demo video > Run workflow).
+name: Demo video
+
+on:
+  push:
+    branches: [demo-video]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+# Shares the public devnet with the E2E runs: never at the same time.
+concurrency:
+  group: e2e
+  cancel-in-progress: false
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      E2E_BASE_URL: https://khristo19.github.io/kvali/
+    defaults:
+      run:
+        working-directory: e2e
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: e2e/package-lock.json
+      - run: npm ci
+      - run: npx playwright install --with-deps chromium
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg
+      - run: mkdir -p video-out
+      - name: Record the run
+        run: npx playwright test -c playwright.video.config.ts
+      - name: Make the MP4
+        run: node video/make-video.mjs
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: kvali-technical-demo
+          path: |
+            e2e/video-out/kvali-technical-demo.mp4
+            e2e/video-out/marks.json
+            e2e/video-out/results/
+          retention-days: 14
+          if-no-files-found: ignore

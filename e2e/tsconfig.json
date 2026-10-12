@@ -10,5 +10,5 @@
     "types": ["node"],
     "lib": ["ES2022", "DOM"]
   },
-  "include": ["playwright.config.ts", "tests/**/*.ts"]
+  "include": ["playwright.config.ts", "playwright.video.config.ts", "tests/**/*.ts", "video/**/*.ts"]
 }
