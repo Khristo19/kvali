@@ -4,6 +4,7 @@ import { StyleSheet, Text, View } from "react-native";
 import { Pressable } from "@/components/ui/pressable";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
+import { useAccount } from "@/account/store";
 import { colors, fonts, radius } from "@/theme";
 import { Icon, type IconName } from "./icons";
 
@@ -96,9 +97,11 @@ export function TabBar({ role, active }: { role: Role; active: number }) {
 export function SideNav({ role, active }: { role: Role; active: number }) {
   const go = useGo(role);
   const cfg = ROLE_TABS[role];
+  // Home is the role's first tab once signed in; the sign-in screen is only for signed-out visitors ("Change role" still goes there).
+  const signedIn = !!useAccount(role);
   return (
     <View style={styles.side} accessibilityRole="tablist" {...({ dataSet: { kv: "side" } } as object)}>
-      <Pressable accessibilityRole="link" accessibilityLabel="Kvali home" onPress={() => router.replace("/")} style={styles.brand}>
+      <Pressable accessibilityRole="link" accessibilityLabel="Kvali home" onPress={() => (signedIn ? go("") : router.replace("/"))} style={styles.brand}>
         <View style={styles.logo}>
           <View style={styles.logoDrop} />
         </View>

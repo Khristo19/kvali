@@ -1,7 +1,9 @@
+import { router, type Href } from "expo-router";
 import { useEffect, type ReactNode } from "react";
 import { Platform, ScrollView, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { useAccount } from "@/account/store";
 import { NetworkAlert } from "@/components/devnet/mode-banner";
 import { DESKTOP_MAX_WIDTH, colors } from "@/theme";
 import { ScreenHeader } from "./header";
@@ -34,6 +36,17 @@ export function RoleShell({
 }) {
   const tab = useTab(role ?? "farmer");
   const idx = active ?? (role ? ROLE_TABS[role].tabs.findIndex((t) => t.key === tab) : -1);
+  const signedIn = !!useAccount(role);
+  // A role page (no `active` given) never sends a signed-in user back to the sign-in screen: from another tab, back goes to
+  // the role's first tab; on the first tab there is nothing to go back to. Signed out, back goes to sign-up for this role.
+  const back: (() => void) | null | undefined =
+    onBack !== undefined || !role || active !== undefined
+      ? onBack
+      : tab !== ""
+        ? () => router.replace(`/${role}` as Href)
+        : signedIn
+          ? null
+          : () => router.replace(`/?role=${role}` as Href);
   // A result line belongs to the page it was shown on.
   useEffect(() => clearNotice, []);
   // Web: both navs are in the page and CSS (+html.tsx) shows the right one, so nothing moves after load.
@@ -46,7 +59,7 @@ export function RoleShell({
         {role && (web || wide) ? <SideNav role={role} active={idx} /> : null}
         <ScrollView style={styles.scroll} contentContainerStyle={styles.content} keyboardShouldPersistTaps="handled">
           <View style={styles.column}>
-            <ScreenHeader title={title} subtitle={subtitle} onBack={onBack} right={<AccountChip role={role} />} />
+            <ScreenHeader title={title} subtitle={subtitle} onBack={back} right={<AccountChip role={role} />} />
             <NetworkAlert />
             {children}
           </View>
