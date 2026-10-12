@@ -39,3 +39,4 @@ jobs:
           grep -l "auth.privy.io" dist/_expo/static/js/web/*.js
           grep -l "signup-code" dist/_expo/static/js/web/*.js
           test -f dist/index.html
+          echo "Scripts the home page loads up front:"; grep -o '_expo/static/js/web/[^"]*' dist/index.html
