@@ -21,7 +21,17 @@ let startAt = lead;
   startAt = lead + blank + (blank > 0 ? 0.1 : 0);
 }
 const dur = Number(execFileSync("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", src]).toString().trim());
-const end = Math.min(dur, lead + total); // the screen after the closing card is dropped
+let end = Math.min(dur, lead + total); // the screen after the last step is dropped
+// ...and any blank screen at the very end (the recorder can run past the browser closing).
+{
+  const from = Math.max(0, end - 8);
+  for (const neg of [false, true]) {
+    const r = spawnSync("ffmpeg", ["-hide_banner", "-ss", from.toFixed(3), "-to", end.toFixed(3), "-i", "video-out/screen.mp4", "-vf", `${neg ? "negate," : ""}blackdetect=d=0.03:pic_th=0.98:pix_th=0.12`, "-an", "-f", "null", "-"]).stderr.toString();
+    for (const m of r.matchAll(/black_start:(\d+(?:\.\d+)?) black_end:(\d+(?:\.\d+)?)/g)) {
+      if (from + Number(m[2]) >= end - 0.3) { console.log(`dropping ${(end - from - Number(m[1])).toFixed(2)}s of blank screen at the end`); end = Math.min(end, from + Number(m[1]) - 0.1); }
+    }
+  }
+}
 console.log(`screen ${dur.toFixed(1)}s, test from ${lead.toFixed(1)}s to ${end.toFixed(1)}s`);
 
 // Segments: [start, end, fast?]
