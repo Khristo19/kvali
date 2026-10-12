@@ -71,6 +71,8 @@ jobs:
           name: review
           path: |
             e2e/video-out/marks.json
+            e2e/video-out/timeline.json
+            e2e/video-out/timeline.md
             e2e/video-out/frames/
           retention-days: 14
           if-no-files-found: ignore

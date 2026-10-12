@@ -8,6 +8,8 @@ import { go, tid } from "../tests/helpers";
 
 type Seg = { start: number; end: number };
 const fast: Seg[] = [];
+/** Every caption with its time on the test clock: make-video.mjs turns it into a timed narration script. */
+const captions: { t: number; text: string }[] = [];
 let t0 = 0;
 const now = () => (Date.now() - t0) / 1000;
 
@@ -66,6 +68,7 @@ const CAPTION_JS = `(() => {
 })();`;
 
 async function caption(page: Page, text: string) {
+  if (t0) captions.push({ t: now(), text });
   await page
     .evaluate(
       ([js, t]) => {
@@ -305,6 +308,6 @@ test("Technical demo video", async ({ baseURL }) => {
   await zoomOut(page);
 
 
-  writeFileSync("video-out/marks.json", JSON.stringify({ t0Epoch: t0 / 1000, fast, total: now() }, null, 2));
+  writeFileSync("video-out/marks.json", JSON.stringify({ t0Epoch: t0 / 1000, fast, captions, total: now() }, null, 2));
   await ctx.close();
 });

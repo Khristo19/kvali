@@ -4,7 +4,7 @@ import { execFileSync, spawnSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 const TARGET = 170; // seconds, leaves room under the 3-minute limit
-const { t0Epoch, fast, total } = JSON.parse(readFileSync("video-out/marks.json", "utf8"));
+const { t0Epoch, fast, captions = [], total } = JSON.parse(readFileSync("video-out/marks.json", "utf8"));
 const src = "video-out/screen.mp4"; // ffmpeg x11grab of the virtual display, started before the test
 const recStart = Number(readFileSync("video-out/rec-start.txt", "utf8").trim());
 const lead = Math.max(0, t0Epoch - recStart); // seconds of screen before the test clock started
@@ -54,3 +54,26 @@ writeFileSync("video-out/parts.txt", list.join("\n") + "\n");
 execFileSync("ffmpeg", ["-y", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", "video-out/parts.txt", "-c", "copy", "-movflags", "+faststart", "video-out/kvali-technical-demo.mp4"], { stdio: "inherit" });
 const out = Number(execFileSync("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", "video-out/kvali-technical-demo.mp4"]).toString().trim());
 console.log(`MP4 length: ${out.toFixed(1)}s`);
+
+// Narration script: each caption at its time in the MP4 (test clock -> screen time -> output time through the cut and sped-up sections).
+const toOut = (testT) => {
+  const x = testT + lead;
+  let o = 0;
+  for (const [s, e, f] of segs) {
+    const sp = f ? k : 1;
+    if (x <= s) return o;
+    if (x < e) return o + (x - s) / sp;
+    o += (e - s) / sp;
+  }
+  return o;
+};
+const mmss = (t) => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, "0")}`;
+const lines = captions
+  .map((c) => ({ at: toOut(c.t), text: c.text.trim() }))
+  .filter((c, i, a) => c.text && (i === 0 || c.text !== a[i - 1].text));
+const fastOut = segs.reduce((acc, [s, e, f]) => { const start = acc.o; acc.o += (e - s) / (f ? k : 1); if (f) acc.list.push([start, acc.o]); return acc; }, { o: 0, list: [] }).list;
+writeFileSync("video-out/timeline.json", JSON.stringify({ length: out, captions: lines, spedUp: fastOut }, null, 2));
+let md = `# Kvali technical demo: timed captions\n\nVideo length ${mmss(out)}. Sped-up waits (good moments to pause or add a sentence): ${fastOut.map(([a, b]) => `${mmss(a)}-${mmss(b)}`).join(", ")}.\n\n`;
+lines.forEach((c, i) => { const end = i + 1 < lines.length ? lines[i + 1].at : out; md += `- **${mmss(c.at)}-${mmss(end)}** (${(end - c.at).toFixed(0)} s): ${c.text}\n`; });
+writeFileSync("video-out/timeline.md", md);
+console.log(md);
