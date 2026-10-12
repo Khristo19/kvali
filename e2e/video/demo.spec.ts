@@ -24,6 +24,40 @@ const CAPTION_JS = `(() => {
     el.style.display = text ? "block" : "none";
   };
   window.__kvCap = draw;
+  // A drawn mouse cursor (the screen capture has no real pointer): glides to each control, with a small ripple on click.
+  const cur = () => {
+    let el = document.getElementById("kv-cur");
+    if (!el) {
+      el = document.createElement("div");
+      el.id = "kv-cur";
+      el.style.cssText = "position:fixed;left:0;top:0;width:26px;height:34px;z-index:2147483647;pointer-events:none;will-change:transform;filter:drop-shadow(0 2px 3px rgba(0,0,0,.35))";
+      el.innerHTML = '<svg width="26" height="34" viewBox="0 0 26 34"><path d="M1.5 1.5 L1.5 27 L8 21 L12.5 31.5 L17 29.5 L12.6 19.4 L21.5 19.4 Z" fill="#fff" stroke="#111" stroke-width="2" stroke-linejoin="round"/></svg>';
+      let p = [innerWidth * 0.62, innerHeight * 0.55];
+      try { p = JSON.parse(sessionStorage.getItem("kv-cur") || "null") || p; } catch (e) {}
+      el.style.transform = "translate(" + p[0] + "px," + p[1] + "px)";
+      el.dataset.x = p[0]; el.dataset.y = p[1];
+      document.documentElement.appendChild(el);
+    }
+    return el;
+  };
+  window.__kvPos = () => { const el = cur(); return [Number(el.dataset.x), Number(el.dataset.y)]; };
+  window.__kvMove = (x, y, ms) => {
+    const el = cur();
+    el.style.transition = "transform " + ms + "ms cubic-bezier(.4,.05,.2,1)";
+    el.style.transform = "translate(" + x + "px," + y + "px)";
+    el.dataset.x = x; el.dataset.y = y;
+    try { sessionStorage.setItem("kv-cur", JSON.stringify([x, y])); } catch (e) {}
+  };
+  window.__kvClick = () => {
+    const el = cur(); const x = Number(el.dataset.x), y = Number(el.dataset.y);
+    const r = document.createElement("div");
+    r.style.cssText = "position:fixed;left:" + (x - 18) + "px;top:" + (y - 18) + "px;width:36px;height:36px;border-radius:50%;background:rgba(44,106,77,.35);border:2px solid rgba(44,106,77,.8);z-index:2147483646;pointer-events:none;transform:scale(.3);opacity:1;transition:transform .45s ease-out,opacity .45s ease-out";
+    document.documentElement.appendChild(r);
+    requestAnimationFrame(() => { r.style.transform = "scale(1.4)"; r.style.opacity = "0"; });
+    setTimeout(() => r.remove(), 600);
+    el.animate([{ transform: el.style.transform + " scale(1)" }, { transform: el.style.transform + " scale(.85)" }, { transform: el.style.transform + " scale(1)" }], { duration: 220 });
+  };
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", cur); else cur();
   const saved = sessionStorage.getItem("kv-cap");
   if (saved !== null) {
     if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", () => draw(saved));
@@ -66,30 +100,32 @@ async function waiting<T>(page: Page, label: string, fn: () => Promise<T>): Prom
   }
 }
 
-/** Ring the control, pause so viewers see it, then click. The ring is cleared page-wide: the control may be gone after the click. */
+/** Glide the drawn cursor to the control like a person would, then click there for real. */
 async function press(loc: Locator, page: Page) {
   await loc.scrollIntoViewIfNeeded();
-  await loc.evaluate((el) => {
-    (el as HTMLElement).scrollIntoView({ block: "center", behavior: "smooth" });
-    (el as HTMLElement).setAttribute("data-kv-ring", "1");
-    (el as HTMLElement).style.outline = "4px solid #F5B700";
-    (el as HTMLElement).style.outlineOffset = "4px";
-  });
-  await page.waitForTimeout(1100);
-  await loc.click();
-  await page.waitForTimeout(400);
-  await page
-    .evaluate(() =>
-      document.querySelectorAll("[data-kv-ring]").forEach((e) => {
-        (e as HTMLElement).style.outline = "";
-        e.removeAttribute("data-kv-ring");
-      }),
-    )
-    .catch(() => undefined);
+  await loc.evaluate((el) => (el as HTMLElement).scrollIntoView({ block: "center", behavior: "smooth" })).catch(() => undefined);
+  await page.waitForTimeout(450);
+  const box = await loc.boundingBox();
+  if (!box) {
+    await loc.click();
+    return;
+  }
+  const jitter = (n: number) => (Math.random() - 0.5) * Math.min(24, n / 4);
+  const x = box.x + box.width / 2 + jitter(box.width);
+  const y = box.y + box.height / 2 + jitter(box.height);
+  const [cx, cy] = (await page.evaluate(() => (window as unknown as { __kvPos?: () => number[] }).__kvPos?.() ?? [x, y]).catch(() => [x, y])) as number[];
+  const ms = Math.round(Math.min(1100, 380 + Math.hypot(x - cx, y - cy) * 0.55));
+  await page.evaluate(([px, py, d]) => (window as unknown as { __kvMove: (a: number, b: number, c: number) => void }).__kvMove(px, py, d), [x, y, ms] as const).catch(() => undefined);
+  await page.mouse.move(x, y, { steps: 8 });
+  await page.waitForTimeout(ms + 180);
+  await page.evaluate(() => (window as unknown as { __kvClick: () => void }).__kvClick()).catch(() => undefined);
+  await page.mouse.click(x, y);
+  await page.waitForTimeout(450);
 }
 
-/** Type like a person, into an empty field (the sign-up form remembers the last name used). */
-async function typeInto(loc: Locator, text: string, delay: number) {
+/** Click into the field, then type like a person (empty first: the sign-up form remembers the last name used). */
+async function typeInto(page: Page, loc: Locator, text: string, delay: number) {
+  await press(loc, page);
   await loc.fill("");
   await loc.pressSequentially(text, { delay });
 }
@@ -106,8 +142,8 @@ async function signUp(page: Page, role: "farmer" | "operator" | "validator", nam
   await expect(tid(page, `role-${role}`)).toBeVisible();
   await press(tid(page, `role-${role}`), page);
   await press(tid(page, "continue-email"), page);
-  await typeInto(tid(page, "signup-name"), name, 70);
-  await typeInto(tid(page, "signup-email"), `${name.toLowerCase()}@example.com`, 30);
+  await typeInto(page, tid(page, "signup-name"), name, 70);
+  await typeInto(page, tid(page, "signup-email"), `${name.toLowerCase()}@example.com`, 30);
   await press(tid(page, "signup-submit"), page);
   await expect(page).toHaveURL(new RegExp(`/${role}(\\?|$|/)`));
 }
