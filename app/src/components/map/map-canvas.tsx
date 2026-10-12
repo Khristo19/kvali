@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useRef, useState, type ReactNode } from "react";
 import { Image, Platform, StyleSheet, Text, View, type LayoutChangeEvent } from "react-native";
 
 import { OSM_ATTRIBUTION } from "@/data/fields";
@@ -49,26 +49,49 @@ export function MapCanvas({
   const ox = c.x - vp.width / 2;
   const oy = c.y - vp.height / 2;
   const n = 2 ** vp.zoom;
-  const tiles: ReactNode[] = [];
+  const [loaded, setLoaded] = useState(false);
+  const [failed, setFailed] = useState(false);
+  const errs = useRef(new Set<string>());
+  // Collect tile positions first so the handlers below see the final tile count.
+  const cells: { key: string; tx: number; ty: number; wx: number }[] = [];
   for (let ty = Math.floor(oy / TILE); ty <= Math.floor((oy + vp.height) / TILE); ty++) {
     for (let tx = Math.floor(ox / TILE); tx <= Math.floor((ox + vp.width) / TILE); tx++) {
       if (ty < 0 || ty >= n) continue;
-      const wx = ((tx % n) + n) % n;
-      tiles.push(
-        <Image
-          key={`${vp.zoom}:${tx}:${ty}`}
-          accessibilityIgnoresInvertColors
-          source={{ uri: tileUrl(vp.zoom, wx, ty) }}
-          style={{ position: "absolute", left: tx * TILE - ox, top: ty * TILE - oy, width: TILE, height: TILE }}
-        />,
-      );
+      cells.push({ key: `${vp.zoom}:${tx}:${ty}`, tx, ty, wx: ((tx % n) + n) % n });
     }
   }
+  const count = cells.length;
+  const tiles = cells.map(({ key, tx, ty, wx }) => (
+    <Image
+      key={key}
+      accessible={false}
+      accessibilityIgnoresInvertColors
+      source={{ uri: tileUrl(vp.zoom, wx, ty) }}
+      style={{ position: "absolute", left: tx * TILE - ox, top: ty * TILE - oy, width: TILE, height: TILE }}
+      onLoad={() => {
+        if (!loaded) setLoaded(true);
+      }}
+      onError={() => {
+        errs.current.add(key);
+        if (!loaded && errs.current.size >= count) setFailed(true);
+      }}
+    />
+  ));
+  const status = !attribution || loaded ? null : failed ? "Imagery unavailable — your outline still saves" : "Loading satellite…";
   return (
     <View style={[styles.box, { width: vp.width, height: vp.height }]}>
       <View pointerEvents="none" style={StyleSheet.absoluteFill}>
         {tiles}
       </View>
+      {status ? (
+        <View pointerEvents="none" style={styles.statusWrap}>
+          <View style={styles.statusPill}>
+            <Text accessibilityLiveRegion="polite" style={styles.statusText}>
+              {status}
+            </Text>
+          </View>
+        </View>
+      ) : null}
       {children}
       {attribution ? (
         <View pointerEvents="none" style={styles.attr}>
@@ -90,4 +113,7 @@ const styles = StyleSheet.create({
   box: { overflow: "hidden", backgroundColor: "#33402C" },
   attr: { position: "absolute", left: 6, bottom: 4, backgroundColor: "rgba(0,0,0,0.45)", borderRadius: 4, paddingHorizontal: 5, paddingVertical: 1 },
   attrText: { color: "#FFFFFF", fontSize: 11 },
+  statusWrap: { position: "absolute", left: 0, right: 0, top: "50%", marginTop: -16, alignItems: "center" },
+  statusPill: { backgroundColor: "rgba(22,36,28,0.75)", borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6 },
+  statusText: { color: "#FFFFFF", fontSize: 14, fontWeight: "600" },
 });
