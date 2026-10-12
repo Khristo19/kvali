@@ -36,14 +36,16 @@ export async function waitForWallet(page: Page) {
   await expect(tid(page, "wallet-note")).toContainText("funded and ready", { timeout: 180_000 });
 }
 
-/** Sign up as a farmer, wait for the wallet, post the first listed field as a $300 job. Returns the job ref ("…12345"). */
+/** Sign up as a farmer, wait for the wallet, post the selected (first) field as a $300 job with the default date (tomorrow). Returns the job ref ("…12345"). */
 export async function farmerPostsJob(page: Page): Promise<string> {
   await signUp(page, "farmer", "E2E Farmer");
   await waitForWallet(page);
   const post = tid(page, "post-job");
   await expect(post).toBeEnabled({ timeout: 120_000 });
+  await expect(tid(page, "wanted-by")).not.toHaveValue("");
   await post.click();
   await expect(tid(page, "job-status-title")).toHaveText("Waiting for an operator", { timeout: 180_000 });
+  await expect(tid(page, "job-wanted-by")).not.toContainText("Not given");
   return await readJobRef(page);
 }
 
@@ -54,10 +56,11 @@ export async function readJobRef(page: Page): Promise<string> {
   return m ? m[0] : text.trim();
 }
 
-export async function operatorAccepts(page: Page) {
+/** Accept the job with this ref (the list shows every open job on devnet, newest first), else the first one. */
+export async function operatorAccepts(page: Page, jobRef?: string) {
   await signUp(page, "operator", "E2E Operator");
   await waitForWallet(page);
-  const accept = tid(page, "accept-job").first();
+  const accept = (jobRef ? tid(page, "accept-job").filter({ hasText: jobRef }) : tid(page, "accept-job")).first();
   await expect(accept).toBeVisible({ timeout: 180_000 });
   await expect(accept).toBeEnabled({ timeout: 60_000 });
   await accept.click();

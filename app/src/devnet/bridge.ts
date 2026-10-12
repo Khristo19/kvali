@@ -153,14 +153,44 @@ function dropOpenJob(chainJobId: number | null) {
   if (chainJobId !== null && cur) setDevnetState({ openJobs: cur.filter((j) => j.chainJobId !== chainJobId) });
 }
 
-/** Read the open jobs on chain and the job the operator still holds. */
+/** Read the open jobs on chain and the job the operator still holds, then each listed job's details memo. */
 export async function refreshOpenJobs() {
+  let jobs: chain.ChainJob[] = [];
   try {
     const [openJobs, held] = await Promise.all([chain.listOpenJobs(), chain.readOperatorActiveJob()]);
     const mine = getSession()?.chainJobId;
     setDevnetState({ openJobs, heldJob: held && held.chainJobId !== mine ? held : null });
+    jobs = held ? [...openJobs, held] : openJobs;
   } catch {
     /* keep what we had */
+  }
+  await loadJobMeta(jobs);
+}
+
+/** Read the details memo (field name, crop, product, wanted-by date) of jobs not read yet. One small RPC call per job, cached. */
+async function loadJobMeta(jobs: chain.ChainJob[]) {
+  const todo = jobs.filter((j) => !(j.pda in getDevnetState().jobMeta));
+  if (!todo.length) return;
+  const found: Record<string, chain.JobMeta | null> = {};
+  for (const j of todo) {
+    try {
+      found[j.pda] = await chain.readJobMeta(j.pda);
+    } catch {
+      /* RPC hiccup: the card shows the area and "Field ####" until the next refresh */
+    }
+  }
+  setDevnetState({ jobMeta: { ...getDevnetState().jobMeta, ...found } });
+}
+
+/** Copy a job's details memo into the session (a job adopted or restored from the chain has no local details). */
+async function fillSessionMeta(cj: chain.ChainJob) {
+  try {
+    const m = await chain.readJobMeta(cj.pda);
+    const s = getSession();
+    if (!m || !s || s.chainJobId !== cj.chainJobId) return;
+    patchSession({ fieldName: s.fieldName ?? m.field, crop: s.crop ?? m.crop, product: s.product ?? m.product, wantedBy: s.wantedBy ?? m.by });
+  } catch {
+    /* details are optional */
   }
 }
 
@@ -170,7 +200,9 @@ export async function adoptChainJob(engine: Engine, cj: chain.ChainJob) {
   if (local && !ENDED.includes(local.state) && getSession()?.chainJobId !== cj.chainJobId) throw new Error(`Your current job in this browser is still ${local.state}. Finish it first, or release it, then accept another one.`);
   if (local && getSession()?.chainJobId === cj.chainJobId) return; // already the shared session job
   chain.setJobFarmer(cj.farmer);
-  newSession({ farmer: cj.farmer, chainJobId: cj.chainJobId, fieldHash: cj.fieldHash, areaCha: cj.areaCha, sprayDeadline: cj.sprayDeadline });
+  const m = getDevnetState().jobMeta[cj.pda];
+  newSession({ farmer: cj.farmer, chainJobId: cj.chainJobId, fieldHash: cj.fieldHash, areaCha: cj.areaCha, sprayDeadline: cj.sprayDeadline, fieldName: m?.field, crop: m?.crop, product: m?.product, wantedBy: m?.by });
+  if (!m) void fillSessionMeta(cj);
   setPending(null);
   setDevnetState({ chainJobId: cj.chainJobId });
   const txs = await chainTxs(cj, getSession()!);
@@ -210,6 +242,7 @@ async function restoreSession(engine: Engine) {
     cj = pick;
   }
   setDevnetState({ chainJobId: s.chainJobId, restoreNote: null });
+  if (!s.fieldName || !s.wantedBy) void fillSessionMeta(cj!);
   const txs = await chainTxs(cj!, s);
   await yieldMain();
   replay(engine, cj!, s, txs);
@@ -326,7 +359,8 @@ export async function releaseCosigns(): Promise<void> {
 }
 
 export interface DevActions {
-  postJob(jobId: number, field?: { hash: string; areaCha: number; name?: string; crop?: string; product?: string; farmerName?: string }): Promise<void>;
+  /** Post a job on a field. A finished job in this browser is moved out of the way first; a running one blocks it (one job at a time). */
+  postJob(jobId: number, field?: { hash: string; areaCha: number; name?: string; crop?: string; product?: string; farmerName?: string; wantedBy?: string }): Promise<void>;
   /** After the spray-by deadline: return payment and bond (program: reclaim_expired). */
   reclaimExpired(jobId: number): Promise<void>;
   acceptJob(jobId: number): Promise<void>;
@@ -340,7 +374,7 @@ export interface DevActions {
   acceptOpenJob(chainJobId: number): Promise<void>;
   /** Continue a job the operator still holds on chain. */
   continueHeldJob(chainJobId: number): Promise<void>;
-  /** Forget the finished job so a new one can be posted. */
+  /** Forget the finished job so a new one can be posted (postJob does it by itself). */
   newJob(jobId: number): Promise<void>;
 }
 
@@ -431,7 +465,10 @@ export function devnetActions(engine: Engine): DevActions {
 
   const api: DevActions = {
     async postJob(jobId, field) {
-      if (engine.getState().jobs[jobId]) throw new Error("This browser already has a current job. Finish it (or cancel it) and press Start a new job first.");
+      const cur = engine.getState().jobs[jobId];
+      if (cur && !ENDED.includes(cur.state)) throw new Error(`One job at a time: your current job is still ${cur.state}. Wait until it is finished, or cancel it while no operator has accepted it.`);
+      if (getDevnetState().busy) throw new Error("Another transaction is still being sent. Wait a few seconds.");
+      if (cur) await api.newJob(jobId);
       await track("Post job", async () => {
         const p = {
           amount: SAMPLE_AMOUNT,
@@ -439,11 +476,13 @@ export function devnetActions(engine: Engine): DevActions {
           areaCha: field?.areaCha ?? sampleJob.areaCha,
           targetRateMlPerHa: sampleJob.targetRateMlPerHa,
           toleranceBps: sampleJob.toleranceBps,
+          // The program's spray-by stays the short demo deadline (reclaim / release timing relies on it); the farmer's date goes in the memo.
           sprayDeadline: nowSecs() + DEMO_DEADLINE_SECS,
+          meta: field ? { field: field.name, crop: field.crop, product: field.product, by: field.wantedBy } : undefined,
         };
         const r = await chain.postJob(p);
         chain.setJobFarmer(keys.farmer.publicKey);
-        newSession({ farmer: keys.farmer.publicKey.toBase58(), chainJobId: r.chainJobId, fieldHash: p.fieldHashHex, areaCha: p.areaCha, sprayDeadline: p.sprayDeadline, fieldName: field?.name, crop: field?.crop, product: field?.product, farmerName: field?.farmerName });
+        newSession({ farmer: keys.farmer.publicKey.toBase58(), chainJobId: r.chainJobId, fieldHash: p.fieldHashHex, areaCha: p.areaCha, sprayDeadline: p.sprayDeadline, fieldName: field?.name, crop: field?.crop, product: field?.product, farmerName: field?.farmerName, wantedBy: field?.wantedBy });
         setPending(null);
         setDevnetState({ chainJobId: r.chainJobId });
         engine.postJob(WALLETS.farmer, { jobId, amount: p.amount, fieldHash: p.fieldHashHex, areaCha: p.areaCha, targetRateMlPerHa: p.targetRateMlPerHa, toleranceBps: p.toleranceBps, sprayDeadline: p.sprayDeadline });

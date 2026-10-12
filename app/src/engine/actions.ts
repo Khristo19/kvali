@@ -18,7 +18,11 @@ export type Actions = DevActions;
 
 function simActions(e: Engine): Actions {
   return {
-    postJob: async (id, field) => void postSampleJob(e, id, field),
+    postJob: async (id, field) => {
+      // A finished job is moved out of the way first (one job at a time; a running one makes postJob refuse).
+      if (e.getState().jobs[id]?.payout) e.chainResetJob(id);
+      postSampleJob(e, id, field);
+    },
     acceptJob: async (id) => acceptSampleJob(e, id),
     submitRecord: async (k: keyof typeof sampleRecords, id) => {
       const v = fullVerdict(e.getState().jobs[id], k);

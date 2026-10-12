@@ -24,7 +24,7 @@ import { SettleNow } from "@/components/settle-now";
 import { LiveLeft } from "@/components/live-clock";
 import { friendlyMessage } from "@/devnet/rpc";
 import { refreshOpenJobs } from "@/devnet/bridge";
-import type { ChainJob } from "@/devnet/client";
+import type { ChainJob, JobMeta } from "@/devnet/client";
 import { useDevnetState } from "@/devnet/mode";
 import { notify } from "@/components/ui/notice";
 import { setPending, usePending } from "@/session/store";
@@ -122,8 +122,8 @@ const when = (secs: number) => new Date(secs * 1000).toLocaleString("en-GB", { d
 const SETUP_FIRST = "Set up your operator wallet and certificate (the card below) first, then you can accept a job.";
 const SIGN_UP_FIRST = "Sign up as a drone operator first: you need your own wallet to accept a job.";
 
-function jobCard(j: Job, feeBps: bigint, onAccept: () => void, o: { onChain?: boolean; session: Session | null; disabledReason?: string; mine?: boolean }) {
-  const d = describeJob(j, o.session);
+function jobCard(j: Job, feeBps: bigint, onAccept: () => void, o: { onChain?: boolean; session: Session | null; disabledReason?: string; meta?: JobMeta | null }) {
+  const d = describeJob(j, o.session, o.meta);
   const title = `${d.field} · ${hectares(j.areaCha)}`;
   const receive = j.amount - (j.amount * feeBps) / 10_000n;
   return (
@@ -132,8 +132,8 @@ function jobCard(j: Job, feeBps: bigint, onAccept: () => void, o: { onChain?: bo
         <View style={{ flex: 1, flexShrink: 1, minWidth: 0 }}>
           <Text style={styles.jobTitle}>{title}</Text>
           <Text style={type.small}>
-            {d.farmer ? `Farmer: ${d.farmer} · ` : ""}job {d.ref}
-            {o.onChain ? " · on chain" : ""}
+            {d.farmer ? `Farmer: ${d.farmer} · ` : ""}job {d.ref} · posted {when(j.postedAt)}
+            {o.onChain ? "" : " · from this browser"}
           </Text>
         </View>
         <StatusChip label="Open" tone="green" />
@@ -141,13 +141,17 @@ function jobCard(j: Job, feeBps: bigint, onAccept: () => void, o: { onChain?: bo
       <BigNumber value={usdc(j.amount)} size={30} sub={`${lari(j.amount)} · you receive ${usdc(receive)} after fee`} />
       <Divider />
       <FactGrid>
-        <Fact label="Field" value={d.field} />
+        <Fact label="Field" value={d.crop ? `${d.field} (${d.crop})` : d.field} />
         <Fact label="Product" value={d.product} />
-        <Fact label="Rate" value={litersPerHa(j.targetRateMlPerHa)} />
+        <Fact label="Wanted by" value={d.wantedText} />
         <Fact label="Area" value={hectares(j.areaCha)} />
-        <Fact label="Spray by" value={when(j.sprayDeadline)} />
+        <Fact label="Rate" value={litersPerHa(j.targetRateMlPerHa)} />
+        <Fact label="Proof deadline (demo)" value={when(j.sprayDeadline)} />
         <Fact label="Price" value={usdc(j.amount)} />
       </FactGrid>
+      <Text style={type.small}>
+        {d.wantedBy ? `The farmer wants it sprayed by ${d.wantedText}. ` : ""}On this demo the contract gives 30 minutes from posting to prove the spraying.
+      </Text>
       <Text style={type.body}>You lock {usdc(j.amount)} as a bond; you get it back when the job is approved.</Text>
       <Button testID="accept-job" label={`Accept job ${d.ref} and lock ${usdc(j.amount)} bond`} disabled={!!o.disabledReason} hint={o.disabledReason} onPress={onAccept} />
       {o.disabledReason ? <Text style={type.small}>{o.disabledReason}</Text> : null}
@@ -174,14 +178,25 @@ export function useChainJobs() {
   return { dev, extra, held: dev.mode === "devnet" ? dev.heldJob : null };
 }
 
+/** This browser's own job (local id 17) while it can still be accepted: Posted and before its spray-by time. */
+function useLocalOpen(): Job | undefined {
+  const { state } = useEngine();
+  const local = state.jobs[17];
+  const expired = useReached(local?.sprayDeadline);
+  return local && local.state === "Posted" && !expired ? local : undefined;
+}
+
+/**
+ * Every open job, newest first, each with its own area (from the chain), field details (the job's memo) and wanted-by date:
+ * this browser's own job (if it is still open) and every other visitor's open job on chain. Nothing is folded away.
+ */
 export function OpenJobs({ onError, onDone, needsSetup }: { onError: (m: string | null) => void; onDone: () => void; needsSetup?: boolean }) {
   const { state } = useEngine();
   const actions = useActions();
   const { dev, extra, held } = useChainJobs();
   const session = useSession();
   const operatorAcct = useAccount("operator");
-  const [showOthers, setShowOthers] = useState(false);
-  const jobs = Object.values(state.jobs).filter((j) => j.state === "Posted");
+  const localOpen = useLocalOpen();
   const feeBps = state.config.kvaliFeeBps + state.config.validatorFeeBps;
   const run = async (fn: () => Promise<void>) => {
     try {
@@ -192,10 +207,20 @@ export function OpenJobs({ onError, onDone, needsSetup }: { onError: (m: string 
       onError(plainError(e));
     }
   };
+  // One job per browser: while this browser's own job is running, other jobs cannot be taken (the program allows one active job per operator).
   const local = state.jobs[17];
-  const busyReason = local && !['Released', 'Refunded', 'Cancelled'].includes(local.state) ? (local.state === 'Posted' ? 'The job above is still open. Accept it, or ask the farmer to cancel it, before taking another one.' : 'You are working on a job. Finish it or release it first.') : undefined;
+  const busyReason =
+    local && !["Released", "Refunded", "Cancelled"].includes(local.state)
+      ? local.state === "Posted"
+        ? `The job posted from this browser (${describeJob(local, session).field}) is still open. Accept it, or cancel it on the Farmer page, before taking another one.`
+        : "You are working on a job. Finish it or release it first."
+      : undefined;
+  const setupReason = !operatorAcct ? SIGN_UP_FIRST : needsSetup ? SETUP_FIRST : undefined;
+  const cards = [
+    ...(localOpen ? [{ job: localOpen, at: localOpen.postedAt, onChain: false, meta: null as JobMeta | null, accept: () => actions.acceptJob(localOpen.id) }] : []),
+    ...extra.map((c) => ({ job: chainAsJob(c), at: c.createdAt, onChain: true, meta: dev.jobMeta[c.pda] ?? null, accept: () => actions.acceptOpenJob(c.chainJobId) })),
+  ].sort((a, b) => b.at - a.at);
   const reading = dev.mode === "devnet" && dev.openJobs === null;
-  const none = jobs.length === 0 && extra.length === 0 && !held;
   return (
     <>
       {held ? (
@@ -207,23 +232,20 @@ export function OpenJobs({ onError, onDone, needsSetup }: { onError: (m: string 
           <Button label={`Continue job …${String(held.chainJobId).slice(-5)}`} onPress={() => void run(() => actions.continueHeldJob(held.chainJobId))} />
         </Card>
       ) : null}
-      {jobs.map((j) => jobCard(j, feeBps, () => void run(() => actions.acceptJob(j.id)), { session, mine: true, disabledReason: !operatorAcct ? SIGN_UP_FIRST : needsSetup ? SETUP_FIRST : undefined }))}
-      {extra.length > 0 ? (
-        <Button
-          small
-          kind="secondary"
-          label={`${showOthers || jobs.length === 0 ? "Hide" : "Show"} other open jobs (${extra.length})`}
-          onPress={() => setShowOthers(!(showOthers || jobs.length === 0))}
-        />
+      {cards.length > 0 ? (
+        <Text style={type.small}>
+          {cards.length} open {cards.length === 1 ? "job" : "jobs"}, newest first.
+        </Text>
       ) : null}
-      {(showOthers || jobs.length === 0) && extra.map((c) =>
-        jobCard(chainAsJob(c), feeBps, () => void run(() => actions.acceptOpenJob(c.chainJobId)), {
-          onChain: true,
+      {cards.map((c) =>
+        jobCard(c.job, feeBps, () => void run(c.accept), {
+          onChain: c.onChain,
           session,
-          disabledReason: !operatorAcct ? SIGN_UP_FIRST : needsSetup ? SETUP_FIRST : busyReason,
+          meta: c.meta,
+          disabledReason: setupReason ?? (c.onChain ? busyReason : undefined),
         }),
       )}
-      {none ? (
+      {cards.length === 0 && !held ? (
         <Card>
           <CardTitle>Jobs near you</CardTitle>
           <Text style={type.body}>
@@ -239,9 +261,8 @@ export function OpenJobs({ onError, onDone, needsSetup }: { onError: (m: string 
 }
 
 export function useOpenJobsText(): string {
-  const { state } = useEngine();
   const { extra } = useChainJobs();
-  const n = Object.values(state.jobs).filter((j) => j.state === "Posted").length + extra.length;
+  const n = (useLocalOpen() ? 1 : 0) + extra.length;
   return `${n} open ${n === 1 ? "job" : "jobs"} near you`;
 }
 
@@ -276,6 +297,7 @@ export function UploadRecord({ job, onError }: { job: Job; onError: (m: string |
       <Text style={type.body}>
         After spraying {describeJob(job, session).field} (job {jobRef(job.id, session)}), send the drone&apos;s flight log. Pick the log for this flight:
       </Text>
+      {describeJob(job, session).wantedBy ? <Text style={type.small}>The farmer wants it done by {describeJob(job, session).wantedText}.</Text> : null}
       {SAMPLE_INFO.map((s) => (
         <Button testID={`record-${s.key}`} small key={s.key} kind={s.key === key ? "primary" : "secondary"} label={s.title + (s.key === key ? " (selected)" : "")} onPress={() => setKey(s.key)} />
       ))}

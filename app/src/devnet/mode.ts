@@ -3,7 +3,7 @@
 import { useSyncExternalStore } from "react";
 import { Platform } from "react-native";
 
-import type { ChainJob, ChainSnapshot } from "./client";
+import type { ChainJob, ChainSnapshot, JobMeta } from "./client";
 
 export type Mode = "devnet" | "sim";
 export type Status = "idle" | "connecting" | "ready" | "unreachable";
@@ -32,6 +32,8 @@ export interface DevnetState {
   openJobs: ChainJob[] | null;
   /** A job the demo operator still holds on chain that is not this session's job (for example from an earlier visit). */
   heldJob: ChainJob | null;
+  /** Details memo of the listed jobs (field name, crop, product, wanted-by date), by job account address. */
+  jobMeta: Record<string, JobMeta | null>;
   /** Last message from a restore / adopt step, shown on the pages. */
   restoreNote: string | null;
   /** Progress of the burner-wallet setup (null when idle). */
@@ -56,6 +58,7 @@ let state: DevnetState = {
   snapshot: null,
   openJobs: null,
   heldJob: null,
+  jobMeta: {},
   restoreNote: null,
   walletNote: null,
   rpcBusy: false,

@@ -22,6 +22,7 @@ test("Happy path: farmer posts, operator flies, the bots co-sign by themselves, 
   await test.step("2. Farmer posts the job and holds $300 (real post_job tx)", async () => {
     const post = tid(page, "post-job");
     await expect(post).toBeEnabled({ timeout: 120_000 });
+    await expect(tid(page, "wanted-by")).not.toHaveValue(""); // "When should it be done?" defaults to tomorrow
     await post.click();
     await expect(tid(page, "job-status-title")).toHaveText("Waiting for an operator", { timeout: 180_000 });
     jobRef = ((await tid(page, "job-id").first().textContent()) ?? "").match(/…\d{5}|\d+/)?.[0] ?? "";
@@ -30,7 +31,7 @@ test("Happy path: farmer posts, operator flies, the bots co-sign by themselves, 
   });
 
   await test.step("3. Operator signs up, wallet + certificate set up, accepts the job (bond locked)", async () => {
-    await operatorAccepts(page);
+    await operatorAccepts(page, jobRef);
     await shot(page, "02-operator-accepted");
   });
 
@@ -151,11 +152,10 @@ test("Happy path: farmer posts, operator flies, the bots co-sign by themselves, 
     await shot(page, "10-phone-farmer");
   });
 
-  await test.step("14. 'Start a new job' moves the finished job into the farmer's history", async () => {
+  await test.step("14. The finished job is in the farmer's history and the post form is back (posting again clears the finished job)", async () => {
     await expect(tid(page, "history-row")).toHaveCount(1, { timeout: 60_000 }); // recorded as soon as the job ended
-    await tid(page, "new-job").click();
-    await expect(tid(page, "job-id")).toHaveCount(0, { timeout: 60_000 });
-    await expect(tid(page, "history-row")).toHaveCount(1);
+    await expect(tid(page, "post-job")).toBeVisible({ timeout: 60_000 });
+    await expect(tid(page, "new-job")).toHaveCount(0); // no separate "Start a new job" step any more
     await expect(tid(page, "history-row")).toContainText("Paid to operator");
     await expect(tid(page, "history-row")).toContainText(jobRef);
     await shot(page, "11-phone-farmer-history");

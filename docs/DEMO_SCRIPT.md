@@ -37,7 +37,7 @@ Live site https://khristo19.github.io/kvali/ (devnet; test USDC). One browser, t
 
 | Time | Beat | Show |
 |---|---|---|
-| 0:00-0:20 | **Post the job** | Farmer page, "My fields": pick a field card (or "+ Add a field"), then "Spray this field". Real `post_job` tx; $300 sits in the vault PDA. The field card now shows "Waiting for an operator". Open the Explorer link. |
+| 0:00-0:20 | **Post the job** | Farmer page, "Post a spray job": pick a field (or "+ Add a new field"), keep "When should it be done?" (tomorrow), then "Post the job". Real `post_job` tx with the field details and date in a memo; $300 sits in the vault PDA. The field card now shows "Waiting for an operator". Open the Explorer link. |
 | 0:20-0:35 | **Operator accepts** | Operator page, Accept: the operator's $300 bond is locked on chain (`accept_job`). |
 | 0:35-0:50 | **Flight** | Operator page, "Send the flight log": pick Honest flight, Send. (A real drone uploads its log; here it is a sample record.) |
 | 0:50-1:15 | **Bots co-sign automatically** | Open the Validator page. "Bot verdicts": every bot ran coverage, L/ha band and flow-meter-vs-tank; 2 of 3 co-signed and `submit_proof` went on chain with no human click. Open the co-sign transaction on Explorer (three signers plus the stake accounts). Optional: send the Pump off record on another job; the bots refuse it, nothing is signed or paid. |

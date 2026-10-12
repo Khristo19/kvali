@@ -1,8 +1,9 @@
 // Real Kvali program on Solana DEVNET. Signs with the public demo keys. Mirrors scripts/devnet-demo.ts.
 // Every function returns real transaction signatures; nothing here is simulated.
 import "./polyfill";
+import { Buffer } from "buffer";
 import { BN, Program, utils } from "@coral-xyz/anchor";
-import { Connection, PublicKey, SystemProgram, Transaction, type Keypair, type TransactionInstruction } from "@solana/web3.js";
+import { Connection, PublicKey, SystemProgram, Transaction, TransactionInstruction, type Keypair } from "@solana/web3.js";
 import { TOKEN_PROGRAM_ID, createAssociatedTokenAccountIdempotentInstruction, createTransferInstruction, getAssociatedTokenAddressSync } from "@solana/spl-token";
 
 import { sha256Hex } from "@/geo/sha256";
@@ -357,8 +358,47 @@ export async function releaseCosign(chainJobId: number, validatorId: string) {
   return send([ix], keys.bank);
 }
 
-/** Farmer posts a job and locks `amount` (USDC base units) in the vault. Returns the on-chain job id. */
-export async function postJob(p: { amount: bigint; fieldHashHex: string; areaCha: number; targetRateMlPerHa: number; toleranceBps: number; sprayDeadline: number }) {
+// ---- job details the program does not hold (field name, crop, product, wanted-by date) ----
+// They ride along in the post_job transaction as an SPL Memo (public, signed by the farmer), so every browser can read them
+// back with one getSignaturesForAddress call on the job account. The program and its accounts are unchanged.
+const MEMO_PROGRAM = new PublicKey("MemoSq4gqABAXKb96qnH8TysNcWxMyWCqXgDLGmfcHr");
+const MEMO_TAG = "kvali:";
+export interface JobMeta {
+  field?: string;
+  crop?: string;
+  product?: string;
+  /** Date the farmer wants the spraying done by, "YYYY-MM-DD" (off chain; the program's spray deadline is the demo one). */
+  by?: string;
+}
+const str = (v: unknown, max: number) => (typeof v === "string" && v.trim() ? v.trim().slice(0, max) : undefined);
+function memoIx(m: JobMeta): TransactionInstruction {
+  const body = { f: str(m.field, 40), c: str(m.crop, 24), p: str(m.product, 24), by: str(m.by, 10) };
+  return new TransactionInstruction({ programId: MEMO_PROGRAM, keys: [], data: Buffer.from(MEMO_TAG + JSON.stringify(body), "utf8") });
+}
+/** Parse the memo text the RPC returns ("[len] kvali:{...}"). */
+function parseMemo(memo: string | null | undefined): JobMeta | null {
+  const at = memo?.indexOf(MEMO_TAG) ?? -1;
+  if (!memo || at < 0) return null;
+  const text = memo.slice(at + MEMO_TAG.length);
+  try {
+    const o = JSON.parse(text.slice(0, text.lastIndexOf("}") + 1)) as Record<string, unknown>;
+    return { field: str(o.f, 40), crop: str(o.c, 24), product: str(o.p, 24), by: /^\d{4}-\d{2}-\d{2}$/.test(String(o.by)) ? String(o.by) : undefined };
+  } catch {
+    return null;
+  }
+}
+const metaCache = new Map<string, JobMeta | null>();
+/** The details memo of a job (by its account address), null when it was posted without one. Cached: a memo never changes. */
+export async function readJobMeta(jobPda: string): Promise<JobMeta | null> {
+  if (metaCache.has(jobPda)) return metaCache.get(jobPda) ?? null;
+  const sigs = await connection.getSignaturesForAddress(new PublicKey(jobPda), { limit: 25 }, "confirmed");
+  const meta = sigs.map((s) => parseMemo(s.memo)).find((m) => !!m) ?? null;
+  metaCache.set(jobPda, meta);
+  return meta;
+}
+
+/** Farmer posts a job and locks `amount` (USDC base units) in the vault, with the details memo. Returns the on-chain job id. */
+export async function postJob(p: { amount: bigint; fieldHashHex: string; areaCha: number; targetRateMlPerHa: number; toleranceBps: number; sprayDeadline: number; meta?: JobMeta }) {
   const farmer = keys.farmer;
   const id = Date.now();
   const job = pdas.job(farmer.publicKey, id);
@@ -367,8 +407,9 @@ export async function postJob(p: { amount: bigint; fieldHashHex: string; areaCha
       farmer: farmer.publicKey, config: CONFIG, usdcMint: MINT, farmerToken: ata(farmer.publicKey), farmerProfile: pdas.farmer(farmer.publicKey),
       job, vault: pdas.vault(job), tokenProgram: TOKEN_PROGRAM_ID, systemProgram: SystemProgram.programId,
     }).instruction();
-  const sig = await send([ix], farmer);
+  const sig = await send(p.meta ? [ix, memoIx(p.meta)] : [ix], farmer);
   jobFarmer = farmer.publicKey;
+  if (p.meta) metaCache.set(job.toBase58(), parseMemo(MEMO_TAG + JSON.stringify({ f: p.meta.field, c: p.meta.crop, p: p.meta.product, by: p.meta.by })));
   return { chainJobId: id, sig };
 }
 

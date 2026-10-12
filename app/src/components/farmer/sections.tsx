@@ -5,20 +5,16 @@ import { StyleSheet, Text, View } from "react-native";
 import { Pressable } from "@/components/ui/pressable";
 
 import { clock, lari, lariAmount, litersPerHa, usdc, whenText } from "@/components/money";
-import { Banner, BigNumber, Button, Card, CardTitle, ErrorText, Icon, Row, TimelineStep, useReached, type StepState } from "@/components/ui";
-import {
-  WALLETS,
-  sampleJob,
-  SAMPLE_AMOUNT,
-  SAMPLE_JOB_ID,
-  DEMO_DEADLINE_SECS,
-} from "@/engine/scenario";
+import { Banner, BigNumber, Button, Card, CardTitle, ErrorText, Icon, Row, TimelineStep, useMounted, useReached, type StepState } from "@/components/ui";
+import { DateField, daysFromToday, isIsoDate } from "@/components/ui/date-field";
+import { useDevnetState } from "@/devnet/mode";
+import { WALLETS, sampleJob, SAMPLE_AMOUNT, SAMPLE_JOB_ID } from "@/engine/scenario";
 import { LiveLeft } from "@/components/live-clock";
 import { TxId } from "@/components/job/ui";
 import { useActions } from "@/engine/actions";
 import { useEngine } from "@/engine/useEngine";
 import type { Job, JobState } from "@/engine/types";
-import { colors, type } from "@/theme";
+import { colors, fonts, type } from "@/theme";
 import { fieldHa, fieldHash, type Field } from "@/data/fields";
 import { selectField, selectedField, useFields } from "@/data/fields-store";
 import { useAccount } from "@/account/store";
@@ -40,18 +36,18 @@ export function regionName(): string {
   return raw.region ? raw.region.split(",")[0] : "Georgia";
 }
 
-/** Posts a job on a field (the given one, else the selected one; shared by the field cards and the "Spray this field" card). */
+/** Posts a job on a field (the given one, else the selected one) with the date the farmer wants it done by. */
 export function usePostJob() {
   const actions = useActions();
   const field = selectedField(useFields());
   const farmer = useAccount("farmer");
   const [err, setErr] = useState<string | null>(null);
-  const post = async (on?: Field) => {
+  const post = async (on: Field | undefined, wantedBy: string) => {
     const f = on ?? field;
     if (on) selectField(on.id);
     try {
       setErr(null);
-      await actions.postJob(JOB_ID, { hash: fieldHash(f), areaCha: areaCha(f.outline), name: f.name, crop: f.crop, product: f.product, farmerName: farmer?.name });
+      await actions.postJob(JOB_ID, { hash: fieldHash(f), areaCha: areaCha(f.outline), name: f.name, crop: f.crop, product: f.product, farmerName: farmer?.name, wantedBy });
     } catch (e) {
       setErr(errorMessage(e));
     }
@@ -59,26 +55,25 @@ export function usePostJob() {
   return { post, err, field, farmer };
 }
 
-/** The current job's details with cancel / release, and "Start a new job" once it has ended (`onNew` replaces its default handler). */
-export function CurrentJobCard({ job, onNew }: { job: Job; onNew?: () => void }) {
+/** The current job's details with cancel / release. A finished job stays here until the next job is posted (that moves it to the history). */
+export function CurrentJobCard({ job }: { job: Job }) {
   const actions = useActions();
   const session = useSession();
   const expired = useReached(job.sprayDeadline);
   const d = describeJob(job, session);
   return (
     <Card>
-      <CardTitle>Your current job</CardTitle>
+      <CardTitle>{job.payout ? "Your last job" : "Your current job"}</CardTitle>
       <Row testID="job-id" label="Job" value={d.ref} sub={job.state} />
       <Row label="Field" value={d.field} sub={`${haText(job.areaCha / 100)}${d.crop ? ` · ${d.crop}` : ""}`} />
       <Row label="Product" value={d.product} />
       <Row label="Target" value={litersPerHa(job.targetRateMlPerHa)} />
-      <Row label="Spray by" value={whenText(job.sprayDeadline)} />
+      <Row testID="job-wanted-by" label="Wanted by" value={d.wantedText} />
+      <Row label="Proof deadline (demo)" value={whenText(job.sprayDeadline)} sub="the contract's spray-by on this demo" />
       <Text style={[type.body, { color: colors.green, fontWeight: "600" }]}>
-        {job.payout ? `This job is finished (${job.state}).` : `${usdc(job.amount)} is held safely.`}
+        {job.payout ? `This job is finished (${job.state}). Post your next job above: this one moves to your past jobs.` : `${usdc(job.amount)} is held safely.`}
       </Text>
-      {job.payout ? (
-        <Button testID="new-job" label="Start a new job" onPress={onNew ?? (() => void actions.newJob(JOB_ID).catch(() => undefined))} />
-      ) : job.state === "Posted" ? (
+      {job.payout ? null : job.state === "Posted" ? (
         <Button testID="cancel-job" label="Cancel this job and take the money back" kind="secondary" onPress={() => void actions.cancelJob(JOB_ID).catch(() => undefined)} />
       ) : job.state === "Accepted" ? (
         <>
@@ -99,27 +94,76 @@ export function CurrentJobCard({ job, onNew }: { job: Job; onNew?: () => void })
   );
 }
 
-/** "Spray this field": price, product, target and the button that posts the job on `field` (default: the selected field). */
-export function PostJobCard({ field: on, onNew }: { field?: Field; onNew?: () => void }) {
-  const job = useEngine().state.jobs[JOB_ID];
-  const { post, err, field: sel, farmer } = usePostJob();
-  const field = on ?? sel;
-  if (job) return <CurrentJobCard job={job} onNew={onNew} />;
+/**
+ * "Post a spray job", in one step: pick one of your fields (or add a new one: mark-field comes back here with it selected),
+ * say when it should be done, post. A finished job is moved to the history by the post itself; a running one blocks it.
+ */
+export function PostJobCard({ onChoose }: { onChoose?: (fieldId: string) => void }) {
+  const fs = useFields();
+  const { post, err, field, farmer } = usePostJob();
+  const busy = !!useDevnetState().busy;
+  const mounted = useMounted();
+  const [by, setBy] = useState<string | null>(null);
+  // Dates come from the clock: only after mount, so the server markup never depends on the build day.
+  const today = mounted ? daysFromToday(0) : "";
+  const wanted = by ?? (mounted ? daysFromToday(1) : "");
+  const dateErr = !mounted ? null : !isIsoDate(wanted) ? "Pick a date." : wanted < today ? "Pick today or a later date." : null;
 
   return (
-    <Card>
-      <CardTitle>Spray this field</CardTitle>
-      <BigNumber caption="Price" value={lariAmount(SAMPLE_AMOUNT)} sub={`${usdc(SAMPLE_AMOUNT)} USDC`} />
+    <Card testID="post-job-card">
+      <CardTitle>Post a spray job</CardTitle>
+      <View style={{ gap: 8 }}>
+        <Text style={styles.label} nativeID="post-field-label">
+          Which field?
+        </Text>
+        <View accessibilityRole="radiogroup" accessibilityLabelledBy="post-field-label" style={styles.chips}>
+          {fs.fields.map((f) => {
+            const on = f.id === field.id;
+            return (
+              <Pressable
+                key={f.id}
+                testID={`post-field-${f.id}`}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: on }}
+                aria-checked={on}
+                accessibilityLabel={`${f.name}, ${haText(fieldHa(f))}`}
+                onPress={() => {
+                  selectField(f.id);
+                  onChoose?.(f.id);
+                }}
+                style={[styles.chip, on && styles.chipOn]}
+              >
+                <Text style={[styles.chipText, on && { color: colors.onAccent }]}>
+                  {f.name} · {haText(fieldHa(f))}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        <Button testID="post-add-field" small kind="secondary" label="+ Add a new field" onPress={() => router.push("/mark-field" as Href)} />
+      </View>
       <Row label="Field" value={field.name} sub={`${haText(fieldHa(field))} · ${field.crop}`} />
       <Row label="Product" value={field.product} />
       <Row label="Target" value={litersPerHa(sampleJob.targetRateMlPerHa)} />
-      <Row label="Spray by" value={`${DEMO_DEADLINE_SECS / 60} minutes after posting`} />
-      <Text style={type.body}>Your {usdc(SAMPLE_AMOUNT)} is held safely until the spraying is checked.</Text>
+      <DateField
+        id="wanted-by"
+        testID="wanted-by"
+        label="When should it be done?"
+        hint="Operators see this date. On this demo the contract itself still gives the operator 30 minutes after posting to prove the spraying."
+        value={wanted}
+        min={today || undefined}
+        onChange={setBy}
+      />
+      <ErrorText message={dateErr} />
+      <BigNumber caption="Price" value={lariAmount(SAMPLE_AMOUNT)} sub={`${usdc(SAMPLE_AMOUNT)} USDC, held safely until the spraying is checked`} />
       <Button
         testID="post-job"
-        label={`Spray this field · hold ${usdc(SAMPLE_AMOUNT)}`}
-        onPress={() => void post(field)}
-        disabled={!farmer}
+        label={`Post the job · hold ${usdc(SAMPLE_AMOUNT)}`}
+        onPress={() => {
+          onChoose?.(field.id);
+          void post(field, wanted);
+        }}
+        disabled={!farmer || !mounted || !!dateErr || busy}
         hint={farmer ? undefined : "Sign up as a farmer first"}
       />
       {farmer ? null : (
@@ -429,6 +473,11 @@ export function PayoutCard() {
 }
 
 const styles = StyleSheet.create({
+  label: { fontFamily: fonts.sans, fontSize: 16, fontWeight: "600", color: colors.ink },
+  chips: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  chip: { minHeight: 44, paddingHorizontal: 14, borderRadius: 999, borderWidth: 1.5, borderColor: colors.border, backgroundColor: colors.card, alignItems: "center", justifyContent: "center" },
+  chipOn: { backgroundColor: colors.green, borderColor: colors.green },
+  chipText: { fontFamily: fonts.sans, fontSize: 15, fontWeight: "600", color: colors.ink },
   titleRow: { flexDirection: "row", alignItems: "center", gap: 10 },
   badge: { width: 32, height: 32, borderRadius: 16, backgroundColor: colors.green, alignItems: "center", justifyContent: "center", flexShrink: 0 },
   badgeOpen: { backgroundColor: colors.card, borderWidth: 4, borderColor: colors.green },

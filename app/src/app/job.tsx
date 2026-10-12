@@ -84,6 +84,7 @@ export default function JobStory() {
         </View>
         <Row left="Field" right={`${describeJob(job, session).field}, ${hectares(job.areaCha)}`} />
         <Row left="Product" right={describeJob(job, session).product} />
+        <Row left="Wanted by" right={describeJob(job, session).wantedText} />
         <Row left="Target" right={`${litersPerHa(job.targetRateMlPerHa)} ± ${job.toleranceBps / 100}%`} />
         <BigNumber caption="Price" value={lariAmount(job.amount)} sub={`${usdc(job.amount)} USDC`} />
       </Card>

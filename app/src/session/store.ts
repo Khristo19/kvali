@@ -32,6 +32,8 @@ export interface Session {
   crop?: string;
   product?: string;
   farmerName?: string;
+  /** Date the farmer wants the spraying done by ("YYYY-MM-DD"). Off chain: also in the post_job memo. */
+  wantedBy?: string;
   txs: SessionTx[];
   /** Record that was actually submitted on chain. */
   recordKey: string | null;
@@ -89,7 +91,7 @@ export function addSessionTx(tx: SessionTx) {
   if (!state) return;
   setSession({ ...state, txs: [...state.txs, tx] });
 }
-export function newSession(p: { farmer: string; chainJobId: number; fieldHash: string; areaCha: number; sprayDeadline: number; fieldName?: string; crop?: string; product?: string; farmerName?: string }) {
+export function newSession(p: { farmer: string; chainJobId: number; fieldHash: string; areaCha: number; sprayDeadline: number; fieldName?: string; crop?: string; product?: string; farmerName?: string; wantedBy?: string }) {
   setSession({ ...p, txs: [], recordKey: null, signers: [], resolution: null });
 }
 
@@ -147,7 +149,7 @@ export function usePending(): PendingRecord | null {
   );
 }
 
-// ---- finished jobs the user moved on from ("Start a new job"): not restored from the chain again ----
+// ---- finished jobs the user moved on from (posting the next job): not restored from the chain again ----
 const DKEY = lsKey("kvali.dismissed.v1");
 export function isDismissed(id: number): boolean {
   try {

@@ -7,20 +7,19 @@ import { TxId } from "@/components/job/ui";
 import { jobLog } from "@/components/job/helpers";
 import { ChainCard } from "@/components/devnet/chain-card";
 import { SettleNow } from "@/components/settle-now";
-import { Button, Card, ErrorText, StatusChip, TwoUp } from "@/components/ui";
+import { Button, Card, StatusChip, TwoUp } from "@/components/ui";
 import { fieldHa, fieldHash, type Field } from "@/data/fields";
 import { selectField, selectedField, useFields } from "@/data/fields-store";
 import { keys } from "@/devnet/keys";
-import { useActions } from "@/engine/actions";
 import { SAMPLE_JOB_ID } from "@/engine/scenario";
 import type { Action, Job } from "@/engine/types";
 import { useEngine } from "@/engine/useEngine";
 import { addHistory, historyForField, useHistory, type HistoryEntry } from "@/session/history";
-import { jobRef } from "@/session/info";
+import { describeJob, jobRef } from "@/session/info";
 import { usePending, useSession } from "@/session/store";
 import { colors, type } from "@/theme";
 import { CropHealthCard, FieldCard, fieldStatus, haText, type FieldView } from "./fields";
-import { ActionsCard, CurrentJobCard, MoneyCard, PayoutCard, PostJobCard, StatusCard, TimelineCard, usePostJob } from "./sections";
+import { ActionsCard, CurrentJobCard, MoneyCard, PayoutCard, PostJobCard, StatusCard, TimelineCard } from "./sections";
 
 const JOB_ID = SAMPLE_JOB_ID;
 const ENDING: Action[] = ["settle", "resolveChallenge", "cancelJob", "reclaimExpired"];
@@ -52,7 +51,7 @@ function useFinishedEntry(): { addr: string; entry: HistoryEntry } | null {
     entry: {
       id: String(session?.chainJobId ?? `${job.postedAt}`),
       ref: jobRef(job.id, session),
-      field: session?.fieldName ?? "Field",
+      field: describeJob(job, session).field,
       fieldHash: job.fieldHash,
       areaCha: job.areaCha,
       state: job.state,
@@ -64,7 +63,7 @@ function useFinishedEntry(): { addr: string; entry: HistoryEntry } | null {
   };
 }
 
-/** Writes a job to the history as soon as it has ended (so "Start a new job" can wipe it safely). Renders nothing. */
+/** Writes a job to the history as soon as it has ended (so posting the next job can wipe it safely). Renders nothing. */
 export function HistoryRecorder() {
   const fin = useFinishedEntry();
   const addr = fin?.addr;
@@ -80,12 +79,12 @@ function viewOf(f: Field): FieldView {
 }
 
 /**
- * The farmer home ("My fields"): add a field, one card per field with its status and main action, then the selected
- * field's current job (or the card to post one) and its past jobs. One job at a time.
+ * The farmer home ("My fields"). On top, "Post a spray job" in one step: pick a field (or add one), the date, post.
+ * While a job runs, a note says so instead (one job at a time). Then one card per field with its status, the chosen
+ * field's current job, its crop health and its past jobs.
  */
 export function FieldsHome({ signedIn }: { signedIn: boolean }) {
   const { state } = useEngine();
-  const actions = useActions();
   // Signed out: only the fields (no job, no money on screen).
   const job: Job | undefined = signedIn ? state.jobs[JOB_ID] : undefined;
   const fs = useFields();
@@ -93,8 +92,6 @@ export function FieldsHome({ signedIn }: { signedIn: boolean }) {
   const pending = usePending();
   const addr = keys.farmer.publicKey.toBase58();
   const history = useHistory(signedIn ? addr : null);
-  const { post, err } = usePostJob();
-  const fin = useFinishedEntry();
   const [picked, setPicked] = useState<string | null>(null);
 
   const views = fs.fields.map(viewOf);
@@ -102,7 +99,7 @@ export function FieldsHome({ signedIn }: { signedIn: boolean }) {
   const jobView: FieldView | undefined = job
     ? (views.find((v) => v.hash === job.fieldHash) ?? {
         id: "job-field",
-        name: session?.fieldName ?? "Your field",
+        name: describeJob(job, session).field,
         hash: job.fieldHash,
         ha: job.areaCha / 100,
         crop: session?.crop,
@@ -112,43 +109,35 @@ export function FieldsHome({ signedIn }: { signedIn: boolean }) {
   const list = jobView && !jobView.field ? [...views, jobView] : views;
   const focus = list.find((v) => v.id === picked) ?? jobView ?? viewOf(selectedField(fs));
   const jobHere = !!job && focus.hash === job.fieldHash;
+  const running = !!job && !job.payout;
 
   const pick = (v: FieldView) => {
     setPicked(v.id);
     if (v.field) selectField(v.id);
   };
-  const newJob = () => {
-    if (fin) addHistory(fin.addr, fin.entry);
-    if (focus.field) selectField(focus.id);
-    setPicked(focus.id);
-    void actions.newJob(JOB_ID).catch(() => undefined);
-  };
 
   return (
     <>
+      {signedIn && !running ? <PostJobCard onChoose={setPicked} /> : null}
+      {running && jobView ? (
+        <Card testID="one-job-note">
+          <Text style={type.body}>
+            One job at a time: your job on {jobView.name} is {job.state === "Posted" ? "waiting for an operator" : "running"}. You can post the next one when it is
+            finished{job.state === "Posted" ? ", or cancel this one" : ""}.
+          </Text>
+          {focus.id !== jobView.id ? <Button small kind="secondary" label={`Open ${jobView.name}`} onPress={() => pick(jobView)} /> : null}
+        </Card>
+      ) : null}
+      <SectionTitle sub="Tap a field to see its job and crop health">My fields</SectionTitle>
       <Button testID="add-field" kind="secondary" label="+ Add a field" onPress={() => router.push("/mark-field" as never)} />
       <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 16 }}>
         {list.map((v) => {
           const here = !!job && v.hash === job.fieldHash;
           const status = fieldStatus(job, here, historyForField(history, v)[0], pending);
-          const action =
-            signedIn && !job && v.field ? (
-              <Button
-                testID={`spray-field-${v.id}`}
-                small
-                label="Spray this field"
-                onPress={() => {
-                  pick(v);
-                  void post(v.field);
-                }}
-              />
-            ) : here ? (
-              <Button small kind="secondary" label="See the job" onPress={() => pick(v)} />
-            ) : null;
+          const action = here && focus.id !== v.id ? <Button small kind="secondary" label="See the job" onPress={() => pick(v)} /> : null;
           return <FieldCard key={v.id} view={v} selected={v.id === focus.id} status={status} onSelect={() => pick(v)} action={action} />;
         })}
       </View>
-      <ErrorText message={err} />
 
       <SectionTitle sub={[haText(focus.ha), focus.crop, focus.product].filter(Boolean).join(" · ")}>{focus.name}</SectionTitle>
       {job && jobHere ? (
@@ -165,16 +154,9 @@ export function FieldsHome({ signedIn }: { signedIn: boolean }) {
             </View>
           </TwoUp>
           <ActionsCard />
-          <CurrentJobCard job={job} onNew={newJob} />
+          <CurrentJobCard job={job} />
           <ChainCard />
         </>
-      ) : !job ? (
-        signedIn && focus.field ? <PostJobCard field={focus.field} /> : null
-      ) : jobView ? (
-        <Card>
-          <Text style={type.body}>One job at a time: your job on {jobView.name} is still running.</Text>
-          <Button small kind="secondary" label={`Open ${jobView.name}`} onPress={() => pick(jobView)} />
-        </Card>
       ) : null}
       {focus.field ? <CropHealthCard fieldId={focus.id} /> : null}
       {signedIn ? (

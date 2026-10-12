@@ -9,12 +9,13 @@ const REASON = "rate:";
 test("Refusal path: bots refuse a pump-off record, operator and farmer see the reason, nothing is paid", async ({ page }, testInfo) => {
   test.skip(testInfo.project.name !== "desktop", "desktop only");
 
+  let jobRef = "";
   await test.step("1. Farmer signs up and posts a job", async () => {
-    await farmerPostsJob(page);
+    jobRef = await farmerPostsJob(page);
   });
 
   await test.step("2. Operator signs up and accepts the job", async () => {
-    await operatorAccepts(page);
+    await operatorAccepts(page, jobRef);
   });
 
   await test.step("3. Operator sends the flight log: simulate 'Pump off' and send the record: the bots refuse it at once", async () => {
