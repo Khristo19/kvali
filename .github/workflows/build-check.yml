@@ -1,5 +1,6 @@
 # Bundle check for the email-code sign-up (Privy): builds the web app like the staging deploy, with a dummy Privy app ID so the
-# Privy code path is bundled, and checks the output contains it. Builds only; deploys nothing.
+# Privy code path is bundled, and checks the output contains it; then again without an app ID, where Privy must be left out.
+# Builds only; deploys nothing.
 name: Build check
 
 on:
@@ -40,3 +41,12 @@ jobs:
           grep -l "signup-code" dist/_expo/static/js/web/*.js
           test -f dist/index.html
           echo "Scripts the home page loads up front:"; grep -o '_expo/static/js/web/[^"]*' dist/index.html
+      - name: Export web without an app ID (Privy must not be bundled)
+        env:
+          EXPO_BASE_URL: /kvali/staging
+          EXPO_PUBLIC_KVALI_ENV: staging
+          EXPO_PUBLIC_PRIVY_APP_ID: ""
+        run: |
+          npx expo export --platform web --output-dir dist-off
+          ls -la dist-off/_expo/static/js/web/
+          if grep -l "auth.privy.io" dist-off/_expo/static/js/web/*.js; then echo "Privy is bundled although no app ID is set"; exit 1; fi
