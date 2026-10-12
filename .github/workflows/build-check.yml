@@ -47,6 +47,6 @@ jobs:
           EXPO_PUBLIC_KVALI_ENV: staging
           EXPO_PUBLIC_PRIVY_APP_ID: ""
         run: |
-          npx expo export --platform web --output-dir dist-off
+          npx expo export --platform web --output-dir dist-off --clear
           ls -la dist-off/_expo/static/js/web/
           if grep -l "auth.privy.io" dist-off/_expo/static/js/web/*.js; then echo "Privy is bundled although no app ID is set"; exit 1; fi

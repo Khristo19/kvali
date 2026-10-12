@@ -27,6 +27,8 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
     return { type: "sourceFile", filePath: path.join(proofSrc, `${file}.ts`) };
   }
   if (privyOptional.test(moduleName)) return { type: "empty" };
+  // Built without a Privy app ID (no email code): leave the Privy SDK out of the bundle entirely.
+  if (moduleName === "@privy-io/react-auth" && !process.env.EXPO_PUBLIC_PRIVY_APP_ID) return { type: "empty" };
   return upstreamResolve
     ? upstreamResolve(context, moduleName, platform)
     : context.resolveRequest(context, moduleName, platform);

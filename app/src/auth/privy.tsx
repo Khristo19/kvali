@@ -84,9 +84,7 @@ export function PrivyRoot() {
   useEffect(() => {
     if (!privyOn) return;
     let live = true;
-    // The env check is written out here (not `privyOn`) so a build without the app ID drops the SDK from the bundle entirely.
-    const load = process.env.EXPO_PUBLIC_PRIVY_APP_ID ? import("@privy-io/react-auth") : Promise.resolve(null);
-    load.then((m) => live && m && setMod(m)).catch(() => {});
+    import("@privy-io/react-auth").then((m) => live && setMod(m)).catch(() => {}); // an empty module when built without the app ID (metro.config.js)
     return () => {
       live = false;
     };
