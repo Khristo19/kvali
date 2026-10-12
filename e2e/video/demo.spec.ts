@@ -123,8 +123,9 @@ test("Technical demo video", async ({ page }) => {
   // 1. Farmer
   await say(page, "1 · Farmer. A farmer signs up with a name and email. No crypto wallet to install.", 3500);
   await signUp(page, "farmer", "Anna");
+  // Ready when posting is possible (the "funded and ready" note can come and go before we look).
   await waiting(page, "Kvali creates the farmer's Solana wallet and funds it with test USDC", () =>
-    expect(tid(page, "wallet-note")).toContainText("funded and ready", { timeout: 240_000 }),
+    expect(tid(page, "post-job")).toBeEnabled({ timeout: 240_000 }),
   );
   await say(page, "My fields: field outlines on satellite maps. Tap a field to pick it.", 3800);
   const firstField = page.locator('[data-testid^="field-card-"]').first();
@@ -132,7 +133,6 @@ test("Technical demo video", async ({ page }) => {
   await show(tid(page, "post-job"));
   await say(page, "Post a spray job: pick the date. $300 USDC will be locked in the Kvali program on Solana, not held by us.", 4500);
   const post = tid(page, "post-job");
-  await expect(post).toBeEnabled({ timeout: 120_000 });
   await press(post, page);
   await waiting(page, "Posting the job on Solana: the $300 goes into escrow", () =>
     expect(tid(page, "job-status-title")).toHaveText("Waiting for an operator", { timeout: 180_000 }),
@@ -144,11 +144,8 @@ test("Technical demo video", async ({ page }) => {
   // 2. Operator
   await say(page, "2 · Drone operator. A certified operator signs up in the same way.", 3000);
   await signUp(page, "operator", "Luka");
-  await waiting(page, "Setting up the operator's wallet and on-chain drone certificate", () =>
-    expect(tid(page, "wallet-note")).toContainText("funded and ready", { timeout: 240_000 }),
-  );
   const accept = (jobRef ? tid(page, "accept-job").filter({ hasText: jobRef }) : tid(page, "accept-job")).first();
-  await waiting(page, "Loading open jobs from Solana", () => expect(accept).toBeEnabled({ timeout: 180_000 }));
+  await waiting(page, "Setting up the operator's wallet and drone certificate, loading open jobs", () => expect(accept).toBeEnabled({ timeout: 300_000 }));
   await show(accept);
   await say(page, "Open jobs near you, read from the chain. To accept, the operator locks a $300 bond: skin in the game.", 4500);
   await press(accept, page);
