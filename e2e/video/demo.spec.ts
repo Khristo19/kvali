@@ -1,7 +1,7 @@
 // Technical demo video: one recorded run of the real app on devnet (farmer -> operator -> bots -> validator -> payout).
 // Captions are drawn on the page; waits on the chain are marked so make-video.mjs can speed them up and keep the video under 3 minutes.
 // Runs in the cloud only (.github/workflows/demo-video.yml), never on the laptop.
-import { test, expect, type Locator, type Page } from "@playwright/test";
+import { chromium, test, expect, type Locator, type Page } from "@playwright/test";
 import { writeFileSync } from "node:fs";
 
 import { go, tid } from "../tests/helpers";
@@ -125,14 +125,22 @@ async function signUp(page: Page, role: "farmer" | "operator" | "validator", nam
   await expect(page).toHaveURL(new RegExp(`/${role}(\\?|$|/)`));
 }
 
-test("Technical demo video", async ({ page }) => {
+test("Technical demo video", async ({ baseURL }) => {
   test.setTimeout(25 * 60_000);
+  // Our own full-screen window (kiosk only applies to the browser's first window, so a persistent context): no tabs or address bar on screen.
+  const ctx = await chromium.launchPersistentContext("", {
+    headless: false,
+    viewport: null,
+    baseURL,
+    args: ["--kiosk", "--force-device-scale-factor=1.5", "--window-position=0,0", "--window-size=1280,720", "--hide-scrollbars", "--disable-infobars", "--no-first-run"],
+  });
+  const page = ctx.pages()[0] ?? (await ctx.newPage());
   t0 = Date.now();
   await page.addInitScript(CAPTION_JS);
 
   await go(page, "/");
   await page.waitForLoadState("networkidle").catch(() => undefined);
-  await card(page, "Kvali", "Proof of spray: drone spraying paid only when the work is proven.<br/>A live run on Solana devnet, recorded end to end.", 4500);
+  await card(page, "Kvali", "Proof of spray: drone spraying paid only when the work is proven.<br/>A live run on Solana devnet, recorded end to end.", 5000);
 
   // 1. Farmer
   await say(page, "1 · Farmer. A farmer signs up with a name and email. No crypto wallet to install.", 3500);
@@ -220,7 +228,8 @@ test("Technical demo video", async ({ page }) => {
   await show(page.getByText("Where the money went").first());
   await say(page, "Where the money went: every dollar is accounted for, on chain.", 4000);
 
-  await card(page, "Kvali: proof of spray", "Farmers pay only for proven work.<br/>Operators are paid the moment it's proven.<br/><br/>khristo19.github.io/kvali", 5000);
+  await card(page, "Kvali: proof of spray", "Farmers pay only for proven work.<br/>Operators are paid the moment it's proven.<br/><br/>khristo19.github.io/kvali", 4000);
 
   writeFileSync("video-out/marks.json", JSON.stringify({ t0Epoch: t0 / 1000, fast, total: now() }, null, 2));
+  await ctx.close();
 });
