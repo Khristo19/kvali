@@ -1,6 +1,6 @@
 // Turns the recorded run into an MP4 under 3 minutes: normal speed for the captioned steps, fast for the marked chain waits.
 // Usage: node video/make-video.mjs  (reads video-out/marks.json, rec-start.txt and the screen capture screen.mp4, writes video-out/kvali-technical-demo.mp4)
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawnSync } from "node:child_process";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 
 const TARGET = 170; // seconds, leaves room under the 3-minute limit
@@ -8,13 +8,25 @@ const { t0Epoch, fast, total } = JSON.parse(readFileSync("video-out/marks.json",
 const src = "video-out/screen.mp4"; // ffmpeg x11grab of the virtual display, started before the test
 const recStart = Number(readFileSync("video-out/rec-start.txt", "utf8").trim());
 const lead = Math.max(0, t0Epoch - recStart); // seconds of screen before the test clock started
+let startAt = lead;
+// The recorder's start time varies a little: skip any blank (all white or all black) screen at the start.
+{
+  const probe = (neg) => {
+    const r = spawnSync("ffmpeg", ["-hide_banner", "-ss", lead.toFixed(3), "-t", "8", "-i", "video-out/screen.mp4", "-vf", `${neg ? "negate," : ""}blackdetect=d=0.03:pic_th=0.98:pix_th=0.12`, "-an", "-f", "null", "-"]).stderr.toString();
+    const m = r.match(/black_start:(\d+(?:\.\d+)?) black_end:(\d+(?:\.\d+)?)/);
+    return m && Number(m[1]) < 0.2 ? Number(m[2]) : 0;
+  };
+  const blank = Math.max(probe(true), probe(false));
+  if (blank > 0) console.log(`skipping ${blank.toFixed(2)}s of blank screen at the start`);
+  startAt = lead + blank + (blank > 0 ? 0.1 : 0);
+}
 const dur = Number(execFileSync("ffprobe", ["-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0", src]).toString().trim());
 const end = Math.min(dur, lead + total); // the screen after the closing card is dropped
 console.log(`screen ${dur.toFixed(1)}s, test from ${lead.toFixed(1)}s to ${end.toFixed(1)}s`);
 
 // Segments: [start, end, fast?]
 const segs = [];
-let t = lead;
+let t = startAt;
 for (const f of fast) {
   const s = f.start + lead, e = Math.min(f.end + lead, end);
   if (e <= s || s < t) continue;
@@ -27,7 +39,7 @@ const normal = segs.filter((x) => !x[2]).reduce((n, x) => n + x[1] - x[0], 0);
 const slow = segs.filter((x) => x[2]).reduce((n, x) => n + x[1] - x[0], 0);
 const room = Math.max(TARGET - normal, segs.filter((x) => x[2]).length * 1.2);
 const k = slow > 0 ? Math.min(60, Math.max(4, slow / room)) : 1;
-console.log(`recording ${(end - lead).toFixed(1)}s: normal ${normal.toFixed(1)}s, waits ${slow.toFixed(1)}s at ${k.toFixed(1)}x -> about ${(normal + slow / k).toFixed(1)}s`);
+console.log(`recording ${(end - startAt).toFixed(1)}s: normal ${normal.toFixed(1)}s, waits ${slow.toFixed(1)}s at ${k.toFixed(1)}x -> about ${(normal + slow / k).toFixed(1)}s`);
 if (normal + slow / k > 179) console.warn("WARNING: the video is longer than 3 minutes");
 
 // Cut and re-time each section on its own, then join them: light on memory, unlike one filter graph over the whole capture.
