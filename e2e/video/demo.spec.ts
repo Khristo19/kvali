@@ -163,6 +163,7 @@ test("Technical demo video", async ({ baseURL }) => {
   await go(page, "/");
   await page.waitForLoadState("networkidle").catch(() => undefined);
   await expect(tid(page, "role-farmer")).toBeVisible();
+  await page.mouse.click(8, 400); // focus the page, not the address bar (its text would show selected)
   await page.waitForTimeout(800);
   t0 = Date.now(); // the video starts here, on the loaded home page (no blank page, no title card)
   await page.waitForTimeout(1200);
