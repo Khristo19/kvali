@@ -98,25 +98,12 @@ async function show(loc: Locator) {
   await loc.evaluate((el) => (el as HTMLElement).scrollIntoView({ block: "center", behavior: "smooth" })).catch(() => undefined);
 }
 
-/** Full-screen title card. */
-async function card(page: Page, title: string, sub: string, ms: number) {
-  await caption(page, "");
-  await page.evaluate(
-    ([t, s]) => {
-      const el = document.createElement("div");
-      el.id = "kv-card";
-      el.style.cssText = "position:fixed;inset:0;z-index:2147483647;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:#14301f;color:#fff;font-family:system-ui,sans-serif;text-align:center;padding:40px";
-      el.innerHTML = `<div style="font:700 54px/1.1 system-ui">${t}</div><div style="font:500 23px/1.45 system-ui;opacity:.9;max-width:820px">${s}</div>`;
-      document.documentElement.appendChild(el);
-    },
-    [title, sub] as const,
-  );
-  await page.waitForTimeout(ms);
-  await page.evaluate(() => document.getElementById("kv-card")?.remove());
-}
-
 async function signUp(page: Page, role: "farmer" | "operator" | "validator", name: string) {
-  await go(page, "/");
+  // Stay inside the app (no full page load, so no blank frame): "Change role" from a role page, nothing on the home page.
+  const change = page.locator('[data-testid="nav-change-role"]:visible').first();
+  if (await change.count()) await press(change, page);
+  else if (!/\/kvali\/(\?.*)?$/.test(page.url())) await go(page, "/");
+  await expect(tid(page, `role-${role}`)).toBeVisible();
   await press(tid(page, `role-${role}`), page);
   await press(tid(page, "continue-email"), page);
   await typeInto(tid(page, "signup-name"), name, 70);
@@ -135,15 +122,16 @@ test("Technical demo video", async ({ baseURL }) => {
     args: ["--kiosk", "--force-device-scale-factor=1.5", "--window-position=0,0", "--window-size=1280,720", "--hide-scrollbars", "--disable-infobars", "--no-first-run"],
   });
   const page = ctx.pages()[0] ?? (await ctx.newPage());
-  t0 = Date.now();
   await page.addInitScript(CAPTION_JS);
-
   await go(page, "/");
   await page.waitForLoadState("networkidle").catch(() => undefined);
-  await card(page, "Kvali", "Proof of spray: drone spraying paid only when the work is proven.<br/>A live run on Solana devnet, recorded end to end.", 5000);
+  await expect(tid(page, "role-farmer")).toBeVisible();
+  await page.waitForTimeout(800);
+  t0 = Date.now(); // the video starts here, on the loaded home page (no blank page, no title card)
+  await page.waitForTimeout(1200);
 
   // 1. Farmer
-  await say(page, "1 · Farmer. A farmer signs up with a name and email. No crypto wallet to install.", 3500);
+  await say(page, "1 · Farmer. Demo sign-up: just a name and email, nothing is checked. The browser creates the farmer's Solana wallet. Real login (Privy) comes next.", 5000);
   await signUp(page, "farmer", "Anna");
   // Ready when posting is possible (the "funded and ready" note can come and go before we look).
   await waiting(page, "Kvali creates the farmer's Solana wallet and funds it with test USDC", () =>
@@ -164,7 +152,7 @@ test("Technical demo video", async ({ baseURL }) => {
   await say(page, `Job ${jobRef} is live on chain and waiting for an operator.`, 3500);
 
   // 2. Operator
-  await say(page, "2 · Drone operator. A certified operator signs up in the same way.", 3000);
+  await say(page, "2 · Drone operator. The operator signs up the same way and gets a wallet and a drone certificate on chain.", 4200);
   await signUp(page, "operator", "Luka");
   const accept = (jobRef ? tid(page, "accept-job").filter({ hasText: jobRef }) : tid(page, "accept-job")).first();
   await waiting(page, "Setting up the operator's wallet and drone certificate, loading open jobs", () => expect(accept).toBeEnabled({ timeout: 300_000 }));
@@ -228,7 +216,6 @@ test("Technical demo video", async ({ baseURL }) => {
   await show(page.getByText("Where the money went").first());
   await say(page, "Where the money went: every dollar is accounted for, on chain.", 4000);
 
-  await card(page, "Kvali: proof of spray", "Farmers pay only for proven work.<br/>Operators are paid the moment it's proven.<br/><br/>khristo19.github.io/kvali", 4000);
 
   writeFileSync("video-out/marks.json", JSON.stringify({ t0Epoch: t0 / 1000, fast, total: now() }, null, 2));
   await ctx.close();
