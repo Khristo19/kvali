@@ -4,7 +4,7 @@
 import { test, expect, type Locator, type Page } from "@playwright/test";
 import { writeFileSync } from "node:fs";
 
-import { go, tid, uniqueEmail } from "../tests/helpers";
+import { go, tid } from "../tests/helpers";
 
 type Seg = { start: number; end: number };
 const fast: Seg[] = [];
@@ -17,7 +17,7 @@ const CAPTION_JS = `(() => {
     if (!el) {
       el = document.createElement("div");
       el.id = "kv-cap";
-      el.style.cssText = "position:fixed;left:50%;bottom:28px;transform:translateX(-50%);max-width:1100px;width:calc(100% - 80px);box-sizing:border-box;padding:14px 22px;border-radius:14px;background:rgba(16,32,24,.92);color:#fff;font:600 24px/1.35 system-ui,sans-serif;text-align:center;z-index:2147483647;pointer-events:none;box-shadow:0 8px 30px rgba(0,0,0,.35)";
+      el.style.cssText = "position:fixed;left:50%;bottom:18px;transform:translateX(-50%);max-width:900px;width:calc(100% - 80px);box-sizing:border-box;padding:10px 18px;border-radius:14px;background:rgba(16,32,24,.92);color:#fff;font:600 19px/1.35 system-ui,sans-serif;text-align:center;z-index:2147483647;pointer-events:none;box-shadow:0 8px 30px rgba(0,0,0,.35)";
       document.documentElement.appendChild(el);
     }
     el.textContent = text;
@@ -66,18 +66,32 @@ async function waiting<T>(page: Page, label: string, fn: () => Promise<T>): Prom
   }
 }
 
-/** Ring the control, pause so viewers see it, then click. */
+/** Ring the control, pause so viewers see it, then click. The ring is cleared page-wide: the control may be gone after the click. */
 async function press(loc: Locator, page: Page) {
   await loc.scrollIntoViewIfNeeded();
   await loc.evaluate((el) => {
     (el as HTMLElement).scrollIntoView({ block: "center", behavior: "smooth" });
+    (el as HTMLElement).setAttribute("data-kv-ring", "1");
     (el as HTMLElement).style.outline = "4px solid #F5B700";
     (el as HTMLElement).style.outlineOffset = "4px";
   });
   await page.waitForTimeout(1100);
   await loc.click();
-  await loc.evaluate((el) => ((el as HTMLElement).style.outline = "")).catch(() => undefined);
-  await page.waitForTimeout(500);
+  await page.waitForTimeout(400);
+  await page
+    .evaluate(() =>
+      document.querySelectorAll("[data-kv-ring]").forEach((e) => {
+        (e as HTMLElement).style.outline = "";
+        e.removeAttribute("data-kv-ring");
+      }),
+    )
+    .catch(() => undefined);
+}
+
+/** Type like a person, into an empty field (the sign-up form remembers the last name used). */
+async function typeInto(loc: Locator, text: string, delay: number) {
+  await loc.fill("");
+  await loc.pressSequentially(text, { delay });
 }
 
 async function show(loc: Locator) {
@@ -92,7 +106,7 @@ async function card(page: Page, title: string, sub: string, ms: number) {
       const el = document.createElement("div");
       el.id = "kv-card";
       el.style.cssText = "position:fixed;inset:0;z-index:2147483647;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:18px;background:#14301f;color:#fff;font-family:system-ui,sans-serif;text-align:center;padding:40px";
-      el.innerHTML = `<div style="font:700 64px/1.1 system-ui">${t}</div><div style="font:500 28px/1.4 system-ui;opacity:.9;max-width:900px">${s}</div>`;
+      el.innerHTML = `<div style="font:700 54px/1.1 system-ui">${t}</div><div style="font:500 23px/1.45 system-ui;opacity:.9;max-width:820px">${s}</div>`;
       document.documentElement.appendChild(el);
     },
     [title, sub] as const,
@@ -105,8 +119,8 @@ async function signUp(page: Page, role: "farmer" | "operator" | "validator", nam
   await go(page, "/");
   await press(tid(page, `role-${role}`), page);
   await press(tid(page, "continue-email"), page);
-  await tid(page, "signup-name").pressSequentially(name, { delay: 70 });
-  await tid(page, "signup-email").pressSequentially(uniqueEmail(role).replace(/^e2e-/, "demo-"), { delay: 25 });
+  await typeInto(tid(page, "signup-name"), name, 70);
+  await typeInto(tid(page, "signup-email"), `${name.toLowerCase()}@example.com`, 30);
   await press(tid(page, "signup-submit"), page);
   await expect(page).toHaveURL(new RegExp(`/${role}(\\?|$|/)`));
 }
@@ -200,15 +214,11 @@ test("Technical demo video", async ({ page }) => {
   await waiting(page, "Loading the job story", () => expect(tid(page, "adds-up")).toContainText("Adds up", { timeout: 120_000 }));
   await show(tid(page, "tx-link").first());
   await say(page, "The job story: every step is a Solana transaction, and the money adds up.", 4200);
-  const href = await tid(page, "tx-link").last().getAttribute("href");
-  if (href) {
-    await caption(page, "");
-    await waiting(page, "Opening Solana Explorer", async () => {
-      await page.goto(href, { waitUntil: "domcontentloaded" });
-      await page.waitForLoadState("networkidle", { timeout: 30_000 }).catch(() => undefined);
-    });
-    await say(page, "Solana Explorer: a real transaction from this job, finalized on devnet. Anyone can check it.", 5000);
-  }
+  const story = page.getByText("What happened").first();
+  await show(story);
+  await say(page, "Each step links to its transaction on Solana Explorer: post, accept, proof, co-signs and payout. Anyone can check them.", 5000);
+  await show(page.getByText("Where the money went").first());
+  await say(page, "Where the money went: every dollar is accounted for, on chain.", 4000);
 
   await card(page, "Kvali: proof of spray", "Farmers pay only for proven work.<br/>Operators are paid the moment it's proven.<br/><br/>khristo19.github.io/kvali", 5000);
 

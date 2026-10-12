@@ -15,10 +15,10 @@ export default defineConfig({
   use: {
     ...devices["Desktop Chrome"],
     baseURL,
-    viewport: { width: 1280, height: 720 },
+    viewport: { width: 1024, height: 576 },
     deviceScaleFactor: 1,
     actionTimeout: 60_000,
     navigationTimeout: 60_000,
-    video: { mode: "on", size: { width: 1280, height: 720 } },
+    video: { mode: "on", size: { width: 1024, height: 576 } },
   },
 });
