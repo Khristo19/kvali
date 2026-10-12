@@ -61,8 +61,12 @@ test("Happy path: farmer posts, operator flies, the bots co-sign by themselves, 
     await expectFinalized(botSigs);
   });
 
+  // Open co-signs per seat while this job is open: the shared seats can also hold locks of jobs abandoned elsewhere,
+  // so 12b checks that this job's lock went away (the count drops), not that it reaches 0.
+  const openBefore: Record<string, number> = {};
   await test.step("7. Stake card: every seat shows its stake as active; the co-signers have an open co-sign", async () => {
     for (const seat of ["operator-side", "farmer-side", "neutral"]) {
+      openBefore[seat] = Number(((await tid(page, `stake-open-${seat}`).textContent().catch(() => "")) ?? "").match(/\d+/)?.[0] ?? NaN);
       await expect(tid(page, `stake-status-${seat}`)).toHaveText("active", { timeout: 60_000 });
       const amount = (await tid(page, `stake-amount-${seat}`).textContent()) ?? "";
       expect(Number(amount.replace(/[$,]/g, "")), `${seat} stake ${amount}`).toBeGreaterThanOrEqual(500);
@@ -137,7 +141,12 @@ test("Happy path: farmer posts, operator flies, the bots co-sign by themselves, 
     await go(page, "validator");
     for (const seat of ["operator-side", "farmer-side"]) {
       await expect(tid(page, `stake-cosigned-${seat}`)).toContainText(/Proofs co-signed: [1-9]/, { timeout: 60_000 });
-      await expect(tid(page, `stake-open-${seat}`)).toHaveText("Open co-signs: 0", { timeout: 120_000 });
+      const before = openBefore[seat];
+      if (Number.isFinite(before) && before > 0) {
+        await expect.poll(async () => Number(((await tid(page, `stake-open-${seat}`).textContent()) ?? "").match(/\d+/)?.[0] ?? NaN), { timeout: 120_000, intervals: [3000] }).toBeLessThan(before);
+      } else {
+        await expect(tid(page, `stake-open-${seat}`)).toHaveText("Open co-signs: 0", { timeout: 120_000 });
+      }
     }
   });
 

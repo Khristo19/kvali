@@ -54,8 +54,8 @@ export function privyReady(ms = 15_000): Promise<PrivyAuth> {
   });
 }
 
-/** Ends the Privy session too (Sign out). No-op when Privy is off or not loaded. */
-export const privyLogout = () => (privyOn ? auth.logout().catch(() => {}) : Promise.resolve());
+/** Ends the Privy session too (Sign out). No-op when Privy is off, not loaded, or nobody is logged in (Privy answers 400 then). */
+export const privyLogout = () => (privyOn && auth.authenticated ? auth.logout().catch(() => {}) : Promise.resolve());
 
 /** Reads Privy's hooks inside the provider and hands them to the rest of the app through the small store above. */
 function Bridge({ mod }: { mod: PrivyModule }) {
