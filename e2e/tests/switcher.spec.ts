@@ -24,7 +24,7 @@ async function seed(page: Page, baseURL: string | undefined, roles: Role[]) {
 }
 
 /** The chip's second line: "Farmer 2 · 4abc...wxyz". */
-const chipSub = (page: Page) => tid(page, "account-name").first().locator("xpath=following-sibling::*[1]");
+const chipSub = (page: Page) => tid(page, "account-name").first().locator("xpath=../following-sibling::*[1]"); // the name sits in a row with the "✓ verified" badge
 
 test("Staging: marker is shown and no live keys are written", async ({ page, baseURL }) => {
   await seed(page, baseURL, ["farmer"]);
