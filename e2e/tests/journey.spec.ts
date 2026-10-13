@@ -1,6 +1,6 @@
 import { test, expect } from "./fixtures";
 import { expectFinalized, signatureFromHref } from "./chain";
-import { go, lsKey, operatorAccepts, operatorSendsRecord, signUp, tid, warn } from "./helpers";
+import { ensureField, go, lsKey, operatorAccepts, operatorSendsRecord, signUp, tid, warn } from "./helpers";
 
 test.describe.configure({ mode: "serial" });
 
@@ -20,6 +20,7 @@ test("Happy path: farmer posts, operator flies, the bots co-sign by themselves, 
   });
 
   await test.step("2. Farmer posts the job and holds $300 (real post_job tx)", async () => {
+    await ensureField(page); // a new farmer starts with no fields
     const post = tid(page, "post-job");
     await expect(post).toBeEnabled({ timeout: 120_000 });
     await expect(tid(page, "wanted-by")).not.toHaveValue(""); // "When should it be done?" defaults to tomorrow

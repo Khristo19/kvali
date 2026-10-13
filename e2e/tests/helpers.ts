@@ -58,10 +58,20 @@ export async function waitForWallet(page: Page) {
   await expect(tid(page, "wallet-note")).toContainText("funded and ready", { timeout: 180_000 });
 }
 
+/** A new farmer has no fields: add a sample vineyard (the "Add your first field" card). No-op when the farmer already has one. */
+export async function ensureField(page: Page) {
+  const sample = tid(page, "use-sample-field");
+  const card = page.locator("[data-testid^=field-card-]").first();
+  await expect(sample.or(card)).toBeVisible({ timeout: 90_000 });
+  if (await sample.isVisible()) await sample.click();
+  await expect(card).toBeVisible();
+}
+
 /** Sign up as a farmer, wait for the wallet, post the selected (first) field as a $300 job with the default date (tomorrow). Returns the job ref ("…12345"). */
 export async function farmerPostsJob(page: Page): Promise<string> {
   await signUp(page, "farmer", "E2E Farmer");
   await waitForWallet(page);
+  await ensureField(page);
   const post = tid(page, "post-job");
   await expect(post).toBeEnabled({ timeout: 120_000 });
   await expect(tid(page, "wanted-by")).not.toHaveValue("");

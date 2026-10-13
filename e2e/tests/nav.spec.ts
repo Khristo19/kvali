@@ -135,11 +135,16 @@ test("Nav: Connect Phantom says 'coming soon' and does not navigate", async ({ p
   expect(page.url()).toBe(before);
 });
 
-test("Nav: farmer home lists the fields, with no demo controls", async ({ page }) => {
+test("Nav: a new farmer starts with no fields, adds a sample vineyard; no demo controls", async ({ page }) => {
   await seedAccounts(page, ["farmer"]);
   await go(page, "farmer");
-  await expect(tid(page, "add-field")).toBeVisible({ timeout: 90_000 });
-  await expect(page.locator("[data-testid^=field-card-]").first()).toBeVisible();
+  await expect(tid(page, "no-fields")).toBeVisible({ timeout: 90_000 });
+  await expect(tid(page, "add-field")).toBeVisible();
+  await expect(page.locator("[data-testid^=field-card-]")).toHaveCount(0);
+  await expect(tid(page, "post-job")).toHaveCount(0);
+  await tid(page, "use-sample-field").click();
+  await expect(page.locator("[data-testid^=field-card-]")).toHaveCount(1);
+  await expect(tid(page, "no-fields")).toHaveCount(0);
   await expect(tid(page, "demo-controls-toggle")).toHaveCount(0);
   await expect(tid(page, "demo-accept")).toHaveCount(0);
 });

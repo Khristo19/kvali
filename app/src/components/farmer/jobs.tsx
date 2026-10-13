@@ -7,9 +7,9 @@ import { TxId } from "@/components/job/ui";
 import { jobLog } from "@/components/job/helpers";
 import { ChainCard } from "@/components/devnet/chain-card";
 import { SettleNow } from "@/components/settle-now";
-import { Button, Card, StatusChip, TwoUp } from "@/components/ui";
+import { Button, Card, CardTitle, StatusChip, TwoUp } from "@/components/ui";
 import { fieldHa, fieldHash, type Field } from "@/data/fields";
-import { selectField, selectedField, useFields } from "@/data/fields-store";
+import { addSampleField, selectField, selectedField, useFields } from "@/data/fields-store";
 import { keys } from "@/devnet/keys";
 import { SAMPLE_JOB_ID } from "@/engine/scenario";
 import type { Action, Job } from "@/engine/types";
@@ -107,8 +107,9 @@ export function FieldsHome({ signedIn }: { signedIn: boolean }) {
       })
     : undefined;
   const list = jobView && !jobView.field ? [...views, jobView] : views;
-  const focus = list.find((v) => v.id === picked) ?? jobView ?? viewOf(selectedField(fs));
-  const jobHere = !!job && focus.hash === job.fieldHash;
+  const sel = selectedField(fs);
+  const focus: FieldView | undefined = list.find((v) => v.id === picked) ?? jobView ?? (sel ? viewOf(sel) : undefined);
+  const jobHere = !!job && !!focus && focus.hash === job.fieldHash;
   const running = !!job && !job.payout;
 
   const pick = (v: FieldView) => {
@@ -124,23 +125,48 @@ export function FieldsHome({ signedIn }: { signedIn: boolean }) {
             One job at a time: your job on {jobView.name} is {job.state === "Posted" ? "waiting for an operator" : "running"}. You can post the next one when it is
             finished{job.state === "Posted" ? ", or cancel this one" : ""}.
           </Text>
-          {focus.id !== jobView.id ? <Button small kind="secondary" label={`Open ${jobView.name}`} onPress={() => pick(jobView)} /> : null}
+          {focus?.id !== jobView.id ? <Button small kind="secondary" label={`Open ${jobView.name}`} onPress={() => pick(jobView)} /> : null}
         </Card>
       ) : null}
-      <SectionTitle sub="Tap a field to see its job and crop health">My fields</SectionTitle>
-      <Button testID="add-field" kind="secondary" label="+ Add a field" onPress={() => router.push("/mark-field" as never)} />
-      <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 16 }}>
-        {list.map((v) => {
-          const here = !!job && v.hash === job.fieldHash;
-          const status = fieldStatus(job, here, historyForField(history, v)[0], pending);
-          const action = here && focus.id !== v.id ? <Button small kind="secondary" label="See the job" onPress={() => pick(v)} /> : null;
-          return <FieldCard key={v.id} view={v} selected={v.id === focus.id} status={status} onSelect={() => pick(v)} action={action} />;
-        })}
-      </View>
-      {signedIn && !running ? <PostJobCard onChoose={setPicked} /> : null}
+      {!focus ? (
+        <>
+          <SectionTitle>My fields</SectionTitle>
+          <Card testID="no-fields">
+            <CardTitle>Add your first field</CardTitle>
+            <Text style={type.body}>You have no fields yet. Mark the field you want sprayed on the satellite map: tap its corners, and we work out the hectares.</Text>
+            <Button testID="add-field" label="Draw your field on the map" onPress={() => router.push("/mark-field" as never)} />
+            <Text style={type.small}>Just trying the demo? Add a real vineyard in Kakheti (outline from OpenStreetMap) instead.</Text>
+            <Button testID="use-sample-field" kind="secondary" label="Use a sample vineyard" onPress={addSampleField} />
+          </Card>
+        </>
+      ) : (
+        <>
+          <SectionTitle sub="Tap a field to see its job and crop health">My fields</SectionTitle>
+          <Button testID="add-field" kind="secondary" label="+ Add a field" onPress={() => router.push("/mark-field" as never)} />
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 16 }}>
+            {list.map((v) => {
+              const here = !!job && v.hash === job.fieldHash;
+              const status = fieldStatus(job, here, historyForField(history, v)[0], pending);
+              const action = here && focus.id !== v.id ? <Button small kind="secondary" label="See the job" onPress={() => pick(v)} /> : null;
+              return <FieldCard key={v.id} view={v} selected={v.id === focus.id} status={status} onSelect={() => pick(v)} action={action} />;
+            })}
+          </View>
+        </>
+      )}
+      {signedIn && !running && focus ? <PostJobCard onChoose={setPicked} /> : null}
+      {focus ? (
+        <FieldDetails focus={focus} job={jobHere ? job : undefined} signedIn={signedIn} addr={addr} />
+      ) : null}
+    </>
+  );
+}
 
+/** The chosen field: its current job, crop health and past jobs. */
+function FieldDetails({ focus, job, signedIn, addr }: { focus: FieldView; job: Job | undefined; signedIn: boolean; addr: string }) {
+  return (
+    <>
       <SectionTitle sub={[haText(focus.ha), focus.crop, focus.product].filter(Boolean).join(" · ")}>{focus.name}</SectionTitle>
-      {job && jobHere ? (
+      {job ? (
         <>
           <TwoUp>
             <StatusCard />

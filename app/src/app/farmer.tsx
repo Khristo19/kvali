@@ -34,7 +34,7 @@ export default function Farmer() {
           <>
             <Card testID="signup-card">
               <CardTitle>Sign up as a farmer</CardTitle>
-              <Text style={type.body}>Create an account to get your own wallet and post a spray job. Meanwhile you can look at your fields below.</Text>
+              <Text style={type.body}>Create an account to get your own wallet and post a spray job. Meanwhile you can mark your field below.</Text>
               <Button testID="farmer-signup" label="Sign up as a farmer" onPress={() => router.replace("/?role=farmer" as Href)} />
             </Card>
             <FieldsHome signedIn={false} />

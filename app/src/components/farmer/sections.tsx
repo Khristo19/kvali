@@ -44,6 +44,7 @@ export function usePostJob() {
   const [err, setErr] = useState<string | null>(null);
   const post = async (on: Field | undefined, wantedBy: string) => {
     const f = on ?? field;
+    if (!f) return;
     if (on) selectField(on.id);
     try {
       setErr(null);
@@ -107,6 +108,7 @@ export function PostJobCard({ onChoose }: { onChoose?: (fieldId: string) => void
   const today = mounted ? daysFromToday(0) : "";
   const wanted = by ?? (mounted ? daysFromToday(1) : "");
   const dateErr = !mounted ? null : !isIsoDate(wanted) ? "Pick a date." : wanted < today ? "Pick today or a later date." : null;
+  if (!field) return null; // no fields yet: the "Add your first field" card shows instead
 
   return (
     <Card testID="post-job-card">
