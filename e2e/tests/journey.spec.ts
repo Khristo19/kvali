@@ -66,8 +66,11 @@ test("Happy path: farmer posts, operator flies, the bots co-sign by themselves, 
   const openBefore: Record<string, number> = {};
   await test.step("7. Stake card: every seat shows its stake as active; the co-signers have an open co-sign", async () => {
     for (const seat of ["operator-side", "farmer-side", "neutral"]) {
-      openBefore[seat] = Number(((await tid(page, `stake-open-${seat}`).textContent().catch(() => "")) ?? "").match(/\d+/)?.[0] ?? NaN);
       await expect(tid(page, `stake-status-${seat}`)).toHaveText("active", { timeout: 60_000 });
+      // Read once the card has loaded (an empty read would fall back to "must reach 0", which a stale lock breaks).
+      const openNow = async () => Number(((await tid(page, `stake-open-${seat}`).textContent().catch(() => "")) ?? "").match(/\d+/)?.[0] ?? NaN);
+      if (seat !== "neutral") await expect.poll(openNow, { timeout: 60_000, intervals: [2000] }).toBeGreaterThanOrEqual(1); // this job's co-sign
+      openBefore[seat] = await openNow();
       const amount = (await tid(page, `stake-amount-${seat}`).textContent()) ?? "";
       expect(Number(amount.replace(/[$,]/g, "")), `${seat} stake ${amount}`).toBeGreaterThanOrEqual(500);
       await expect(tid(page, `request-unstake-${seat}`)).toBeDisabled();
