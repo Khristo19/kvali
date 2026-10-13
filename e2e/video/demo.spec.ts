@@ -103,11 +103,14 @@ async function waiting<T>(page: Page, label: string, fn: () => Promise<T>): Prom
   }
 }
 
+/** Cursor speed: 1 is a person taking their time; the repeat sign-ups (operator, validator) run quicker so the hand-offs stay short. */
+let pace = 1;
+
 /** Glide the drawn cursor to the control like a person would, then click there for real. */
 async function press(loc: Locator, page: Page) {
   await loc.scrollIntoViewIfNeeded();
   await loc.evaluate((el) => (el as HTMLElement).scrollIntoView({ block: "center", behavior: "smooth" })).catch(() => undefined);
-  await page.waitForTimeout(450);
+  await page.waitForTimeout(450 * pace);
   const box = await loc.boundingBox();
   if (!box) {
     await loc.click();
@@ -117,13 +120,13 @@ async function press(loc: Locator, page: Page) {
   const x = box.x + box.width / 2 + jitter(box.width);
   const y = box.y + box.height / 2 + jitter(box.height);
   const [cx, cy] = (await page.evaluate(() => (window as unknown as { __kvPos?: () => number[] }).__kvPos?.() ?? [x, y]).catch(() => [x, y])) as number[];
-  const ms = Math.round(Math.min(1100, 380 + Math.hypot(x - cx, y - cy) * 0.55));
+  const ms = Math.round(Math.min(1100, 380 + Math.hypot(x - cx, y - cy) * 0.55) * pace);
   await page.evaluate(([px, py, d]) => (window as unknown as { __kvMove: (a: number, b: number, c: number) => void }).__kvMove(px, py, d), [x, y, ms] as const).catch(() => undefined);
   await page.mouse.move(x, y, { steps: 8 });
-  await page.waitForTimeout(ms + 180);
+  await page.waitForTimeout(ms + 180 * pace);
   await page.evaluate(() => (window as unknown as { __kvClick: () => void }).__kvClick()).catch(() => undefined);
   await page.mouse.click(x, y);
-  await page.waitForTimeout(450);
+  await page.waitForTimeout(450 * pace);
 }
 
 /** Click into the field, then type like a person (empty first: the sign-up form remembers the last name used). */
@@ -157,7 +160,8 @@ async function show(loc: Locator) {
   await loc.evaluate((el) => (el as HTMLElement).scrollIntoView({ block: "center", behavior: "smooth" })).catch(() => undefined);
 }
 
-async function signUp(page: Page, role: "farmer" | "operator" | "validator", name: string) {
+async function signUp(page: Page, role: "farmer" | "operator" | "validator", name: string, quick = false) {
+  pace = quick ? 0.5 : 1;
   // Stay inside the app (no full page load, so no blank frame): "Change role" from a role page, nothing on the home page.
   const change = page.locator('[data-testid="nav-change-role"]:visible').first();
   if (await change.count()) await press(change, page);
@@ -165,10 +169,10 @@ async function signUp(page: Page, role: "farmer" | "operator" | "validator", nam
   await expect(tid(page, `role-${role}`)).toBeVisible();
   await press(tid(page, `role-${role}`), page);
   await press(tid(page, "continue-email"), page);
-  await typeInto(page, tid(page, "signup-name"), name, 70);
+  await typeInto(page, tid(page, "signup-name"), name, quick ? 45 : 70);
   // Privy's test account (fixed email and code) stands in for a real inbox in this recording.
   const email = process.env.E2E_PRIVY_EMAIL || `${name.toLowerCase()}@example.com`;
-  await typeInto(page, tid(page, "signup-email"), email, 30);
+  await typeInto(page, tid(page, "signup-email"), email, quick ? 12 : 30);
   await press(tid(page, "signup-submit"), page);
   const code = tid(page, "signup-code");
   const asked = await Promise.race([
@@ -187,9 +191,10 @@ async function signUp(page: Page, role: "farmer" | "operator" | "validator", nam
   await expect(page).toHaveURL(new RegExp(`/${role}(\\?|$|/)`), { timeout: 60_000 });
   if (await tid(page, "account-verified").first().isVisible().catch(() => false)) {
     await zoomIn(page, tid(page, "account-verified").first(), 1.6);
-    await page.waitForTimeout(1600);
+    await page.waitForTimeout(quick ? 700 : 1600);
     await zoomOut(page);
   }
+  pace = 1;
 }
 
 test("Technical demo video", async ({ baseURL }) => {
@@ -234,8 +239,8 @@ test("Technical demo video", async ({ baseURL }) => {
   await say(page, `Job ${jobRef} is live on chain and waiting for an operator.`, 3500);
 
   // 2. Operator
-  await say(page, "2 · Drone operator. The operator signs up the same way (this browser already verified the email) and gets a wallet and a drone certificate on chain.", 4200);
-  await signUp(page, "operator", "Luka");
+  await say(page, "2 · Drone operator. The operator signs up the same way (this browser already verified the email) and gets a wallet and a drone certificate on chain.", 1200);
+  await signUp(page, "operator", "Luka", true);
   const accept = (jobRef ? tid(page, "accept-job").filter({ hasText: jobRef }) : tid(page, "accept-job")).first();
   await waiting(page, "Setting up the operator's wallet and drone certificate, loading open jobs", () => expect(accept).toBeEnabled({ timeout: 300_000 }));
   await show(accept);
@@ -253,8 +258,8 @@ test("Technical demo video", async ({ baseURL }) => {
   await waiting(page, "The bots check the log and co-sign the proof on chain", () => expect(tid(page, "simulate-flight")).toBeHidden({ timeout: 300_000 }));
 
   // 4. Validator
-  await say(page, "4 · Validators. Here is what the checkers decided.", 2800);
-  await signUp(page, "validator", "Mari");
+  await say(page, "4 · Validators. Here is what the checkers decided.", 600);
+  await signUp(page, "validator", "Mari", true);
   await waiting(page, "Reading the verdicts from Solana", () => expect(tid(page, "bot-outcome")).toContainText("All checks pass", { timeout: 240_000 }));
   await show(tid(page, "bot-outcome"));
   await zoomIn(page, tid(page, "bot-outcome"), 1.3);
